@@ -112,7 +112,7 @@ class cWorldList(QListWidget):
 
   #----------------------------------------------------------------------------------------------------------
   def updateWorld(self, data : tuple):
-    (name, chatServer, statusServer) = data
+    name, chatServer, statusServer = data
     if name in self.worlds.keys():
         self.console.info(f"Updating \"{name}\" world info...")
         self.worlds[name].chatServer = chatServer
@@ -121,6 +121,8 @@ class cWorldList(QListWidget):
         self.console.info(f"Adding \"{name}\" world info...")
         self.worlds[name] = cWorld(name, chatServer, statusServer)
         self.addItem(self.worlds[name])
+    self.worlds[name].checkStatus()
+    self.worlds[name].setText(name)
 
   # #----------------------------------------------------------------------------------------------------------
   # def populate(self, realmList : dict):

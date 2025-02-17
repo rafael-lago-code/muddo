@@ -110,81 +110,80 @@ def EnterWorldQueue(queueURL, worldQueueConfig, account, accNumber, valHomeDir, 
 
 
 if __name__ == '__main__':
-	valHomeDir = os.environ.get('HOME')+"/"
-	osType = DetermineOS()
-	gameType = DetermineGame()
-	settings = Settings(valHomeDir, osType)
-	settings.usingDND = True # for DDO as opposed to Lotro
-	settings.hiResEnabled = True
-	settings.app = "Wine"
-	settings.realm = ""
-	settings.language = ""
-	settings.account = ""
-	settings.wineProg = "wine"
-	settings.wineDebug = ""
-	settings.patchClient = "patchclient.dll"
-	settings.focusAccount = True
-	settings.winePrefix = '/home/steam/prefixes/DDO_Main/pfx'
-	settings.gameDir = '/home/steam/prefixes/DDO_Main/pfx/drive_c/Program Files (x86)/StandingStoneGames/Dungeons & Dragons Online'
-	settings.hideWinMain = False
+  valHomeDir = os.environ.get('HOME')+"/"
+  osType = DetermineOS()
+  gameType = DetermineGame()
+  settings = Settings(valHomeDir, osType)
+  settings.usingDND = True # for DDO as opposed to Lotro
+  settings.hiResEnabled = True
+  settings.app = "Wine"
+  settings.realm = ""
+  settings.language = ""
+  settings.account = ""
+  settings.wineProg = "wine"
+  settings.wineDebug = ""
+  settings.patchClient = "patchclient.dll"
+  settings.focusAccount = True
+  settings.winePrefix = '/home/steam/prefixes/DDO_Main/pfx'
+  settings.gameDir = '/home/steam/prefixes/DDO_Main/pfx/drive_c/Program Files (x86)/StandingStoneGames/Dungeons & Dragons Online'
+  settings.hideWinMain = False
 
-	gameType.GetSettings(settings.usingDND, settings.usingTest)
-	gameType.configFile = "/ddo.launcherconfig"
+  gameType.GetSettings(settings.usingDND, settings.usingTest)
+  gameType.configFile = "/ddo.launcherconfig"
 
-	configFile = settings.gameDir + gameType.configFile
-	baseConfig = BaseConfig(configFile)
-	print(f"Config loaded? {baseConfig.isConfigOK}")
-	if not baseConfig.isConfigOK: sys.exit(-1)
-	
-	dataCentre = GLSDataCentre(baseConfig.GLSDataCentreService, baseConfig.gameName, valHomeDir, osType)
-	if not dataCentre.loadSuccess: sys.exit(-1)
-	
-	worldQueueConfig = WorldQueueConfig(dataCentre.launchConfigServer, settings.usingDND, valHomeDir, osType)
-	print(f"World Queue configuration read? {worldQueueConfig.loadSuccess}")
-	if not worldQueueConfig.loadSuccess: sys.exit(-1)
+  configFile = settings.gameDir + gameType.configFile
+  baseConfig = BaseConfig(configFile)
+  print(f"Config loaded? {baseConfig.isConfigOK}")
+  if not baseConfig.isConfigOK: sys.exit(-1)
 
-	print("ENTER PASSWORD IN DDO_USERNAME and DDO_PASSWORD!!")
-	username = os.environ["DDO_USERNAME"]
-	password = os.environ["DDO_PASSWORD"]
-	
-	account = AuthenticateUser(dataCentre.authServer, username, password, 
-							baseConfig.gameName, valHomeDir, osType)
-	print(f"Account Authenticated? {account.authSuccess}")
-	print(f"{account.messError}")
-	if not account.authSuccess: sys.exit(-1)
+  dataCentre = GLSDataCentre(baseConfig.GLSDataCentreService, baseConfig.gameName, valHomeDir, osType)
+  if not dataCentre.loadSuccess: sys.exit(-1)
 
-	print(f"gameList = {account.gameList}")
+  worldQueueConfig = WorldQueueConfig(dataCentre.launchConfigServer, settings.usingDND, valHomeDir, osType)
+  print(f"World Queue configuration read? {worldQueueConfig.loadSuccess}")
+  if not worldQueueConfig.loadSuccess: sys.exit(-1)
 
-	accSubscription = account.gameList[0].name
-	tempRealm = dataCentre.realmList[0] #self.uiMain.cboRealm.currentIndex()]
-	tempRealm.CheckRealm(settings.usingDND, valHomeDir, osType)
+  print("Set DDO_USERNAME and DDO_PASSWORD!!!!")
+  username = os.environ["DDO_USERNAME"]
+  password = os.environ["DDO_PASSWORD"]
+  account = AuthenticateUser(dataCentre.authServer, username, password, 
+              baseConfig.gameName, valHomeDir, osType)
+  print(f"Account Authenticated? {account.authSuccess}")
+  print(f"{account.messError}")
+  if not account.authSuccess: sys.exit(-1)
 
-	print(f"Realm available? {tempRealm.realmAvailable}")
-	if not tempRealm.realmAvailable: sys.exit(-1)
-	urlChatServer = tempRealm.urlChatServer
-	urlLoginServer = tempRealm.loginServer
+  print(f"gameList = {account.gameList}")
 
-	if tempRealm.queueURL != "":
-		EnterWorldQueue(tempRealm.queueURL, worldQueueConfig, account, accSubscription, valHomeDir, osType)
-	
-	print(f'\n\nTEMPLATE: {worldQueueConfig.gameClientArgTemplate}\n\n')
+  accSubscription = account.gameList[0].name
+  tempRealm = dataCentre.realmList[0] #self.uiMain.cboRealm.currentIndex()]
+  tempRealm.CheckRealm(settings.usingDND, valHomeDir, osType)
 
-	print(f"Qeueing done, joining server...")
-	game = StartGame(None, #self.winMain,
-					 worldQueueConfig,
-					 accSubscription,
-					 urlLoginServer, # dataCentre.authServer?
-					 account.ticket,
-					 urlChatServer,
-					 "English", #self.langConfig.langList[self.uiMain.cboLanguage.currentIndex()].code,
-					 settings.gameDir,
-					 settings.wineProg,
-					 settings.wineDebug,
-					 settings.winePrefix,
-					 settings.hiResEnabled,
-					 settings.app,
-					 osType,
-					 valHomeDir,
-					 None, #self.gameType.icoFile,
-					 '/home/soul/share/pylotro/headless/') #self.rootDir)
-	game.run()
+  print(f"Realm available? {tempRealm.realmAvailable}")
+  if not tempRealm.realmAvailable: sys.exit(-1)
+  urlChatServer = tempRealm.urlChatServer
+  urlLoginServer = tempRealm.loginServer
+
+  if tempRealm.queueURL != "":
+    EnterWorldQueue(tempRealm.queueURL, worldQueueConfig, account, accSubscription, valHomeDir, osType)
+
+  print(f'\n\nTEMPLATE: {worldQueueConfig.gameClientArgTemplate}\n\n')
+
+  print(f"Qeueing done, joining server...")
+  game = StartGame(None, #self.winMain,
+            worldQueueConfig,
+            accSubscription,
+            urlLoginServer, # dataCentre.authServer?
+            account.ticket,
+            urlChatServer,
+            "English", #self.langConfig.langList[self.uiMain.cboLanguage.currentIndex()].code,
+            settings.gameDir,
+            settings.wineProg,
+            settings.wineDebug,
+            settings.winePrefix,
+            settings.hiResEnabled,
+            settings.app,
+            osType,
+            valHomeDir,
+            None, #self.gameType.icoFile,
+            '/home/soul/share/pylotro/headless/') #self.rootDir)
+  game.run()

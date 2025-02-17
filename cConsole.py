@@ -61,11 +61,11 @@ class cConsole(QTextEdit):
     self.sigInfo.emit(message)
 
   #------------------------------------------------------------------------------------
-  def error(self, message:str, e:Exception):
+  def error(self, message:str, e:Exception = ""):
     self.sigError.emit(message + "<br>  ===> "+str(e))
 
   #------------------------------------------------------------------------------------
-  def abort(self, message:str, e:Exception):
+  def abort(self, message:str, e:Exception = ""):
     self.sigError.emit(message + "<br>  ===> "+str(e))
     sys.exit()
 

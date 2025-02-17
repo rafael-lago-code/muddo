@@ -32,16 +32,24 @@ from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,\
     QLabel, QLineEdit, QCheckBox, QListWidget, QPushButton
 from PyQt6 import QtCore
 from cWorlds import cWorldList
+from tServerInfo import tServerInfo
 from util import *
 import json
 
 class cLogin(QWidget):
+  sigFetchedGLS        = QtCore.pyqtSignal(bool)
+  sigFetchedWorld      = QtCore.pyqtSignal(tuple)
+  sigFetchedWorldsInfo = QtCore.pyqtSignal(bool)
+  sigFetchedQueueInfo  = QtCore.pyqtSignal(bool)
 
   def __init__(self, main):
     super().__init__()
 
     self.main = main
+    self.accounts = {}
     self.console = main.console
+    self.serverInfo = None
+
     self.listAccounts = QListWidget()
     self.listWorlds = cWorldList(main)
     self.username = QLineEdit()
@@ -89,9 +97,15 @@ class cLogin(QWidget):
     g1.addWidget(self.listWorlds,      1, 2, 2, 1)
 
     self.setLayout(g1)
+    self.loadAccounts()
+    self.sigFetchedWorld.connect(self.listWorlds.updateWorld)
+    self.sigFetchedQueueInfo.connect(self.main.btnLaunch.setEnabled)
 
-    self.accounts = {}
-    self.load()
+  #----------------------------------------------------------------------------------------------------------
+  def initialize(self):
+    self.serverInfo = tServerInfo(self.main)
+    self.console.info("Launching server info collector...")
+    QtCore.QThreadPool.globalInstance().start(self.serverInfo)
 
   #----------------------------------------------------------------------------------------------------------
   def addAccount(self):
@@ -100,7 +114,7 @@ class cLogin(QWidget):
     self.accounts[self.username.text()] = self.password.text()
     if self.password.text() != "":
       self.console.info(C_RED + "WARNING</font>: passwords are saved in plain text and not handled safely yet! Use it at your own risk!")
-    self.save()
+    self.saveAccounts()
   
   #----------------------------------------------------------------------------------------------------------
   def updateUsernamePassword(self):
@@ -115,7 +129,6 @@ class cLogin(QWidget):
     else:
       self.listAccounts.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
   
-
   #----------------------------------------------------------------------------------------------------------
   def getSelectedAccounts(self):
     s = self.listAccounts.selectedItems()
@@ -139,17 +152,17 @@ class cLogin(QWidget):
       self.console.error(f"cLogin.selectWorld: world \"{name}\" not found in the list!")
 
   #----------------------------------------------------------------------------------------------------------
-  def selectAccounts(self, list):
-    if not list: return
-    for name in list:
-      m = self.listAccounts.findItems(name, QtCore.Qt.MatchFlag.MatchExactly)
-      if m:
+  def selectAccounts(self, accs : list):
+    if not accs: return
+    for name in accs:
+      try:
+        m = self.listAccounts.findItems(name, QtCore.Qt.MatchFlag.MatchExactly)
         self.listAccounts.setCurrentItem(m[0], QtCore.QItemSelectionModel.SelectionFlag.Select)
-      else:
-        self.console.error(f"cLogin.selectAccounts: account \"{name}\" not found in the list!")
+      except Exception as e:
+        self.console.error(f"cLogin.selectAccounts: account \"{name}\" not found in the list!", e)
 
   #----------------------------------------------------------------------------------------------------------
-  def save(self):
+  def saveAccounts(self):
     try:
       os.mkdir(P_DEFAULT_CONFIGDIR)
     except: pass
@@ -161,7 +174,7 @@ class cLogin(QWidget):
       self.console.error(f"cLogin.save: could not create {accFileName} to store credentials!",e)
   
   #----------------------------------------------------------------------------------------------------------
-  def load(self):
+  def loadAccounts(self):
     accFileName = P_DEFAULT_CONFIGDIR+"/accounts.json"
 
     if os.path.exists(accFileName):
@@ -180,7 +193,7 @@ class cLogin(QWidget):
       del self.accounts[i.text()]
       self.listAccounts.takeItem(self.listAccounts.row(i))
     self.console.info(f" {len(selected)} accounts removed successfully")
-    self.save()
+    self.saveAccounts()
 
   #----------------------------------------------------------------------------------------------------------
   def clearEdits(self):

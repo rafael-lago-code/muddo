@@ -12,7 +12,7 @@
 #
 # (C) 2025 Rafael Lago
 #
-# This file is part of PyLotRO
+# This file is part of μDDO
 #
 # μDDO is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,11 +27,10 @@
 # You should have received a copy of the GNU General Public License
 # along with μDDO.  If not, see <http://www.gnu.org/licenses/>.
 ###########################################################################
-from PyQt6.QtCore import QRunnable,pyqtSignal
+from PyQt6.QtCore import QRunnable, pyqtSignal
 from util import *
 import os
 import xml.dom.minidom
-
 
 P_DDO_LAUNCHERCONFIG='ddo.launcherconfig'
 
@@ -49,35 +48,43 @@ class tServerInfo(QRunnable):
     super().__init__()
     self.main = main
     self.console = main.console
-    self.exec = main.settings.gameExec.text()
+    self.exec = None
     self.authServer = ""
     self.patchServer = ""
     self.launchConfigServer = ""
-    self.certContext = None
-    self.certFile = None
     self.realmList = []
     self.gamePrefix = ""
-    self.launcherConfig = ""
-    self.status = self.P_STATUS_UNKNOWN
+    self.gameConfig = ""
 
+    self.gameClientFilename = ""
+    self.gameClientArgTemplate = ""
+    self.newsFeedURL = ""
+    self.newsStyleSheetURL = ""
+    self.patchProductCode = ""
+    self.worldQueueURL = ""
+    self.worldQueueParam = ""
+
+    self.status = self.P_STATUS_UNKNOWN
 
   #----------------------------------------------------------------------------------------------------------
   def run(self):
     self.status = self.P_STATUS_WORKING
+
+    self.exec = self.main.settings.gameExec.text()
     self.gamePrefix = os.path.dirname(self.exec)
-    self.launcherConfig = self.gamePrefix+os.sep+P_DDO_LAUNCHERCONFIG
+    self.gameConfig = self.gamePrefix+os.sep+P_DDO_LAUNCHERCONFIG
     for i in range(4):
-      if os.path.exists(self.launcherConfig):
+      if os.path.exists(self.gameConfig):
         break
       self.gamePrefix = os.path.dirname(self.gamePrefix)
-      self.launcherConfig = self.gamePrefix+os.sep+P_DDO_LAUNCHERCONFIG
+      self.gameConfig = self.gamePrefix+os.sep+P_DDO_LAUNCHERCONFIG
     
-    if not os.path.exists(self.launcherConfig):
+    if not os.path.exists(self.gameConfig):
       raise Exception(f"tDDO.init: could not find {P_DDO_LAUNCHERCONFIG} in directory \"{self.gamePrefix}\
                       \".<br>Game executable: \"{self.exec}\"")
     else:
       try:
-        doc = xml.dom.minidom.parse(self.launcherConfig)
+        doc = xml.dom.minidom.parse(self.gameConfig)
 
         nodes = doc.getElementsByTagName("appSettings")[0].childNodes
         for node in nodes:
@@ -87,15 +94,20 @@ class tServerInfo(QRunnable):
             elif node.getAttribute("key") == "DataCenter.GameName":
               self.gameName = node.getAttribute("value")
         
-        self.getGLSData()
-        self.sigGLSAcquired.emit(True)
       except Exception as e:
-        self.sigGLSAcquired.emit(False)
+        self.main.login.sigFetchedGLS.emit(False)
         self.status = self.P_STATUS_ERROR
         self.console.error("Error fetching GLSData", e)
-    self.status = self.P_STATUS_DONE
-    self.sigWorldFinished.emit(True)
-    ################################## have login.sigWorldFinished!!!!!!!!!!!!
+      else:
+        self.main.login.sigFetchedGLS.emit(True)
+        self.console.info("Fetched GLSData")
+    
+    if self.getGLSData():
+      if self.getQueue():
+        self.status = self.P_STATUS_DONE
+        self.console.info("Finished gathering server data")
+        return 
+    self.status = self.P_STATUS_ERROR
   
   #----------------------------------------------------------------------------------------------------------
   def getGLSData(self):
@@ -147,10 +159,66 @@ class tServerInfo(QRunnable):
             elif realm.nodeName == "StatusServerUrl":
               urlStatusServer = realm.firstChild.nodeValue
           self.realmList.append((name, urlChatServer, urlStatusServer))
-          self.sigWorldDataAcquired.emit((name, urlChatServer, urlStatusServer))
+          self.main.login.sigFetchedWorld.emit((name, urlChatServer, urlStatusServer))
+          
     except Exception as e:
       self.console.error("Error fetching worlds data", e)
-    
+      self.main.login.sigFetchedWorldsInfo.emit(False)
+      return False
+    else:
+      self.main.login.sigFetchedWorldsInfo.emit(True)
+      self.console.info("Fetched worlds data")
+      return True
+  
+  #----------------------------------------------------------------------------------------------------------
+  def getQueue(self) -> bool:
+    try:
+      webservice, post = getConnection(self.launchConfigServer)
+      webservice.putrequest("GET", post)
+      webservice.endheaders()
+      webresp = webservice.getresponse()
+      tempxml = webresp.read().decode()
+
+      filename = P_DEFAULT_WORKDIR+"/dndlauncher.server.config.xml"
+      with open(filename, "w") as f:
+        f.write(tempxml)
+
+      if tempxml == "":
+        self.loadSuccess = False
+      else:
+        doc = xml.dom.minidom.parseString(tempxml)
+
+        nodes = doc.getElementsByTagName("appSettings")[0].childNodes
+        for node in nodes:
+          if node.nodeType == node.ELEMENT_NODE:
+            if node.getAttribute("key") == "GameClient.WIN64.Filename":
+              self.gameClientFilename = node.getAttribute("value")
+            elif node.getAttribute("key") == "GameClient.WIN32.ArgTemplate": #there isn't one for WIN64!
+              self.gameClientArgTemplate = node.getAttribute("value")
+            elif node.getAttribute("key") == "GameClient.Arg.authserverurl":
+              self.gameClientAuthServerURL = node.getAttribute("value")
+            elif node.getAttribute("key") == "GameClient.Arg.glsticketlifetime":
+              self.gameClientGLSTicketLifetime = node.getAttribute("value")
+            elif node.getAttribute("key") == "URL.NewsFeed":
+              self.newsFeedURL = node.getAttribute("value")
+            elif node.getAttribute("key") == "URL.NewsStyleSheet":
+              self.newsStyleSheetURL = node.getAttribute("value")
+            elif node.getAttribute("key") == "Patching.ProductCode":
+              self.patchProductCode = node.getAttribute("value")
+            elif node.getAttribute("key") == "WorldQueue.LoginQueue.URL":
+              self.worldQueueURL = node.getAttribute("value")
+            elif node.getAttribute("key") == "WorldQueue.TakeANumber.Parameters":
+              self.worldQueueParam = node.getAttribute("value")
+
+        self.loadSuccess = True
+    except Exception as e:
+      self.console.error("Error fetching queue info", e)
+      self.main.login.sigFetchedQueueInfo.emit(False)
+      return False
+    else:
+      self.main.login.sigFetchedQueueInfo.emit(True)
+      self.console.info("Fetched queue info")
+      return True
 
 
 

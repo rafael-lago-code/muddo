@@ -31,14 +31,14 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,\
   QPushButton, QLabel
 from PyQt6.QtGui import QIcon, QPixmap
-from PyQt6.QtCore import Qt, pyqtSignal, QThreadPool
+from PyQt6.QtCore import Qt, pyqtSignal
 from cLogin import cLogin
 from cSettings import cSettings
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
+from tAccount import tAccount
 from util import *
-from tServerInfo import tServerInfo
 import sys
 
 class cMainWindow(QMainWindow):
@@ -46,27 +46,27 @@ class cMainWindow(QMainWindow):
   def __init__(self):
     super().__init__()
     self.setWindowTitle("μDDO")
-    self.setWindowIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DDOLinuxIcon.png')))
+    self.setWindowIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/icon.png')))
 
-    self.serverData = None
+    self.btnLaunch = QPushButton("Launch")
+    self.btnLaunch.setEnabled(False)
 
     lButtonsBar = QHBoxLayout()
     btnDHelper = QPushButton("DungeonHelper")
-    btnLaunch = QPushButton("Launch")
     btnClose = QPushButton("Close")
     lButtonsBar.addWidget(btnDHelper)
     lButtonsBar.addStretch()
-    lButtonsBar.addWidget(btnLaunch)
+    lButtonsBar.addWidget(self.btnLaunch)
     lButtonsBar.addWidget(btnClose)
 
     btnClose.clicked.connect(self.close)
-    btnLaunch.clicked.connect(self.launch)
+    self.btnLaunch.clicked.connect(self.launch)
 
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.login = cLogin(self)
     self.news = cNews()
-    self.settings = cSettings(self)
     self.patch = cPatch()
+    self.settings = cSettings(self)
     l = QVBoxLayout()
     l.addWidget(self.login)
     l.addWidget(self.settings)
@@ -85,30 +85,28 @@ class cMainWindow(QMainWindow):
       self.console.error(f"Failed to intialize certificate, is the file \"{P_CERTFILE}\" accessible? ")
     else:
       self.console.info(f"SSL certificate verification enabled! Using {P_CERTFILE}")
-    self.startFecthingServerData()
-    self.console.info("Initialized...")
+    
+    self.login.initialize()
+    # self.news.initialize()
+    # self.patch.initialize()
+
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
-    pass
-
-  #----------------------------------------------------------------------------------------------------------
-  def startFecthingServerData(self):
-    self.console.info("Launching server info collector...")
-    serverData = tServerInfo(self)
-    QThreadPool.globalInstance().start(serverData)
-
-    # try:
-    #   self.serverData = tServerInfo(self)
-    #   self.serverData.getGLSData()
-    # except Exception as e:
-    #   self.console.error("Error attempting to download server info", e)
+    accs = self.login.getSelectedAccounts()
+    if not accs: accs = [self.login.username.text()]
+    if not accs:
+      self.console.error("No accounts selected. Please add an account or enter a username")
+      return
     
-    # if self.serverData.realmList:
-    #   self.login.listWorlds.populate(self.serverData.realmList)
-    # else:
-    #   self.console.error(f"Got an empty realmList! Is the GLSDataCenter up?<br>Check the URL \"{self.serverData.urlGLSDataCenter}\"")
-    #   self.console.error(f"Please solve the issue and restart μDDO")
+    world = self.login.listWorlds.currentItem().text()
+    authAccount = {}
+    for a in accs:
+      self.console.info(f"Authenticating {a}...")
+      authAccount[a] = tAccount(self, a)
+      QtCore.QThreadPool.globalInstance().start(authAccount[a])
+    self.console.info("Finished submitting authentication, waiting for tickets")
+
 
 
   #----------------------------------------------------------------------------------------------------------
