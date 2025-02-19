@@ -1,33 +1,26 @@
-# coding=utf-8
-###########################################################################
-# Name:   μDDO
-# Author: Rafael Lago
-# Date:   February 2025
 #
-# Support classes for the Linux based launcher
-# for the game Dungeons & Dragons Online
 #
-# Based on PyLotRO by AJackson <ajackson@bcs.org.uk>
-# Based on a script by SNy <SNy@bmx-chemnitz.de>
+#    μDDO
+#    Copyright (C) 2025  Rafael Lago
 #
-# (C) 2025 Rafael Lago
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-# This file is part of PyLotRO
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
 #
-# μDDO is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-# μDDO is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    This software is heavily based on PyLotRO (credits to AJackson
+#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
+#    (<SNy@bmx-chemnitz.de>)
 #
-# You should have received a copy of the GNU General Public License
-# along with μDDO.  If not, see <http://www.gnu.org/licenses/>.
-###########################################################################
-
+#
 from PyQt6.QtWidgets import QWidget, QTextEdit, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy
 from util import *
 from cCollapsible import cCollapsible

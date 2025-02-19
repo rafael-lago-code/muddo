@@ -1,7 +1,7 @@
 #
 #
-#    IdleMasterPlus
-#    Copyright (C) 2022  Rafael Lago
+#    μDDO
+#    Copyright (C) 2025  Rafael Lago
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU General Public License as published by
@@ -15,6 +15,10 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#    This software is heavily based on PyLotRO (credits to AJackson
+#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
+#    (<SNy@bmx-chemnitz.de>)
 #
 #
 from PyQt6.QtWidgets import QTextEdit

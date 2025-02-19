@@ -1,32 +1,26 @@
-# coding=utf-8
-###########################################################################
-# Name:   μDDO
-# Author: Rafael Lago
-# Date:   February 2025
 #
-# Support classes for the Linux based launcher
-# for the game Dungeons & Dragons Online
 #
-# Based on PyLotRO by AJackson <ajackson@bcs.org.uk>
-# Based on a script by SNy <SNy@bmx-chemnitz.de>
+#    μDDO
+#    Copyright (C) 2025  Rafael Lago
 #
-# (C) 2025 Rafael Lago
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-# This file is part of PyLotRO
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
 #
-# μDDO is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-# μDDO is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    This software is heavily based on PyLotRO (credits to AJackson
+#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
+#    (<SNy@bmx-chemnitz.de>)
 #
-# You should have received a copy of the GNU General Public License
-# along with μDDO.  If not, see <http://www.gnu.org/licenses/>.
-###########################################################################
+#
 import os
 from PyQt6.QtWidgets import QLabel
 from PyQt6.QtGui import QIcon, QPixmap
@@ -63,8 +57,10 @@ P_ICON_FILTER    = "view-filter"
 P_ICON_EXIT      = "application-exit"
 P_ICON_CONFIRM   = "dialog-ok-apply"
 P_ICON_CONFIGURE = "configure"
+P_ICON_PROPERTIES= "document-properties"
 P_ICON_CLEAR     = "edit-clear"
 P_ICON_CANCEL    = "dialog-cancel"
+P_ICON_CLOSE     = "window-close"
 P_ICON_AUTO      = "autocorrection"
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"
@@ -85,8 +81,8 @@ P_CERTCTX = None
 _iconScheme = {}
 for i in [P_ICON_UNDO, P_ICON_SORT, P_ICON_OPEN, P_ICON_OPENFOLDER, P_ICON_SAVE, P_ICON_SAVEALL, P_ICON_SAVEAS,
           P_ICON_ADD, P_ICON_REMOVE, P_ICON_REFRESH, P_ICON_QUESTION, P_ICON_PLAY, P_ICON_PAUSE, P_ICON_STOP,
-          P_ICON_FILTER, P_ICON_EXIT, P_ICON_CONFIRM, P_ICON_CONFIGURE, P_ICON_CLEAR, P_ICON_CANCEL,
-          P_ICON_AUTO, P_ICON_TRIANGLE_UP, P_ICON_TRIANGLE_DOWN, P_ICON_TRIANGLE_LEFT, P_ICON_TRIANGLE_RIGHT]:
+          P_ICON_FILTER, P_ICON_EXIT, P_ICON_CONFIRM, P_ICON_CONFIGURE, P_ICON_PROPERTIES, P_ICON_CLEAR, P_ICON_CANCEL,
+          P_ICON_CLOSE, P_ICON_AUTO, P_ICON_TRIANGLE_UP, P_ICON_TRIANGLE_DOWN, P_ICON_TRIANGLE_LEFT, P_ICON_TRIANGLE_RIGHT]:
   for d in P_DEFAULT_ICON_PATHS:
     for s in ["64", "32", "16"]:
       if os.path.exists(d+"/actions/"+s+"/"+i+P_DEFAULT_ICON_EXTENSION):

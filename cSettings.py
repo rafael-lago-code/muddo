@@ -1,33 +1,26 @@
-# coding=utf-8
-###########################################################################
-# Name:   μDDO
-# Author: Rafael Lago
-# Date:   February 2025
 #
-# Support classes for the Linux based launcher
-# for the game Dungeons & Dragons Online
 #
-# Based on PyLotRO by AJackson <ajackson@bcs.org.uk>
-# Based on a script by SNy <SNy@bmx-chemnitz.de>
+#    μDDO
+#    Copyright (C) 2025  Rafael Lago
 #
-# (C) 2025 Rafael Lago
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-# This file is part of PyLotRO
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
 #
-# μDDO is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-# μDDO is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    This software is heavily based on PyLotRO (credits to AJackson
+#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
+#    (<SNy@bmx-chemnitz.de>)
 #
-# You should have received a copy of the GNU General Public License
-# along with μDDO.  If not, see <http://www.gnu.org/licenses/>.
-###########################################################################
-
+#
 from PyQt6.QtWidgets import QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
   QPushButton, QCheckBox, QLineEdit
 from util import *
@@ -115,16 +108,6 @@ class cSettings(cCollapsible):
     g.addWidget(self.btnSelectGameExec, 3, 3)
     
     self.body.setLayout(g)
-
-  
-  #----------------------------------------------------------------------------------------------------------
-  def toggle(self):
-    if self.body.isVisible():
-      self.tag.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
-      self.body.hide()
-    else:
-      self.tag.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
-      self.body.show()
 
   #----------------------------------------------------------------------------------------------------------
   def copyPrefixText(self):
@@ -234,11 +217,11 @@ class cSettings(cCollapsible):
         if 'patchCollapsed' in values.keys(): self.main.patch.setCollapsed(values['patchCollapsed'])
 
         if 'multiAccount' in values.keys(): 
-          self.main.login.multiAccount.setChecked(values['multiAccount'])
-          self.main.login.updateMultiAccount()
+          self.main.credentials.multiAccount.setChecked(values['multiAccount'])
+          self.main.credentials.updateMultiAccount()
         
-        if 'lastWorld' in values.keys(): self.main.login.selectWorld(values['lastWorld'])
-        if 'lastAccounts' in values.keys(): self.main.login.selectAccounts(values['lastAccounts'])
+        if 'lastWorld' in values.keys(): self.main.credentials.selectWorld(values['lastWorld'])
+        if 'lastAccounts' in values.keys(): self.main.credentials.selectAccounts(values['lastAccounts'])
 
       except Exception as e:
         self.console.error(f"cSettings.load: error loading settings from {P_DEFAULT_CONFIGFILE}", e)
@@ -262,9 +245,9 @@ class cSettings(cCollapsible):
     values['settingsCollapsed'] = self.main.settings.isCollapsed()
     values['newsCollapsed'] = self.main.news.isCollapsed()
     values['patchCollapsed']= self.main.patch.isCollapsed()
-    values['multiAccount']  = self.main.login.multiAccount.isChecked()
-    values['lastWorld']     = self.main.login.getSelectedWorld()
-    values['lastAccounts']  = self.main.login.getSelectedAccounts()
+    values['multiAccount']  = self.main.credentials.multiAccount.isChecked()
+    values['lastWorld']     = self.main.credentials.getSelectedWorld()
+    values['lastAccounts']  = self.main.credentials.getSelectedAccounts()
 
     try:
       json.dump(values, open(P_DEFAULT_CONFIGFILE,"w"), separators=(', ',': '), indent=2)

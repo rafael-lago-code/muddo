@@ -1,32 +1,26 @@
-# coding=utf-8
-###########################################################################
-# Name:   μDDO
-# Author: Rafael Lago
-# Date:   February 2025
 #
-# Support classes for the Linux based launcher
-# for the game Dungeons & Dragons Online
 #
-# Based on PyLotRO by AJackson <ajackson@bcs.org.uk>
-# Based on a script by SNy <SNy@bmx-chemnitz.de>
+#    μDDO
+#    Copyright (C) 2025  Rafael Lago
 #
-# (C) 2025 Rafael Lago
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-# This file is part of μDDO
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
 #
-# μDDO is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-# μDDO is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    This software is heavily based on PyLotRO (credits to AJackson
+#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
+#    (<SNy@bmx-chemnitz.de>)
 #
-# You should have received a copy of the GNU General Public License
-# along with μDDO.  If not, see <http://www.gnu.org/licenses/>.
-###########################################################################
+#
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from util import *
 import os
@@ -35,10 +29,6 @@ import xml.dom.minidom
 P_DDO_LAUNCHERCONFIG='ddo.launcherconfig'
 
 class tServerInfo(QRunnable):
-  sigGLSAcquired  = pyqtSignal(bool)
-  sigWorldDataAcquired  = pyqtSignal(tuple)
-  sigWorldFinished  = pyqtSignal(bool)
-  
   P_STATUS_ERROR = -1
   P_STATUS_WORKING = 0
   P_STATUS_UNKNOWN = 1
@@ -95,11 +85,11 @@ class tServerInfo(QRunnable):
               self.gameName = node.getAttribute("value")
         
       except Exception as e:
-        self.main.login.sigFetchedGLS.emit(False)
+        self.main.credentials.sigFetchedGLS.emit(False)
         self.status = self.P_STATUS_ERROR
         self.console.error("Error fetching GLSData", e)
       else:
-        self.main.login.sigFetchedGLS.emit(True)
+        self.main.credentials.sigFetchedGLS.emit(True)
         self.console.info("Fetched GLSData")
     
     if self.getGLSData():
@@ -130,7 +120,7 @@ class tServerInfo(QRunnable):
 
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
-      filename = P_DEFAULT_WORKDIR+"/GLSDataCenter.config"
+      filename = P_DEFAULT_WORKDIR+"/GLSDataCenter.xml"
       
       with open(filename, "w") as f:
         f.write(tempxml)
@@ -159,14 +149,14 @@ class tServerInfo(QRunnable):
             elif realm.nodeName == "StatusServerUrl":
               urlStatusServer = realm.firstChild.nodeValue
           self.realmList.append((name, urlChatServer, urlStatusServer))
-          self.main.login.sigFetchedWorld.emit((name, urlChatServer, urlStatusServer))
+          self.main.credentials.sigFetchedWorld.emit((name, urlChatServer, urlStatusServer))
           
     except Exception as e:
       self.console.error("Error fetching worlds data", e)
-      self.main.login.sigFetchedWorldsInfo.emit(False)
+      self.main.credentials.sigFetchedWorldsInfo.emit(False)
       return False
     else:
-      self.main.login.sigFetchedWorldsInfo.emit(True)
+      self.main.credentials.sigFetchedWorldsInfo.emit(True)
       self.console.info("Fetched worlds data")
       return True
   
@@ -179,7 +169,7 @@ class tServerInfo(QRunnable):
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
 
-      filename = P_DEFAULT_WORKDIR+"/dndlauncher.server.config.xml"
+      filename = P_DEFAULT_WORKDIR+"/dndlauncher.server.xml"
       with open(filename, "w") as f:
         f.write(tempxml)
 
@@ -213,10 +203,10 @@ class tServerInfo(QRunnable):
         self.loadSuccess = True
     except Exception as e:
       self.console.error("Error fetching queue info", e)
-      self.main.login.sigFetchedQueueInfo.emit(False)
+      self.main.credentials.sigFetchedQueueInfo.emit(False)
       return False
     else:
-      self.main.login.sigFetchedQueueInfo.emit(True)
+      self.main.credentials.sigFetchedQueueInfo.emit(True)
       self.console.info("Fetched queue info")
       return True
 

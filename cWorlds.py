@@ -1,33 +1,26 @@
-# coding=utf-8
-###########################################################################
-# Name:   μDDO
-# Author: Rafael Lago
-# Date:   February 2025
 #
-# Support classes for the Linux based launcher
-# for the game Dungeons & Dragons Online
 #
-# Based on PyLotRO by AJackson <ajackson@bcs.org.uk>
-# Based on a script by SNy <SNy@bmx-chemnitz.de>
+#    μDDO
+#    Copyright (C) 2025  Rafael Lago
 #
-# (C) 2025 Rafael Lago
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
-# This file is part of PyLotRO
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
 #
-# μDDO is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3 of the License, or
-# (at your option) any later version.
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-# μDDO is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
+#    This software is heavily based on PyLotRO (credits to AJackson
+#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
+#    (<SNy@bmx-chemnitz.de>)
 #
-# You should have received a copy of the GNU General Public License
-# along with μDDO.  If not, see <http://www.gnu.org/licenses/>.
-###########################################################################
-
+#
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem
 from PyQt6.QtGui import QBrush, QColor, QFont
 from PyQt6.QtCore import Qt
@@ -47,6 +40,7 @@ class cWorld(QListWidgetItem):
     self.loginServer = None
     self.queueURL = None
     self.nowServing = None
+    self.name = name
     self.setText(name)
 
   #----------------------------------------------------------------------------------------------------------
@@ -70,11 +64,10 @@ class cWorld(QListWidgetItem):
       webservice, post = getConnection(self.statusServer)
       webservice.putrequest("GET", post)
       webservice.endheaders()
-
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
 
-      filename = P_DEFAULT_CONFIGDIR+"/Server_"+self.text()+".config"
+      filename = P_DEFAULT_CONFIGDIR+"/Server_"+self.text()+".xml"
       with open(filename, "w") as f:
         f.write(tempxml)
 
@@ -114,23 +107,15 @@ class cWorldList(QListWidget):
   def updateWorld(self, data : tuple):
     name, chatServer, statusServer = data
     if name in self.worlds.keys():
-        self.console.info(f"Updating \"{name}\" world info...")
+        self.console.info(f"Updating \"{C_SILVER}{name}</font>\" world info...")
         self.worlds[name].chatServer = chatServer
         self.worlds[name].statusServer = statusServer
     else:
-        self.console.info(f"Adding \"{name}\" world info...")
+        self.console.info(f"Adding \"{C_SILVER}{name}</font>\" world info...")
         self.worlds[name] = cWorld(name, chatServer, statusServer)
         self.addItem(self.worlds[name])
     self.worlds[name].checkStatus()
     self.worlds[name].setText(name)
 
-  # #----------------------------------------------------------------------------------------------------------
-  # def populate(self, realmList : dict):
-  #   for r in realmList:
-  #     self.updateWorld(r)
-  #     try:
-  #       self.worlds[r[0]].checkStatus()
-  #     except Exception as e:
-  #       self.console.error(f"Failure populating {r[0]}", e)
 
 
