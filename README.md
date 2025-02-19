@@ -11,13 +11,16 @@ Links:
 
 
 ## TODO
-- Implement the patching capabilities
-- Implement news visualization
+- implement the patching capabilities
+- implement news visualization
 - use keyring to store passwords instead of plain text format
-- Test the launcher with Wine (currently tested with Steam Proton)
-- Create settings to enable/disable xdotool and check if it is available
-- Use GameDir instead of GameExec (which is currently hard-coded)
-- Integrate DungeonHelper launching, if it is installed
+- test the launcher with Wine (currently tested with Steam Proton)
+- use GameDir instead of GameExec (which is currently hard-coded)
+- add cmd line option for verbosity
+- add cmd line option for selecting settings.json file (to allow different game prefixes)
+- add cmd line option for selecting windowPreferences.json file (to allow different windows positions)
+- finalize DungeonHelper support
+  - maybe add support for downloading/installing DungeonHelper.exe?
 
 ## License
 
@@ -25,7 +28,7 @@ This is licensed under GPL-3 license. See https://www.gnu.org/licenses/ for deta
 
 ## About "Lord of the Rings Online" Support
 
-I removed the support to LotRO simply because I could not test it. The added complexity should be small.
+I removed the support to LotRO simply because I could not test it. The added complexity should be small, if anyone is interested in doing that.
 
 ## About Windows and/or MacOS Support
 

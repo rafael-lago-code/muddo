@@ -23,7 +23,7 @@
 #
 from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem
 from PyQt6.QtGui import QBrush, QColor, QFont
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
 from util import *
 import xml.dom.minidom
 
@@ -32,9 +32,10 @@ class cWorld(QListWidgetItem):
   UNKNOWN = 0
   UP = 1
   
-  def __init__(self, name, chatServer, statusServer):
+  def __init__(self, main, name, chatServer, statusServer):
     super().__init__()
     self.status = cWorld.UNKNOWN
+    self.main = main
     self.chatServer = chatServer
     self.statusServer = statusServer
     self.loginServer = None
@@ -60,34 +61,8 @@ class cWorld(QListWidgetItem):
 
   #----------------------------------------------------------------------------------------------------------
   def checkStatus(self):
-    try:
-      webservice, post = getConnection(self.statusServer)
-      webservice.putrequest("GET", post)
-      webservice.endheaders()
-      webresp = webservice.getresponse()
-      tempxml = webresp.read().decode()
-
-      filename = P_DEFAULT_CONFIGDIR+"/Server_"+self.text()+".xml"
-      with open(filename, "w") as f:
-        f.write(tempxml)
-
-      if tempxml == "":
-        self.status == cWorld.DOWN
-      else:
-        doc = xml.dom.minidom.parseString(tempxml)
-        try:
-          self.nowServing = getText(doc.getElementsByTagName("nowservingqueuenumber")[0].childNodes)
-        except:
-          self.nowServing = None
-        try:
-          self.queueURL = getText(doc.getElementsByTagName("queueurls")[0].childNodes).split(";")[0]
-        except:
-          self.queueURL = None
-        self.loginServer = getText(doc.getElementsByTagName("loginservers")[0].childNodes).split(";")[0]
-        self.status = cWorld.UP
-    except Exception as e:
-      self.status = cWorld.DOWN
-      raise e
+    wc = tWorldChecker(self)
+    QtCore.QThreadPool.globalInstance().start(wc)
 
 #----------------------------------------------------------------------------------------------------------
 class cWorldList(QListWidget):
@@ -100,7 +75,7 @@ class cWorldList(QListWidget):
     self.console = main.console
 
     for w in self.defaultWorlds:
-      self.worlds[w] = cWorld(w,'','')
+      self.worlds[w] = cWorld(self.main, w,'','')
       self.addItem(self.worlds[w])
 
   #----------------------------------------------------------------------------------------------------------
@@ -112,10 +87,45 @@ class cWorldList(QListWidget):
         self.worlds[name].statusServer = statusServer
     else:
         self.console.info(f"Adding \"{C_SILVER}{name}</font>\" world info...")
-        self.worlds[name] = cWorld(name, chatServer, statusServer)
+        self.worlds[name] = cWorld(self.main, name, chatServer, statusServer)
         self.addItem(self.worlds[name])
     self.worlds[name].checkStatus()
-    self.worlds[name].setText(name)
 
+#----------------------------------------------------------------------------------------------------------
+class tWorldChecker(QRunnable):
+  def __init__(self, world):
+    super().__init__()
+    self.world = world
+
+  def run(self):
+    try:
+      webservice, post = getConnection(self.world.statusServer)
+      webservice.putrequest("GET", post)
+      webservice.endheaders()
+      webresp = webservice.getresponse()
+      tempxml = webresp.read().decode()
+
+      filename = P_DEFAULT_CONFIGDIR+"/Server_"+self.world.text()+".xml"
+      with open(filename, "w") as f:
+        f.write(tempxml)
+
+      if tempxml == "":
+        self.world.status == cWorld.DOWN
+      else:
+        doc = xml.dom.minidom.parseString(tempxml)
+        try:
+          self.world.nowServing = getText(doc.getElementsByTagName("nowservingqueuenumber")[0].childNodes)
+        except:
+          self.world.nowServing = None
+        try:
+          self.world.queueURL = getText(doc.getElementsByTagName("queueurls")[0].childNodes).split(";")[0]
+        except:
+          self.world.queueURL = None
+        self.world.loginServer = getText(doc.getElementsByTagName("loginservers")[0].childNodes).split(";")[0]
+        self.world.status = cWorld.UP
+        self.world.setText(self.world.text())
+    except Exception as e:
+      self.world.status = cWorld.DOWN
+      self.world.main.console.error("Error trying to check world status", e)
 
 

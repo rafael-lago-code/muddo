@@ -126,7 +126,6 @@ class cMainWindow(QMainWindow):
     if os.path.exists(P_DEFAULT_WINDOWSPREFERENCE):
       with open(P_DEFAULT_WINDOWSPREFERENCE,"r") as f:
         values = json.load(f)
-      # self.console.info(f'Window Preferences loaded from {P_DEFAULT_WINDOWSPREFERENCE}')
       self.windowsPreferences = values
 
   #----------------------------------------------------------------------------------------------------------
@@ -141,8 +140,6 @@ class cMainWindow(QMainWindow):
       json.dump(self.windowsPreferences, open(P_DEFAULT_WINDOWSPREFERENCE,"w"), separators=(', ',': '), indent=2)
     except Exception as e:
       self.console.error(f"cMain.saveWindowsPreferences: could not create {P_DEFAULT_WINDOWSPREFERENCE} to store windows preferences!",e)
-    # else:
-      # self.console.info(f"Windows preferences saved in {P_DEFAULT_WINDOWSPREFERENCE}")
 
   #----------------------------------------------------------------------------------------------------------
   def close(self):

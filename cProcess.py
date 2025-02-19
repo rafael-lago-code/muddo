@@ -172,8 +172,8 @@ class cProcessItem(QWidget):
     self.console = main.console
     self.status = self.P_STATUS_UNKNOWN
     
-    self.PIDLabel = QLabel("<?>")
-    self.winIDLabel = QLabel("<?>")
+    self.PIDLabel = QLabel("NA")
+    self.winIDLabel = QLabel("NA")
     self.worldLabel = QLabel(self.account.world.name)
     self.usernameLabel = QLabel(self.account.username)
     self.PIDLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -232,7 +232,7 @@ class cProcessItem(QWidget):
     cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.main.settings.protonPrefix}\" "
     cmd += f"\"{self.main.settings.protonExec}\" run "
     cmd += f"{gameExec} "
-    cmd += f"{arg} \&> {outFilename}"
+    cmd += f"{arg} &> {outFilename}"
 
     exec = tGameExecutable(cmd)
     QtCore.QThreadPool.globalInstance().start(exec)
@@ -364,9 +364,11 @@ class tWinManager(QRunnable):
   #----------------------------------------------------------------------------------------------------------
   # saveWindow
   def saveWindow(self):
+    if not self.processWidget.main.settings.usexdotool.isChecked(): return
+    bin = self.processWidget.main.settings.xdotoolExec.text()
     for i in range(5):
       try:
-        out = subprocess.check_output([f"xdotool getwindowgeometry {self.processWidget.winIDLabel.text()}"], shell=True)
+        out = subprocess.check_output([f"{bin} getwindowgeometry {self.processWidget.winIDLabel.text()}"], shell=True)
         out = out.decode().strip().split('\n')
         pos = out[1].split()[1].split(',')
         self.processWidget.main.windowsPreferences[self.processWidget.account.username] = (int(pos[0]), int(pos[1]))
@@ -383,17 +385,19 @@ class tWinManager(QRunnable):
   #    Tries to restore window preferences. It always checks the WinID again because these change 
   #    every now and then, which is weird. It will loop a few times until it gets a valid winID.
   def restoreWindow(self):
+    if not self.processWidget.main.settings.usexdotool.isChecked(): return
+    bin = self.processWidget.main.settings.xdotoolExec.text()
     self.processWidget.main.loadWindowsPreferences()
     if self.processWidget.account.username in self.processWidget.main.windowsPreferences.keys():
       pos1, pos2 = self.processWidget.main.windowsPreferences[self.processWidget.account.username]
       for i in range(5):
         try:
-          out = subprocess.check_output([f"xdotool windowmove --sync {self.processWidget.winIDLabel.text()} {pos1} {pos2}"], shell=True)
+          out = subprocess.check_output([f"{bin} windowmove --sync {self.processWidget.winIDLabel.text()} {pos1} {pos2}"], shell=True)
         except Exception as e:
           self.getWinID()
         else:
           return
-      self.console.error("tWinManager.restoreWindow: unknow error trying to load position", e)
+      self.processWidget.console.error("tWinManager.restoreWindow: unknow error trying to load position")
 
   #----------------------------------------------------------------------------------------------------------
   def getWinID(self):
@@ -420,12 +424,15 @@ class tWinManager(QRunnable):
   
   #----------------------------------------------------------------------------------------------------------
   def probeWinID(self):
+    if not self.processWidget.main.settings.usexdotool.isChecked(): return
+    bin = self.processWidget.main.settings.xdotoolExec.text()
+    print(f"========================================================= {bin}")
     try:
-      out = subprocess.check_output([f"xdotool search --sync --pid {self.processWidget.PIDLabel.text()}"], shell=True)
+      out = subprocess.check_output([f"{bin} search --sync --pid {self.processWidget.PIDLabel.text()}"], shell=True)
       out = out.decode().strip().split('\n')
       if len(out)==0: return "ERROR_LEN0", None
       for id in out:
-        name = subprocess.check_output([f"xdotool getwindowname {id}"], shell=True)
+        name = subprocess.check_output([f"{bin} getwindowname {id}"], shell=True)
         name = name.decode().strip()
         if name == 'Dungeons and Dragons Online':
           return id, None
@@ -435,8 +442,10 @@ class tWinManager(QRunnable):
   
     #----------------------------------------------------------------------------------------------------------
   def checkWinID(self):
+    if not self.processWidget.main.settings.usexdotool.isChecked(): return
+    bin = self.processWidget.main.settings.xdotoolExec.text()
     try:
-      out = subprocess.call([f"xdotool getwindowname {self.processWidget.winIDLabel.text()}"], shell=True)
+      out = subprocess.call([f"{bin} getwindowname {self.processWidget.winIDLabel.text()}"], shell=True)
     except:
       return False
     else:
