@@ -1,5 +1,7 @@
 # μDDO
 
+![](./images/readme_example.png)
+
 ## Overview
 
 An Linux-based launcher for the game Dungeons & Dragons Online, using Python and Qt6. Based on the now (unsupported?) PyLotRO launcher.
