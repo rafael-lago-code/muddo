@@ -22,7 +22,7 @@
 #
 #
 import os
-from PyQt6.QtWidgets import QLabel
+from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6 import QtCore
 from http.client import HTTPConnection, HTTPSConnection
@@ -135,4 +135,23 @@ def getText(nodelist):
 			rc = rc + node.data
 	return rc
 
+#----------------------------------------------------------------------------------------------------------
+def newToolbarButton(icon, tooltip, connection):
+  btn = QPushButton()
+  btn.setIcon(getIcon(icon))
+  btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+  btn.setEnabled(False)
+  btn.setToolTip(tooltip)
+  btn.clicked.connect(connection)
+  return btn
   
+#----------------------------------------------------------------------------------------------------------
+def pathLinux2Windows(linuxPath):
+   tmp = linuxPath.split('/')
+   tmp = tmp[tmp.index('drive_c')+1:]
+   return "C:\\" + "\\".join(tmp)
+
+#----------------------------------------------------------------------------------------------------------
+def getPrefix(linuxPath):
+   tmp = linuxPath.split('/')
+   return "/".join(tmp[0:tmp.index('drive_c')])

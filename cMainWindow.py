@@ -30,6 +30,7 @@ from cSettings import cSettings
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
+from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager, cProcessItem
 from tAccount import tAccount
 from util import *
@@ -51,13 +52,7 @@ class cMainWindow(QMainWindow):
 
     self.btnLaunch = QPushButton("Launch")
     self.btnLaunch.setEnabled(False)
-    lButtonsBar = QHBoxLayout()
-    btnDHelper = QPushButton("DungeonHelper")
     btnClose = QPushButton("Close")
-    lButtonsBar.addWidget(btnDHelper)
-    lButtonsBar.addStretch()
-    lButtonsBar.addWidget(self.btnLaunch)
-    lButtonsBar.addWidget(btnClose)
 
     btnClose.clicked.connect(self.close)
     self.btnLaunch.clicked.connect(self.queueAll)
@@ -69,6 +64,14 @@ class cMainWindow(QMainWindow):
     self.settings = cSettings(self)
     self.processManager = cProcessManager(self)
     self.processManager.setCollapsed(True)
+
+    self.DungeonHelperWidget = cDungeonHelper(self)
+    lButtonsBar = QHBoxLayout()
+    lButtonsBar.addWidget(self.DungeonHelperWidget)
+    lButtonsBar.addStretch()
+    lButtonsBar.addWidget(self.btnLaunch)
+    lButtonsBar.addWidget(btnClose)
+
     l = QVBoxLayout()
     l.addWidget(self.credentials)
     l.addWidget(self.settings)

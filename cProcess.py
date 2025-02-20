@@ -21,7 +21,7 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QSizePolicy
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
 from cCollapsible import cCollapsible
@@ -65,11 +65,11 @@ class cProcessManager(cCollapsible):
     header = QWidget()
     header.setLayout(h)
 
-    self.btnStart   = cProcessManager.newButton(P_ICON_PLAY,  "Start all non-running processes", self.startAll)
-    self.btnKill    = cProcessManager.newButton(P_ICON_CLOSE, "Force-kill all running processes", self.killAll)
-    self.btnSave    = cProcessManager.newButton(P_ICON_SAVE,  "Save all windows position", self.saveWindowAll)
-    self.btnRestore = cProcessManager.newButton(P_ICON_UNDO,  "Restore all previously saved windows positions", self.restoreWindowAll)
-    self.btnClear   = cProcessManager.newButton(P_ICON_CLEAR, "Clears all processes", self.clearAll)
+    self.btnStart   = newToolbarButton(P_ICON_PLAY,  "Start all non-running processes", self.startAll)
+    self.btnKill    = newToolbarButton(P_ICON_CLOSE, "Force-kill all running processes", self.killAll)
+    self.btnSave    = newToolbarButton(P_ICON_SAVE,  "Save all windows position", self.saveWindowAll)
+    self.btnRestore = newToolbarButton(P_ICON_UNDO,  "Restore all previously saved windows positions", self.restoreWindowAll)
+    self.btnClear   = newToolbarButton(P_ICON_CLEAR, "Removes all processes from the list of processes", self.clearAll)
 
     h = QHBoxLayout()
     h.addWidget(quickQLabel("All processes: "))
@@ -106,7 +106,10 @@ class cProcessManager(cCollapsible):
   def clearAll(self):
     allUsernames = set(self.items.keys())
     for u in allUsernames:
-      self.clear(u)
+      item = self.items[u]
+      self.layout().removeWidget(item)
+      del self.items[u]
+      del item
 
   #----------------------------------------------------------------------------------------------------------
   def startAll(self):
@@ -146,17 +149,6 @@ class cProcessManager(cCollapsible):
     self.colour2 = self.colour1
     self.colour1 = tmp
   
-  #----------------------------------------------------------------------------------------------------------
-  @staticmethod
-  def newButton(icon, tooltip, connection):
-    btn = QPushButton()
-    btn.setIcon(getIcon(icon))
-    btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    btn.setEnabled(False)
-    btn.setToolTip(tooltip)
-    btn.clicked.connect(connection)
-    return btn
-  
 class cProcessItem(QWidget):
   sigGotPID = pyqtSignal(bool)
   sigGotWinID = pyqtSignal(bool)
@@ -189,11 +181,11 @@ class cProcessItem(QWidget):
     self.PIDLabel.setFixedWidth(50)
     self.winIDLabel.setFixedWidth(80)
     self.worldLabel.setFixedWidth(80)
-    self.btnToggle  = cProcessManager.newButton(P_ICON_PLAY,      "Toggle (kill/start) process", self.toggle)
-    self.btnDetails = cProcessManager.newButton(P_ICON_PROPERTIES,"Prints full commandline with all arguments", self.details)
-    self.btnSave    = cProcessManager.newButton(P_ICON_SAVE,      "Save this windows's position", self.saveWindow)
-    self.btnRestore = cProcessManager.newButton(P_ICON_UNDO,      "Restore previously saved windows position", self.restoreWindow)
-    self.btnClear   = cProcessManager.newButton(P_ICON_CLEAR,     "Toggle (kill/start) process",  self.clear)
+    self.btnToggle  = newToolbarButton(P_ICON_PLAY,      "Toggle (kill/start) process", self.toggle)
+    self.btnDetails = newToolbarButton(P_ICON_PROPERTIES,"Prints full commandline with all arguments", self.details)
+    self.btnSave    = newToolbarButton(P_ICON_SAVE,      "Save this windows's position", self.saveWindow)
+    self.btnRestore = newToolbarButton(P_ICON_UNDO,      "Restore previously saved windows position", self.restoreWindow)
+    self.btnClear   = newToolbarButton(P_ICON_CLEAR,     "Removes this process from the list of processes",  self.clear)
     
     h1 = QHBoxLayout()
     h1.addWidget(self.PIDLabel)

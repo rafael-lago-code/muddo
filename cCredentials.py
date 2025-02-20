@@ -22,7 +22,7 @@
 #
 #
 from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,\
-    QLabel, QLineEdit, QCheckBox, QListWidget, QPushButton
+    QLabel, QLineEdit, QCheckBox, QListWidget, QPushButton, QSizePolicy
 from PyQt6 import QtCore
 from cWorlds import cWorldList
 from tServerInfo import tServerInfo
@@ -44,7 +44,9 @@ class cCredentials(QWidget):
     self.serverInfo = None
 
     self.listAccounts = QListWidget()
+    # self.listAccounts.setFixedHeight(200)
     self.listWorlds = cWorldList(main)
+    # self.listWorlds.setFixedHeight(200)
     self.username = QLineEdit()
     self.password = QLineEdit()
     self.password.setEchoMode(QLineEdit.EchoMode.Password)
@@ -69,27 +71,36 @@ class cCredentials(QWidget):
     self.multiAccount.setChecked(True)
     self.updateMultiAccount()
 
+    logo = QLabel()
+    logo.setPixmap(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DDOBanner.png'))
+    logo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
     g2 = QGridLayout()
-    g2.addWidget(quickQLabel("Username: "), 0, 0, 1, 1)
-    g2.addWidget(quickQLabel("Password: "), 1, 0, 1, 1)
-    g2.addWidget(self.username, 0, 1, 1, 2)
-    g2.addWidget(self.password, 1, 1, 1, 2)
-    g2.addWidget(btnAdd,3, 0)
-    g2.addWidget(btnDel, 3, 1)
-    g2.addWidget(btnClear, 3, 2)
+    g2.addWidget(logo, 0, 0, 1, 3)
+    g2.addWidget(quickQLabel("Username: "), 1, 0, 1, 1)
+    g2.addWidget(quickQLabel("Password: "), 2, 0, 1, 1)
+    g2.addWidget(self.username, 1, 1, 1, 2)
+    g2.addWidget(self.password, 2, 1, 1, 2)
+    g2.addWidget(btnAdd,4, 0)
+    g2.addWidget(btnDel, 4, 1)
+    g2.addWidget(btnClear, 4, 2)
     h = QHBoxLayout()
     h.addWidget(self.showPassword)
     h.addWidget(self.multiAccount)
-    g2.addLayout(h, 2, 0, 1, 3)
+    g2.addLayout(h, 3, 0, 1, 3)
 
-    g1 = QGridLayout()
-    g1.addLayout(g2, 1, 0)
-    g1.addWidget(QLabel("Accounts:"), 0, 1)
-    g1.addWidget(QLabel("Worlds:"),    0, 2)
-    g1.addWidget(self.listAccounts,   1, 1, 2, 1)
-    g1.addWidget(self.listWorlds,      1, 2, 2, 1)
+    v1 = QVBoxLayout()
+    v1.addWidget(QLabel("Accounts:"))
+    v1.addWidget(self.listAccounts)
+                 
+    v2 = QVBoxLayout()
+    v2.addWidget(QLabel("Worlds:"))
+    v2.addWidget(self.listWorlds)
 
-    self.setLayout(g1)
+    h3 = QHBoxLayout()
+    h3.addLayout(g2)
+    h3.addLayout(v1)
+    h3.addLayout(v2)
+    self.setLayout(h3)
     self.loadAccounts()
     self.sigFetchedWorld.connect(self.listWorlds.updateWorld)
     self.sigFetchedQueueInfo.connect(self.main.btnLaunch.setEnabled)
