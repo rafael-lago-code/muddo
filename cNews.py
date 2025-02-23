@@ -23,13 +23,12 @@
 #
 from PyQt6.QtWidgets import QWidget, QTextEdit, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy
 from util import *
-from cCollapsible import cCollapsible
+from cTab import cTab
 
-class cNews(cCollapsible):
+class cNews(cTab):
 
   def __init__(self):
     super().__init__("News")
-    
     self.context = QTextEdit()
     self.context.setReadOnly(True)
     self.context.setAcceptRichText(True)
@@ -37,7 +36,7 @@ class cNews(cCollapsible):
 
     v = QVBoxLayout()
     v.addWidget(self.context)
-    self.body.setLayout(v)
+    self.setLayout(v)
 
 
 

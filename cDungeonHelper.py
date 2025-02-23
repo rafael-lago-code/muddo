@@ -21,11 +21,9 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
-  QPushButton, QCheckBox, QLineEdit
+from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
 from util import *
-from cCollapsible import cCollapsible
 import os
 import subprocess
 import time
@@ -42,30 +40,35 @@ class cDungeonHelper(QWidget):
       self.main = main
       self.console = main.console
       self.btnLaunch  = newToolbarButton(P_ICON_PLAY,  "Start DungeonHelper", self.launch)
-      self.btnKill  = newToolbarButton(P_ICON_STOP,  "Stop DungeonHelper", self.kill)
+      self.btnKill  = newToolbarButton(P_ICON_SKULL,  "Stop DungeonHelper", self.kill)
       self.statusLbl = QLabel()
       self.pid = ""
       self.status = self.P_STATUS_UNKNOWN
 
       self.btnLaunch.setEnabled(True)
+      self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
       self.btnKill.setEnabled(True)
+      self.btnKill.setIconSize(P_DEFAULT_ICON_SIZE)
 
-      h1 = QHBoxLayout()
-      lbl = QLabel()
       pmap = QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DungeonHelperIcon.png')
-      pmap = pmap.scaledToHeight(36)
-
-      lbl.setPixmap(pmap)
-      h1.addWidget(lbl)
-      h1.addWidget(quickQLabel('Dungeon Helper: '))
-      h1.addWidget(self.btnLaunch)
-      h1.addWidget(self.btnKill)
-      h1.addWidget(self.statusLbl)
-      self.setLayout(h1)
+      self.icon = QLabel()
+      self.icon.setPixmap(pmap.scaled(P_DEFAULT_ICON_SIZE))
+      self.iconLabel = newRQLabel('Dungeon Helper: ')
 
       self.setVisible(self.main.settings.useDungeonHelper.isChecked())
       self.main.settings.useDungeonHelper.toggled.connect(self.setVisible)
-      
+    
+    #----------------------------------------------------------------------------------------------------------
+    def setVisible(self, val : bool):
+      self.icon.setVisible(val)
+      self.iconLabel.setVisible(val)
+      self.btnLaunch.setVisible(val)
+      self.btnKill.setVisible(val)
+      self.statusLbl.setVisible(val)
+    
+    #----------------------------------------------------------------------------------------------------------
+    def getWidgets(self):
+      return [self.icon, self.iconLabel, self.btnLaunch, self.btnKill, self.statusLbl]
 
     #----------------------------------------------------------------------------------------------------------
     def launch(self):

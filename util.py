@@ -22,7 +22,8 @@
 #
 #
 import os
-from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy
+from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout,\
+                            QVBoxLayout, QLayout
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6 import QtCore
 from http.client import HTTPConnection, HTTPSConnection
@@ -38,6 +39,7 @@ P_DEFAULT_CONFIGDIR  = os.environ['HOME'] + "/.config/muDDO"
 P_DEFAULT_WORKDIR    = P_DEFAULT_CONFIGDIR
 P_DEFAULT_CONFIGFILE = P_DEFAULT_CONFIGDIR + "/settings.json"
 
+P_DEFAULT_ICON_SIZE=QtCore.QSize(28,28)
 P_DEFAULT_ICON_EXTENSION=".svg"
 P_ICON_UNDO      = "edit-undo"
 P_ICON_SORT      = "view-sort"
@@ -62,11 +64,35 @@ P_ICON_CLEAR     = "edit-clear"
 P_ICON_CANCEL    = "dialog-cancel"
 P_ICON_CLOSE     = "window-close"
 P_ICON_AUTO      = "autocorrection"
+P_ICON_COMPASS   = "compass"
+P_ICON_LOCKOPEN  = "document-decrypt"
+P_ICON_LOCKCLOSE = "document-encrypted"
+P_ICON_EDIT      = "document-edit"
+P_ICON_NEWDOC    = "document-new"
+P_ICON_STAR      = "draw-star"
+P_ICON_BROOM     = "edit-clear-all"
+P_ICON_CLEARALL  = "edit-clear-red"
+P_ICON_SHRED     = "edit-delete-shred"
+P_ICON_TRASH     = "edit-delete"
+P_ICON_REDX      = "paint-none"
+P_ICON_PROCSTOP  = "process-stop"
+P_ICON_NOTES     = "view-pim-notes"
+
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"
 P_ICON_TRIANGLE_LEFT  = "draw-triangle1"
 P_ICON_TRIANGLE_RIGHT = "draw-triangle2"
-P_DEFAULT_ICON_PATHS  = [os.path.dirname(os.path.abspath(__file__))+'/images/breeze-dark-icons/',
+
+P_ICON_D20   = "dice-d20-red"
+P_ICON_GEAR  = "gear-white"
+P_ICON_SKULL = "human-skull-white"
+P_ICON_SKULL_RED = "human-skull-red"
+P_ICON_LOCKOPEN_GREEN = "document-decrypt-green"
+P_ICON_LOCKCLOSE_RED  = "document-encrypted-red"
+P_ICON_SKULL = "human-skull-white"
+
+P_DEFAULT_ICON_PATHS  = [os.path.dirname(os.path.abspath(__file__))+'/images/custom-icons/',
+                         os.path.dirname(os.path.abspath(__file__))+'/images/breeze-dark-icons/',
                          '/usr/share/icons/breeze-dark',
                          '/usr/share/icons/breeze',
                          '/usr/share/icons/Adwaita',
@@ -79,18 +105,17 @@ P_CERTCTX = None
 
 #@TODO write this properly to search/detect the correct icon scheme...
 _iconScheme = {}
-for i in [P_ICON_UNDO, P_ICON_SORT, P_ICON_OPEN, P_ICON_OPENFOLDER, P_ICON_SAVE, P_ICON_SAVEALL, P_ICON_SAVEAS,
-          P_ICON_ADD, P_ICON_REMOVE, P_ICON_REFRESH, P_ICON_QUESTION, P_ICON_PLAY, P_ICON_PAUSE, P_ICON_STOP,
-          P_ICON_FILTER, P_ICON_EXIT, P_ICON_CONFIRM, P_ICON_CONFIGURE, P_ICON_PROPERTIES, P_ICON_CLEAR, P_ICON_CANCEL,
-          P_ICON_CLOSE, P_ICON_AUTO, P_ICON_TRIANGLE_UP, P_ICON_TRIANGLE_DOWN, P_ICON_TRIANGLE_LEFT, P_ICON_TRIANGLE_RIGHT]:
-  for d in P_DEFAULT_ICON_PATHS:
-    for s in ["64", "32", "16"]:
-      if os.path.exists(d+"/actions/"+s+"/"+i+P_DEFAULT_ICON_EXTENSION):
-        _iconScheme[i] = d+"/actions/"+s+"/"+i+P_DEFAULT_ICON_EXTENSION
-        break
-    else:
-      continue
-    break
+for icon in dir():
+  if icon.startswith("P_ICON"):
+    icon = vars()[icon]
+    for d in P_DEFAULT_ICON_PATHS:
+      for s in ["64", "32", "16"]:
+        if os.path.exists(d+"/actions/"+s+"/"+icon+P_DEFAULT_ICON_EXTENSION):
+          _iconScheme[icon] = d+"/actions/"+s+"/"+icon+P_DEFAULT_ICON_EXTENSION
+          break
+      else:
+        continue
+      break
 
 #----------------------------------------------------------------------------------------------------------
 P_CERTFILE = os.path.dirname(__file__)+"/certificates/ca_cert2025.pem"
@@ -103,10 +128,39 @@ else:
   P_CERTCTX.set_ciphers('DEFAULT@SECLEVEL=1')
         
 #----------------------------------------------------------------------------------------------------------  
-def quickQLabel(text :  str):
+def newRQLabel(text :  str):
   lbl = QLabel(text)
   lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
   return lbl
+
+#----------------------------------------------------------------------------------------------------------  
+def newHLine():
+  hline = QFrame()
+  hline.setFrameStyle(QFrame.Shadow.Raised)
+  hline.setFrameShape(QFrame.Shape.HLine)
+  return hline
+
+#------------------------------------------------------------------------------------
+def newHLayout(objects : list) -> QHBoxLayout:
+  return stackToLayout(QHBoxLayout(),objects)
+
+#------------------------------------------------------------------------------------
+def newVLayout(objects : list) -> QVBoxLayout:
+  return stackToLayout(QVBoxLayout(),objects)
+
+#------------------------------------------------------------------------------------
+def stackToLayout(layout : QLayout, objects : list) -> QLayout:
+  for v in objects:
+    if isinstance(v,str):
+      if v == "__stretch__":
+        layout.addStretch()
+      else:
+        layout.addWidget(QLabel(v))
+    elif issubclass(v.__class__,QLayout):
+      layout.addLayout(v)
+    else:
+      layout.addWidget(v)
+  return layout
 
 #----------------------------------------------------------------------------------------------------------  
 def getPixmap(name:str) -> QIcon:
@@ -155,3 +209,4 @@ def pathLinux2Windows(linuxPath):
 def getPrefix(linuxPath):
    tmp = linuxPath.split('/')
    return "/".join(tmp[0:tmp.index('drive_c')])
+

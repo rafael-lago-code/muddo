@@ -21,8 +21,7 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,\
-  QPushButton, QLabel
+from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QComboBox
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, pyqtSignal
 from cCredentials import cCredentials
@@ -50,11 +49,22 @@ class cMainWindow(QMainWindow):
 
     self.windowsPreferences = {}
 
-    self.btnLaunch = QPushButton("Launch")
+    self.btnLaunch = QPushButton(" &Launch")
+    self.profile = QComboBox()
+    self.profile.addItem("Profile1")
+    self.profile.addItem("Profile2")
+    self.profile.addItem("Profile4")
+    self.profile.setFixedSize(QtCore.QSize(120,34))
     self.btnLaunch.setEnabled(False)
-    btnClose = QPushButton("Close")
+    self.btnLaunch.setIcon(getIcon(P_ICON_D20))
+    self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
+    self.btnLaunch.setFixedWidth(120)
+    btnQuit = QPushButton(" &Quit")
+    btnQuit.setIcon(getIcon(P_ICON_EXIT))
+    btnQuit.setIconSize(P_DEFAULT_ICON_SIZE)
+    btnQuit.setFixedWidth(120)
 
-    btnClose.clicked.connect(self.close)
+    btnQuit.clicked.connect(self.close)
     self.btnLaunch.clicked.connect(self.queueAll)
 
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
@@ -63,24 +73,17 @@ class cMainWindow(QMainWindow):
     self.patch = cPatch()
     self.settings = cSettings(self)
     self.processManager = cProcessManager(self)
-    self.processManager.setCollapsed(True)
+    self.processManager.setVisible(False)
 
     self.DungeonHelperWidget = cDungeonHelper(self)
-    lButtonsBar = QHBoxLayout()
-    lButtonsBar.addWidget(self.DungeonHelperWidget)
-    lButtonsBar.addStretch()
-    lButtonsBar.addWidget(self.btnLaunch)
-    lButtonsBar.addWidget(btnClose)
+    lButtonsBar = newHLayout(self.DungeonHelperWidget.getWidgets()+ ['__stretch__',\
+                             "Profile: ", self.profile, self.btnLaunch, btnQuit])
 
-    l = QVBoxLayout()
-    l.addWidget(self.credentials)
-    l.addWidget(self.settings)
-    l.addWidget(self.processManager)
-    l.addWidget(self.news)
-    l.addWidget(self.patch)
-    l.addWidget(self.console)
-    l.addLayout(lButtonsBar)
+    tabController  = QWidget()
+    tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, self.patch.toggler, self.news.toggler]))
 
+    l = newVLayout([self.credentials, lButtonsBar, newHLine(), tabController, 
+                    self.settings, self.processManager, self.news, self.patch, self.console])
     w = QWidget()
     w.setLayout(l)
     self.setCentralWidget(w)
@@ -110,7 +113,7 @@ class cMainWindow(QMainWindow):
       self.console.error("No accounts selected. Please add an account or enter a username")
       return
     
-    self.processManager.setCollapsed(False)
+    self.processManager.setVisible(True)
     world = self.credentials.listWorlds.currentItem()
     for username in accs:
       self.console.info(f"Authenticating \"{C_SILVER}{username}</font>\"...")

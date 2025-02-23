@@ -22,17 +22,17 @@
 #
 #
 from PyQt6.QtWidgets import QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
-  QPushButton, QCheckBox, QLineEdit
+  QPushButton, QCheckBox, QLineEdit, QWidget
 from util import *
-from cCollapsible import cCollapsible
+from cTab import cTab
 import os
 import subprocess
 import json
 
-class cSettings(cCollapsible):
+class cSettings(cTab):
 
   def __init__(self, main):
-    super().__init__("Settings")
+    super().__init__("&Settings")
     self.main = main
     self.console = main.console
     self.useHighRes = QCheckBox("Use HighRes")
@@ -78,8 +78,8 @@ class cSettings(cCollapsible):
     self.btnSelectxdotoolExec.clicked.connect(self.selectxdotoolExec)
     self.btnSelectDungeonHelperExec.clicked.connect(self.selectDungeonHelperExec)
 
-    self.lblPrefix     = quickQLabel("STEAM_COMPAT_DATA: ")
-    self.lblSteamRoot  = quickQLabel("STEAM_ROOT: ")
+    self.lblPrefix     = newRQLabel("STEAM_COMPAT_DATA: ")
+    self.lblSteamRoot  = newRQLabel("STEAM_ROOT: ")
 
     self.launcherBinary.textChanged.connect(self.copyLauncherBinaryText)
     self.launcherPrefix.textChanged.connect(self.copyPrefixText)
@@ -103,7 +103,7 @@ class cSettings(cCollapsible):
     g.addWidget(self.useDungeonHelper, 5, 0)
     g.addLayout(h, 6, 0)
 
-    g.addWidget(quickQLabel("Launcher exec: "), 0, 1)
+    g.addWidget(newRQLabel("Launcher exec: "), 0, 1)
     g.addWidget(self.launcherBinary,  0,  2)
     g.addWidget(self.btnSelectLauncher, 0, 3)
 
@@ -115,15 +115,15 @@ class cSettings(cCollapsible):
     g.addWidget(self.steamRoot, 2, 2)
     g.addWidget(self.btnSelectSteamRoot, 2, 3)
 
-    g.addWidget(quickQLabel("Game exec: "), 3, 1)
+    g.addWidget(newRQLabel("Game exec: "), 3, 1)
     g.addWidget(self.gameExec, 3, 2)
     g.addWidget(self.btnSelectGameExec, 3, 3)
 
-    g.addWidget(quickQLabel("xdotool exec: "), 4, 1)
+    g.addWidget(newRQLabel("xdotool exec: "), 4, 1)
     g.addWidget(self.xdotoolExec, 4, 2)
     g.addWidget(self.btnSelectxdotoolExec, 4, 3)
 
-    g.addWidget(quickQLabel("DungeonHelper exec: "), 5, 1)
+    g.addWidget(newRQLabel("DungeonHelper exec: "), 5, 1)
     g.addWidget(self.DungeonHelperExec, 5, 2)
     g.addWidget(self.btnSelectDungeonHelperExec, 5, 3)
 
@@ -141,7 +141,7 @@ class cSettings(cCollapsible):
     self.btnSelectDungeonHelperExec.setEnabled(False)
     self.DungeonHelperExec.setEnabled(False)
     
-    self.body.setLayout(g)
+    self.setLayout(g)
 
   #----------------------------------------------------------------------------------------------------------
   def copyPrefixText(self):
@@ -291,9 +291,9 @@ class cSettings(cCollapsible):
         if 'language'     in values.keys(): self.languageList.setCurrentIndex(self.languageList.findText(values['language']))
         self.changeLauncher()
 
-        if 'settingsCollapsed' in values.keys(): self.main.settings.setCollapsed(values['settingsCollapsed'])
-        if 'newsCollapsed' in values.keys(): self.main.news.setCollapsed(values['newsCollapsed'])
-        if 'patchCollapsed' in values.keys(): self.main.patch.setCollapsed(values['patchCollapsed'])
+        if 'settingsVisible' in values.keys(): self.main.settings.setVisible(values['settingsVisible'])
+        if 'newsVisible' in values.keys(): self.main.news.setVisible(values['newsVisible'])
+        if 'patchVisible' in values.keys(): self.main.patch.setVisible(values['patchVisible'])
 
         if 'multiAccount' in values.keys(): 
           self.main.credentials.multiAccount.setChecked(values['multiAccount'])
@@ -326,9 +326,9 @@ class cSettings(cCollapsible):
     values['xdotoolExec'] = self.xdotoolExec.text()
     values['DungeonHelperExec'] = self.DungeonHelperExec.text()
 
-    values['settingsCollapsed'] = self.main.settings.isCollapsed()
-    values['newsCollapsed'] = self.main.news.isCollapsed()
-    values['patchCollapsed']= self.main.patch.isCollapsed()
+    values['settingsVisible'] = self.main.settings.isVisible()
+    values['newsVisible'] = self.main.news.isVisible()
+    values['patchVisible']= self.main.patch.isVisible()
     values['multiAccount']  = self.main.credentials.multiAccount.isChecked()
     values['lastWorld']     = self.main.credentials.getSelectedWorld()
     values['lastAccounts']  = self.main.credentials.getSelectedAccounts()

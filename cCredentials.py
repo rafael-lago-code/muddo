@@ -22,7 +22,7 @@
 #
 #
 from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,\
-    QLabel, QLineEdit, QCheckBox, QListWidget, QPushButton, QSizePolicy
+    QLabel, QLineEdit, QCheckBox, QListWidget, QPushButton, QSizePolicy, QListWidgetItem
 from PyQt6 import QtCore
 from cWorlds import cWorldList
 from tServerInfo import tServerInfo
@@ -53,9 +53,9 @@ class cCredentials(QWidget):
     self.showPassword = QCheckBox("Sho&w Password")
     self.multiAccount = QCheckBox("&Multi Account")
     
-    btnAdd = QPushButton("&Add")
-    btnDel = QPushButton("&Del")
-    btnClear = QPushButton("&Clear")
+    btnAdd = QPushButton(" &Add")
+    btnDel = QPushButton(" &Del")
+    btnClear = QPushButton(" &Clear")
     
     btnAdd.setIcon(getIcon(P_ICON_ADD))
     btnDel.setIcon(getIcon(P_ICON_REMOVE))
@@ -76,8 +76,8 @@ class cCredentials(QWidget):
     logo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
     g2 = QGridLayout()
     g2.addWidget(logo, 0, 0, 1, 3)
-    g2.addWidget(quickQLabel("Username: "), 1, 0, 1, 1)
-    g2.addWidget(quickQLabel("Password: "), 2, 0, 1, 1)
+    g2.addWidget(newRQLabel("Username: "), 1, 0, 1, 1)
+    g2.addWidget(newRQLabel("Password: "), 2, 0, 1, 1)
     g2.addWidget(self.username, 1, 1, 1, 2)
     g2.addWidget(self.password, 2, 1, 1, 2)
     g2.addWidget(btnAdd,4, 0)
@@ -113,9 +113,13 @@ class cCredentials(QWidget):
 
   #----------------------------------------------------------------------------------------------------------
   def addAccount(self):
-    if not self.listAccounts.findItems(self.username.text(), QtCore.Qt.MatchFlag.MatchExactly):
-      self.listAccounts.addItem(self.username.text())
     self.accounts[self.username.text()] = self.password.text()
+    item = self.listAccounts.findItems(self.username.text(), QtCore.Qt.MatchFlag.MatchExactly)[0]
+    if not item: 
+      item = QListWidgetItem(self.username.text())
+      self.listAccounts.addItem(item)
+    item.setIcon(getIcon(P_ICON_LOCKCLOSE_RED) if self.password.text() == "" else getIcon(P_ICON_LOCKOPEN_GREEN))
+        
     if self.password.text() != "":
       self.console.info(C_RED + "WARNING</font>: passwords are saved in plain text and not handled safely yet! Use it at your own risk!")
     self.saveAccounts()
@@ -188,7 +192,8 @@ class cCredentials(QWidget):
       self.accounts = {}
     
     for a in self.accounts.keys():
-      self.listAccounts.addItem(a)
+      self.listAccounts.addItem(QListWidgetItem(getIcon(P_ICON_LOCKCLOSE_RED) if self.accounts[a] == ""\
+                                else getIcon(P_ICON_LOCKOPEN_GREEN), a))
 
   #----------------------------------------------------------------------------------------------------------
   def delAccount(self):

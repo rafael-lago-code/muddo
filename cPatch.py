@@ -22,16 +22,16 @@
 #
 #
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-from cCollapsible import cCollapsible
+from cTab import cTab
 
-class cPatch(cCollapsible):
+class cPatch(cTab):
 
   def __init__(self):
     super().__init__("Patch")
     
     v = QVBoxLayout()
     v.addWidget(QLabel("TODO"))
-    self.body.setLayout(v)
+    self.setLayout(v)
     
 
 

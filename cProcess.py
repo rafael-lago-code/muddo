@@ -21,17 +21,17 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSizePolicy
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
-from cCollapsible import cCollapsible
+from cTab import cTab
 from tAccount import tAccount
 from collections import OrderedDict
 import subprocess
 import os, time
 from util import *
 
-class cProcessManager(cCollapsible):
+class cProcessManager(cTab):
 
   def __init__(self, main):
     super().__init__("Process Manager")
@@ -45,7 +45,6 @@ class cProcessManager(cCollapsible):
     PIDHeader = QLabel("PID")
     winIDLabelHeader = QLabel("WinID")
     worldLabelHeader = QLabel("World")
-    usernameHeader = QLabel("Username")
     PIDHeader.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
     winIDLabelHeader.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
     worldLabelHeader.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -56,60 +55,26 @@ class cProcessManager(cCollapsible):
     winIDLabelHeader.setFixedWidth(80)
     worldLabelHeader.setFixedWidth(80)
 
-    h = QHBoxLayout()
-    h.addWidget(PIDHeader)
-    h.addWidget(winIDLabelHeader)
-    h.addWidget(worldLabelHeader)
-    h.addWidget(usernameHeader)
-
     header = QWidget()
-    header.setLayout(h)
+    header.setLayout(newHLayout([PIDHeader, winIDLabelHeader, worldLabelHeader, "Username (Profile)"]))
 
-    self.btnStart   = newToolbarButton(P_ICON_PLAY,  "Start all non-running processes", self.startAll)
-    self.btnKill    = newToolbarButton(P_ICON_CLOSE, "Force-kill all running processes", self.killAll)
-    self.btnSave    = newToolbarButton(P_ICON_SAVE,  "Save all windows position", self.saveWindowAll)
-    self.btnRestore = newToolbarButton(P_ICON_UNDO,  "Restore all previously saved windows positions", self.restoreWindowAll)
-    self.btnClear   = newToolbarButton(P_ICON_CLEAR, "Removes all processes from the list of processes", self.clearAll)
-
-    h = QHBoxLayout()
-    h.addWidget(quickQLabel("All processes: "))
-    h.addWidget(self.btnStart)
-    h.addWidget(self.btnSave)
-    h.addWidget(self.btnRestore)
-    h.addWidget(self.btnClear)
-    h.addWidget(self.btnKill)
+    self.btnStart   = newToolbarButton(P_ICON_PLAY,     "Start all non-running processes", self.startAll)
+    self.btnKill    = newToolbarButton(P_ICON_SKULL_RED,"Force-kill all running processes", self.killAll)
+    self.btnSave    = newToolbarButton(P_ICON_SAVEALL,  "Save all windows position", self.saveWindowAll)
+    self.btnRestore = newToolbarButton(P_ICON_UNDO,     "Restore all previously saved windows positions", self.restoreWindowAll)
+    self.btnClear   = newToolbarButton(P_ICON_CLEARALL, "Removes all processes from the list of processes", self.removeAll)
 
     buttons = QWidget()
-    buttons.setLayout(h)
+    buttons.setLayout(newHLayout([newRQLabel("All processes: "), self.btnStart, self.btnSave,\
+                                  self.btnRestore, self.btnClear, self.btnKill]))
 
-    self.content = QVBoxLayout()
-    self.content.addWidget(header)
-
-    v = QVBoxLayout()
-    v.addLayout(self.content)
-    v.addWidget(buttons)
-    self.body.setLayout(v)
+    self.content = newVLayout([header])
+    self.setLayout(newVLayout([self.content, buttons]))
 
   #----------------------------------------------------------------------------------------------------------
-  def clear(self, u):
-    item = self.items[u]
-    self.layout().removeWidget(item)
-    del self.items[u]
-    del item
-    pal = QPalette()
-    self.colour1 = pal.color(QPalette.ColorRole.Window)
-    self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
-    for u in self.items.keys():
-      self.setColour(self.items[u])
-
-  #----------------------------------------------------------------------------------------------------------
-  def clearAll(self):
-    allUsernames = set(self.items.keys())
-    for u in allUsernames:
-      item = self.items[u]
-      self.layout().removeWidget(item)
-      del self.items[u]
-      del item
+  def removeAll(self):
+    allItems = set(self.items.values())
+    for i in allItems: i.remove()
 
   #----------------------------------------------------------------------------------------------------------
   def startAll(self):
@@ -148,7 +113,18 @@ class cProcessManager(cCollapsible):
     tmp = self.colour2
     self.colour2 = self.colour1
     self.colour1 = tmp
+
+  #----------------------------------------------------------------------------------------------------------
+  def resetColour(self):
+    if len(self.items.keys())==0: return
+
+    pal = QPalette()
+    self.colour1 = pal.color(QPalette.ColorRole.Window)
+    self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
+    for u in self.items.keys():
+      self.setColour(self.items[u])
   
+#----------------------------------------------------------------------------------------------------------
 class cProcessItem(QWidget):
   sigGotPID = pyqtSignal(bool)
   sigGotWinID = pyqtSignal(bool)
@@ -181,24 +157,15 @@ class cProcessItem(QWidget):
     self.PIDLabel.setFixedWidth(50)
     self.winIDLabel.setFixedWidth(80)
     self.worldLabel.setFixedWidth(80)
-    self.btnToggle  = newToolbarButton(P_ICON_PLAY,      "Toggle (kill/start) process", self.toggle)
-    self.btnDetails = newToolbarButton(P_ICON_PROPERTIES,"Prints full commandline with all arguments", self.details)
-    self.btnSave    = newToolbarButton(P_ICON_SAVE,      "Save this windows's position", self.saveWindow)
-    self.btnRestore = newToolbarButton(P_ICON_UNDO,      "Restore previously saved windows position", self.restoreWindow)
-    self.btnClear   = newToolbarButton(P_ICON_CLEAR,     "Removes this process from the list of processes",  self.clear)
+    self.btnToggle  = newToolbarButton(P_ICON_PLAY,  "Toggle (kill/start) process", self.toggle)
+    self.btnDetails = newToolbarButton(P_ICON_NOTES, "Prints full commandline with all arguments", self.details)
+    self.btnSave    = newToolbarButton(P_ICON_SAVE,  "Save this windows's position", self.saveWindow)
+    self.btnRestore = newToolbarButton(P_ICON_UNDO,  "Restore previously saved windows position", self.restoreWindow)
+    self.btnRemove  = newToolbarButton(P_ICON_TRASH, "Removes this process from the list of processes",  self.remove)
     
-    h1 = QHBoxLayout()
-    h1.addWidget(self.PIDLabel)
-    h1.addWidget(self.winIDLabel)
-    h1.addWidget(self.worldLabel)
-    h1.addWidget(self.usernameLabel)
-    h1.addWidget(self.btnToggle)
-    h1.addWidget(self.btnSave)
-    h1.addWidget(self.btnRestore)
-    h1.addWidget(self.btnClear)
-    h1.addWidget(self.btnDetails)
-
-    self.setLayout(h1)
+    self.setLayout(newHLayout([self.PIDLabel, self.winIDLabel, self.worldLabel,
+                              self.usernameLabel, self.btnToggle, self.btnSave, self.btnRestore,
+                              self.btnRemove, self.btnDetails]))
     QtCore.QThreadPool.globalInstance().start(self.account)
 
   
@@ -206,7 +173,7 @@ class cProcessItem(QWidget):
   def launch(self):
     self.btnToggle.setEnabled(True)
     self.btnDetails.setEnabled(True)
-    self.btnClear.setEnabled(True)
+    self.btnRemove.setEnabled(True)
 
     self.console.info(f"Launching {C_SILVER}{self.account.username}</font> in {C_SILVER}{self.account.world.name}</font>...")
     outFilename = P_DEFAULT_CONFIGDIR+os.sep+self.account.world.name+"_"+self.account.username+".out"
@@ -234,12 +201,21 @@ class cProcessItem(QWidget):
     self.sigGotPID.connect(self.btnSave.setEnabled)
     self.sigGotPID.connect(self.btnRestore.setEnabled)
 
-    self.btnToggle.setIcon(getIcon(P_ICON_STOP))
+    self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
     self.status = self.P_STATUS_RUNNING
   
   #----------------------------------------------------------------------------------------------------------
-  def clear(self):
-    self.main.processManager.clear(self.account.username)
+  def remove(self):
+    print(f"Calling remove for {self.account.username}")
+    # self.main.processManager.remove(self.account.username)
+    try:
+      self.main.processManager.layout().removeWidget(self)
+      del self.main.processManager.items[self.account.username]
+    except Exception as e:
+      self.console.error("cProcessItem.remove: unknown error removing item from process list", e)
+
+    self.main.processManager.resetColour()
+    self.deleteLater()
 
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
