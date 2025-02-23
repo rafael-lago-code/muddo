@@ -21,7 +21,7 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QSizePolicy
+from PyQt6.QtWidgets import QWidget, QLabel, QSizePolicy, QComboBox
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
 from cTab import cTab
@@ -42,21 +42,9 @@ class cProcessManager(cTab):
     self.colour1 = pal.color(QPalette.ColorRole.Window)
     self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
 
-    PIDHeader = QLabel("PID")
-    winIDLabelHeader = QLabel("WinID")
-    worldLabelHeader = QLabel("World")
-    PIDHeader.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
-    winIDLabelHeader.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
-    worldLabelHeader.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)
-    PIDHeader.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    winIDLabelHeader.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    worldLabelHeader.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    PIDHeader.setFixedWidth(50)
-    winIDLabelHeader.setFixedWidth(80)
-    worldLabelHeader.setFixedWidth(80)
-
     header = QWidget()
-    header.setLayout(newHLayout([PIDHeader, winIDLabelHeader, worldLabelHeader, "Username (Profile)"]))
+    header.setLayout(newHLayout([newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
+                     newHeaderLabel("World"), newHeaderLabel("Profile"), "Username"]))
 
     self.btnStart   = newToolbarButton(P_ICON_PLAY,     "Start all non-running processes", self.startAll)
     self.btnKill    = newToolbarButton(P_ICON_SKULL_RED,"Force-kill all running processes", self.killAll)
@@ -128,6 +116,7 @@ class cProcessManager(cTab):
 class cProcessItem(QWidget):
   sigGotPID = pyqtSignal(bool)
   sigGotWinID = pyqtSignal(bool)
+  sigNaturalTermination = pyqtSignal(bool)
 
   P_STATUS_UNKNOWN = 0
   P_STATUS_RUNNING = 1
@@ -140,31 +129,24 @@ class cProcessItem(QWidget):
     self.console = main.console
     self.status = self.P_STATUS_UNKNOWN
     
-    self.PIDLabel = QLabel("NA")
-    self.winIDLabel = QLabel("NA")
-    self.worldLabel = QLabel(self.account.world.name)
-    self.usernameLabel = QLabel(self.account.username)
-    self.PIDLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-    self.winIDLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-    self.worldLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-    self.usernameLabel.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
-    self.PIDLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
-    self.winIDLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
-    self.worldLabel.setAlignment(QtCore.Qt.AlignmentFlag.AlignHCenter | QtCore.Qt.AlignmentFlag.AlignVCenter)
-    self.PIDLabel.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.winIDLabel.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.worldLabel.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.PIDLabel.setFixedWidth(50)
-    self.winIDLabel.setFixedWidth(80)
-    self.worldLabel.setFixedWidth(80)
+    self.pid = newProcessField("NA", 50)
+    self.winID = newProcessField("NA")
+    self.profile = newProcessField("NA")
+    self.worldname = newProcessField(world.name)
+    self.username = QLabel(username)
+    self.profile.setFixedWidth(80)
+    # for i in range(self.main.settings.profile.count()):
+      # self.profile.addItem(self.main.settings.profile.itemText(i))
+    
+
     self.btnToggle  = newToolbarButton(P_ICON_PLAY,  "Toggle (kill/start) process", self.toggle)
     self.btnDetails = newToolbarButton(P_ICON_NOTES, "Prints full commandline with all arguments", self.details)
     self.btnSave    = newToolbarButton(P_ICON_SAVE,  "Save this windows's position", self.saveWindow)
     self.btnRestore = newToolbarButton(P_ICON_UNDO,  "Restore previously saved windows position", self.restoreWindow)
     self.btnRemove  = newToolbarButton(P_ICON_TRASH, "Removes this process from the list of processes",  self.remove)
     
-    self.setLayout(newHLayout([self.PIDLabel, self.winIDLabel, self.worldLabel,
-                              self.usernameLabel, self.btnToggle, self.btnSave, self.btnRestore,
+    self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profile, 
+                              self.username, self.btnToggle, self.btnSave, self.btnRestore,
                               self.btnRemove, self.btnDetails]))
     QtCore.QThreadPool.globalInstance().start(self.account)
 
@@ -175,9 +157,10 @@ class cProcessItem(QWidget):
     self.btnDetails.setEnabled(True)
     self.btnRemove.setEnabled(True)
 
-    self.console.info(f"Launching {C_SILVER}{self.account.username}</font> in {C_SILVER}{self.account.world.name}</font>...")
-    outFilename = P_DEFAULT_CONFIGDIR+os.sep+self.account.world.name+"_"+self.account.username+".out"
-    if os.path.exists(outFilename): os.rename(outFilename,outFilename+".old")
+    self.console.info(f"Launching {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+    logname = P_DEFAULT_CONFIGDIR+os.sep+self.account.world.name+"_"+self.account.username
+    if os.path.exists(logname+".out"): os.rename(logname+".out",logname+".out.old")
+    if os.path.exists(logname+".err"): os.rename(logname+".err",logname+".err.old")
 
     arg = self.parseArguments()
     gameExec = self.main.settings.gameExec.text()
@@ -191,9 +174,11 @@ class cProcessItem(QWidget):
     cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.main.settings.protonPrefix}\" "
     cmd += f"\"{self.main.settings.protonExec}\" run "
     cmd += f"{gameExec} "
-    cmd += f"{arg} &> {outFilename}"
+    cmd += f"{arg} &> {logname}.out"
 
-    exec = tGameExecutable(cmd)
+    self.profile.setText(self.main.settings.profile.lineEdit().text())
+
+    exec = tGameExecutable(self,cmd)
     QtCore.QThreadPool.globalInstance().start(exec)
     pidw = tPIDWatcher(self, gameExec)
     QtCore.QThreadPool.globalInstance().start(pidw)
@@ -206,11 +191,10 @@ class cProcessItem(QWidget):
   
   #----------------------------------------------------------------------------------------------------------
   def remove(self):
-    print(f"Calling remove for {self.account.username}")
     # self.main.processManager.remove(self.account.username)
     try:
       self.main.processManager.layout().removeWidget(self)
-      del self.main.processManager.items[self.account.username]
+      del self.main.processManager.items[self.username.text()]
     except Exception as e:
       self.console.error("cProcessItem.remove: unknown error removing item from process list", e)
 
@@ -231,18 +215,21 @@ class cProcessItem(QWidget):
   # autoRestore
   #   This is silly but it takes a while for the window management to work...
   def autoRestore(self):
-    time.sleep(2.0)
+    time.sleep(1.0)
     self.restoreWindow()
 
   
 #----------------------------------------------------------------------------------------------------------
   def kill(self):
-    self.console.info(f"Killing {C_SILVER}{self.account.username}</font> in {C_SILVER}{self.account.world.name}</font>...")
+    self.console.info(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
     try:
-      out = subprocess.check_output([f"kill -9 {self.PIDLabel.text()}"], shell=True)
+      out = subprocess.check_output([f"kill -9 {self.pid.text()}"], shell=True)
     except Exception as e:
-      self.console.error(f"cProcessItem.kill: unknown error killing process with PID {self.PIDLabel.text()}", e)
+      self.console.error(f"cProcessItem.kill: unknown error killing process with PID {self.pid.text()}", e)
 
+    self.pid.setText("NA")
+    self.winID.setText("NA")
+    self.profile.setText("")
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
@@ -253,16 +240,15 @@ class cProcessItem(QWidget):
     if self.status == self.P_STATUS_RUNNING:
       self.kill()
     else:
-      username = self.account.username
       world = self.account.world
       del self.account
-      self.account = tAccount(self.main, username, world)
+      self.account = tAccount(self.main, self.username.text(), world)
       QtCore.QThreadPool.globalInstance().start(self.account)
 
   #----------------------------------------------------------------------------------------------------------
   def details(self):
     arg = self.parseArguments()
-    self.console.info(f"<br>Arguments for {C_SILVER}{self.account.username}</font>:")
+    self.console.info(f"<br>Arguments for {C_SILVER}{self.username.text()}</font>:")
     self.console.info(f"--------------------------------------------------------------")
     self.console.info(arg)
     self.console.info(f"--------------------------------------------------------------")
@@ -283,12 +269,16 @@ class cProcessItem(QWidget):
 
 #----------------------------------------------------------------------------------------------------------
 class tGameExecutable(QRunnable):
-  def __init__(self, exec):
+  def __init__(self, processWidget, exec):
     super().__init__()
+    self.processWidget = processWidget
     self.exec = exec
+    # self.logname = logname
   #----------------------------------------------------------------------------------------------------------
   def run(self):
-    os.system(self.exec)
+    # os.system(self.exec)
+    out = subprocess.call([self.exec], shell=True)
+
 
 #----------------------------------------------------------------------------------------------------------
 class tPIDWatcher(QRunnable):
@@ -304,7 +294,7 @@ class tPIDWatcher(QRunnable):
       for line in out.decode().strip().split('\n'):
         line = line.split()
         if line[1] == self.gameExec:
-          self.processWidget.PIDLabel.setText(line[0])
+          self.processWidget.pid.setText(line[0])
           self.processWidget.sigGotPID.emit(True)
           return True
         time.sleep(0.1)
@@ -330,17 +320,16 @@ class tWinManager(QRunnable):
       self.saveWindow()
 
   #----------------------------------------------------------------------------------------------------------
-  # saveWindow
   def saveWindow(self):
     if not self.processWidget.main.settings.usexdotool.isChecked(): return
     bin = self.processWidget.main.settings.xdotoolExec.text()
     for i in range(5):
       try:
-        out = subprocess.check_output([f"{bin} getwindowgeometry {self.processWidget.winIDLabel.text()}"], shell=True)
+        out = subprocess.check_output([f"{bin} getwindowgeometry {self.processWidget.winID.text()}"], shell=True)
         out = out.decode().strip().split('\n')
         pos = out[1].split()[1].split(',')
-        self.processWidget.main.windowsPreferences[self.processWidget.account.username] = (int(pos[0]), int(pos[1]))
-        self.processWidget.main.saveWindowsPreferences()
+        self.processWidget.main.settings.windowsPreferences[self.processWidget.username.text()] = (int(pos[0]), int(pos[1]))
+        self.processWidget.main.settings.saveProfile()
       except Exception as e:
         self.getWinID()
       else:
@@ -355,12 +344,12 @@ class tWinManager(QRunnable):
   def restoreWindow(self):
     if not self.processWidget.main.settings.usexdotool.isChecked(): return
     bin = self.processWidget.main.settings.xdotoolExec.text()
-    self.processWidget.main.loadWindowsPreferences()
-    if self.processWidget.account.username in self.processWidget.main.windowsPreferences.keys():
-      pos1, pos2 = self.processWidget.main.windowsPreferences[self.processWidget.account.username]
+    # self.processWidget.main.settings.loadProfile()
+    if self.processWidget.username.text() in self.processWidget.main.settings.windowsPreferences.keys():
+      pos1, pos2 = self.processWidget.main.settings.windowsPreferences[self.processWidget.username.text()]
       for i in range(5):
         try:
-          out = subprocess.check_output([f"{bin} windowmove --sync {self.processWidget.winIDLabel.text()} {pos1} {pos2}"], shell=True)
+          out = subprocess.check_output([f"{bin} windowmove --sync {self.processWidget.winID.text()} {pos1} {pos2}"], shell=True)
         except Exception as e:
           self.getWinID()
         else:
@@ -370,33 +359,32 @@ class tWinManager(QRunnable):
   #----------------------------------------------------------------------------------------------------------
   def getWinID(self):
     id, e = self.probeWinID()
-    if not id.startswith("ERROR"): self.processWidget.winIDLabel.setText(id)
+    if not id.startswith("ERROR"): self.processWidget.winID.setText(id)
     for i in range(20):
       if self.checkWinID():
         self.processWidget.sigGotWinID.emit(True)
         return
       else:
-        self.processWidget.winIDLabel.setText("<?>")
+        self.processWidget.winID.setText("<?>")
         id, e = self.probeWinID()
         if not id.startswith("ERROR"):
-          self.processWidget.winIDLabel.setText(id)
+          self.processWidget.winID.setText(id)
         time.sleep(0.2)
         
     self.processWidget.sigGotWinID.emit(False)
     if id == "ERROR_LEN0":
-      self.msg = f"tWinManager[{self.processWidget.account.username}].getWinID: failed getting winID, no window with the associated pid {self.PIDLabel.text()}"
+      self.msg = f"tWinManager[{self.processWidget.username.text()}].getWinID: failed getting winID, no window with the associated pid {self.pid.text()}"
     elif id == "ERROR_UNMATCHING_NAME":
-      self.msg = f"tWinManager[{self.processWidget.account.username}].getWinID: got winID, but it had the incorrect title"
+      self.msg = f"tWinManager[{self.processWidget.username.text()}].getWinID: got winID, but it had the incorrect title"
     elif id == "ERROR_OTHER":
-      self.msg = f"tWinManager[{self.processWidget.account.username}].getWinID: other error<br>{e}"
+      self.msg = f"tWinManager[{self.processWidget.username.text()}].getWinID: other error<br>{e}"
   
   #----------------------------------------------------------------------------------------------------------
   def probeWinID(self):
     if not self.processWidget.main.settings.usexdotool.isChecked(): return
     bin = self.processWidget.main.settings.xdotoolExec.text()
-    print(f"========================================================= {bin}")
     try:
-      out = subprocess.check_output([f"{bin} search --sync --pid {self.processWidget.PIDLabel.text()}"], shell=True)
+      out = subprocess.check_output([f"{bin} search --sync --pid {self.processWidget.pid.text()}"], shell=True)
       out = out.decode().strip().split('\n')
       if len(out)==0: return "ERROR_LEN0", None
       for id in out:
@@ -413,9 +401,25 @@ class tWinManager(QRunnable):
     if not self.processWidget.main.settings.usexdotool.isChecked(): return
     bin = self.processWidget.main.settings.xdotoolExec.text()
     try:
-      out = subprocess.call([f"{bin} getwindowname {self.processWidget.winIDLabel.text()}"], shell=True)
+      out = subprocess.check_output([f"{bin} getwindowname {self.processWidget.winID.text()}"], shell=True)
     except:
       return False
     else:
       return True
     
+#----------------------------------------------------------------------------------------------------------
+def newHeaderLabel(title, width=80):
+  hlbl = QLabel(title)
+  hlbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+  hlbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+  hlbl.setFixedWidth(width)
+  return hlbl
+
+#----------------------------------------------------------------------------------------------------------
+def newProcessField(title, width=80):
+  flbl = QLabel(title)
+  flbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+  flbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+  flbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+  flbl.setFixedWidth(width)
+  return flbl

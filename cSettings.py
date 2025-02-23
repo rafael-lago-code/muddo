@@ -28,6 +28,7 @@ from cTab import cTab
 import os
 import subprocess
 import json
+import glob
 
 class cSettings(cTab):
 
@@ -47,6 +48,17 @@ class cSettings(cTab):
     self.launcherList.addItems(["Steam Proton", "Wine64", "Wine32"])
     self.launcherList.currentIndexChanged.connect(self.changeLauncher)
     
+    profileLbl = QLabel("Profile: ")
+    profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.profile = QComboBox()
+    self.profile.setEditable(True)
+    self.profile.currentIndexChanged.connect(self.loadProfile)
+    self.windowsPreferences = {}
+    self.btnAddProfile = newToolbarButton(P_ICON_SAVE, "Save current profile", self.saveProfile)
+    self.btnDelProfile = newToolbarButton(P_ICON_TRASH, "Delete current profile", self.removeProfile)
+    self.btnAddProfile.setEnabled(True)
+    self.btnDelProfile.setEnabled(True)
+
     self.launcherBinary = QLineEdit()
     self.wineExec = ""
     self.protonExec = ""
@@ -88,44 +100,41 @@ class cSettings(cTab):
     btnSave.setIcon(getIcon(P_ICON_SAVE))
     btnRefresh = QPushButton("Reload")
     btnRefresh.setIcon(getIcon(P_ICON_REFRESH))
-    P_ICON_REFRESH
     btnSave.clicked.connect(self.save)
     btnRefresh.clicked.connect(self.load)
-    h = QHBoxLayout()
-    h.addWidget(btnSave)
-    h.addWidget(btnRefresh)
-    
+        
     g = QGridLayout()
-    g.addWidget(self.launcherList,  0, 0)
-    g.addWidget(self.languageList,   1, 0)
-    g.addWidget(self.useHighRes, 2, 0)
-    g.addWidget(self.usexdotool, 4, 0)
-    g.addWidget(self.useDungeonHelper, 5, 0)
-    g.addLayout(h, 6, 0)
+    g.addLayout(newHLayout([profileLbl, self.profile, self.btnAddProfile, self.btnDelProfile]),  0, 0, 1, 4)
+    g.addWidget(self.launcherList,  1, 0)
+    g.addWidget(self.languageList,  2, 0)
+    g.addWidget(self.useHighRes, 3, 0)
+    g.addWidget(self.usexdotool, 5, 0)
+    g.addWidget(self.useDungeonHelper, 6, 0)
+    g.addLayout(newHLayout([btnSave, btnRefresh]), 7, 0)
 
-    g.addWidget(newRQLabel("Launcher exec: "), 0, 1)
-    g.addWidget(self.launcherBinary,  0,  2)
-    g.addWidget(self.btnSelectLauncher, 0, 3)
+    g.addWidget(newRQLabel("Launcher exec: "), 1, 1)
+    g.addWidget(self.launcherBinary,  1,  2)
+    g.addWidget(self.btnSelectLauncher, 1, 3)
 
-    g.addWidget(self.lblPrefix, 1, 1)
-    g.addWidget(self.launcherPrefix, 1, 2)
-    g.addWidget(self.btnSelectPrefix, 1, 3)
+    g.addWidget(self.lblPrefix, 2, 1)
+    g.addWidget(self.launcherPrefix, 2, 2)
+    g.addWidget(self.btnSelectPrefix, 2, 3)
 
-    g.addWidget(self.lblSteamRoot, 2, 1)
-    g.addWidget(self.steamRoot, 2, 2)
-    g.addWidget(self.btnSelectSteamRoot, 2, 3)
+    g.addWidget(self.lblSteamRoot, 3, 1)
+    g.addWidget(self.steamRoot, 3, 2)
+    g.addWidget(self.btnSelectSteamRoot, 3, 3)
 
-    g.addWidget(newRQLabel("Game exec: "), 3, 1)
-    g.addWidget(self.gameExec, 3, 2)
-    g.addWidget(self.btnSelectGameExec, 3, 3)
+    g.addWidget(newRQLabel("Game exec: "), 4, 1)
+    g.addWidget(self.gameExec, 4, 2)
+    g.addWidget(self.btnSelectGameExec, 4, 3)
 
-    g.addWidget(newRQLabel("xdotool exec: "), 4, 1)
-    g.addWidget(self.xdotoolExec, 4, 2)
-    g.addWidget(self.btnSelectxdotoolExec, 4, 3)
+    g.addWidget(newRQLabel("xdotool exec: "), 5, 1)
+    g.addWidget(self.xdotoolExec, 5, 2)
+    g.addWidget(self.btnSelectxdotoolExec, 5, 3)
 
-    g.addWidget(newRQLabel("DungeonHelper exec: "), 5, 1)
-    g.addWidget(self.DungeonHelperExec, 5, 2)
-    g.addWidget(self.btnSelectDungeonHelperExec, 5, 3)
+    g.addWidget(newRQLabel("DungeonHelper exec: "), 6, 1)
+    g.addWidget(self.DungeonHelperExec, 6, 2)
+    g.addWidget(self.btnSelectDungeonHelperExec, 6, 3)
 
     self.usexdotool.toggled.connect(self.btnSelectxdotoolExec.setEnabled)
     self.usexdotool.toggled.connect(self.xdotoolExec.setEnabled)
@@ -142,6 +151,106 @@ class cSettings(cTab):
     self.DungeonHelperExec.setEnabled(False)
     
     self.setLayout(g)
+
+  #----------------------------------------------------------------------------------------------------------
+  def saveProfile(self):
+    name = self.profile.lineEdit().text()
+    if self.profile.findText(name, QtCore.Qt.MatchFlag.MatchExactly)>=0:
+      self.console.info(f"Updating profile {name}")
+    else:
+      self.console.info(f"Saving profile {name}")
+      self.profile.addItem(name)
+    
+    try:
+      os.mkdir(P_DEFAULT_CONFIGDIR)
+    except: pass
+
+    values = {}
+    values['wineExec']      = self.wineExec
+    values['protonExec' ]   = self.protonExec
+    values['winePrefix']    = self.winePrefix
+    values['protonPrefix']  = self.protonPrefix
+    values['launcher']      = self.launcherList.currentText()
+    values['language']      = self.languageList.currentText()
+    values['gameExec']      = self.gameExec.text()
+    values['steamRoot']     = self.steamRoot.text()
+    values['useHighRes']    = self.useHighRes.isChecked()
+    values['usexdotool']    = self.usexdotool.isChecked()
+    values['useDungeonHelper']  = self.useDungeonHelper.isChecked()
+    values['xdotoolExec']       = self.xdotoolExec.text()
+    values['DungeonHelperExec'] = self.DungeonHelperExec.text()
+
+    values['lastWorld']     = self.main.credentials.getSelectedWorld()
+    values['lastAccounts']  = self.main.credentials.getSelectedAccounts()
+    values['windowsPreferences']  = self.windowsPreferences
+
+    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + name + ".json"
+    try:
+      json.dump(values, open(filename,"w"), separators=(', ',': '), indent=2)
+    except Exception as e:
+      self.console.error(f"cSettings.saveProfile: could not create {filename} to store profile settings!",e)
+    else:
+      self.console.info(f"Profile saved in {filename}")
+
+
+  #----------------------------------------------------------------------------------------------------------
+  def removeProfile(self):
+    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.profile.lineEdit().text() + ".json"
+    try:
+      idx = self.profile.findText(self.profile.lineEdit().text(), QtCore.Qt.MatchFlag.MatchExactly)
+      if idx >= 0:
+        self.profile.removeItem(idx)
+      os.remove(filename)
+    except:
+      pass
+
+  #----------------------------------------------------------------------------------------------------------
+  def loadProfile(self):
+    name = self.profile.lineEdit().text()
+    if not name: return
+
+    values = None
+    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + name + ".json"
+    if os.path.exists(filename):
+      with open(filename,"r") as f:
+        values = json.load(f)
+      self.console.info(f'Profile loaded from {filename}')
+    else:
+      self.console.error(f"cSettings.loadProfile: file {filename} not found")
+    
+    if values:
+      try:
+        if 'wineExec'   in values.keys(): self.wineExec   = values['wineExec']
+        if 'protonExec' in values.keys(): self.protonExec = values['protonExec']
+        if 'winePrefix'   in values.keys(): self.winePrefix   = values['winePrefix']
+        if 'protonPrefix' in values.keys(): self.protonPrefix = values['protonPrefix']
+        if 'gameExec'     in values.keys(): self.gameExec.setText(values['gameExec'])
+        if 'steamRoot'    in values.keys(): self.steamRoot.setText(values['steamRoot'])
+        if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
+        if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
+        if 'xdotoolExec'   in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
+        if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
+        if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
+        if 'launcher'     in values.keys(): self.launcherList.setCurrentIndex(self.launcherList.findText(values['launcher']))
+        if 'language'     in values.keys(): self.languageList.setCurrentIndex(self.languageList.findText(values['language']))
+        self.changeLauncher()
+
+        if 'lastWorld'    in values.keys(): self.main.credentials.selectWorld(values['lastWorld'])
+        if 'lastAccounts' in values.keys(): self.main.credentials.selectAccounts(values['lastAccounts'])
+        if 'windowsPreferences' in values.keys(): self.windowsPreferences = values['windowsPreferences']
+
+      except Exception as e:
+        self.console.error(f"cSettings.loadProfile: error loading settings from {filename}", e)
+    # self.profile.lineEdit().setText(name)
+
+
+  #----------------------------------------------------------------------------------------------------------
+  def setProfilesList(self, profiles):
+    self.profile.currentIndexChanged.disconnect(self.loadProfile)
+    for p in profiles: 
+      if p != "": 
+        self.profile.addItem(p)
+    self.profile.currentIndexChanged.connect(self.loadProfile)
 
   #----------------------------------------------------------------------------------------------------------
   def copyPrefixText(self):
@@ -232,6 +341,7 @@ class cSettings(cTab):
   def selectPrefix(self):
     filename = QFileDialog.getExistingDirectory(self, "Select Prefix...")
     if filename:
+      print(filename)
       self.launcherPrefix.setText(filename[0])
 
   #----------------------------------------------------------------------------------------------------------
@@ -276,31 +386,19 @@ class cSettings(cTab):
     
     if values:
       try:
-        if 'wineExec'   in values.keys(): self.wineExec   = values['wineExec']
-        if 'protonExec' in values.keys(): self.protonExec = values['protonExec']
-        if 'winePrefix'   in values.keys(): self.winePrefix   = values['winePrefix']
-        if 'protonPrefix' in values.keys(): self.protonPrefix = values['protonPrefix']
-        if 'gameExec'     in values.keys(): self.gameExec.setText(values['gameExec'])
-        if 'steamRoot'    in values.keys(): self.steamRoot.setText(values['steamRoot'])
-        if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
-        if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
-        if 'xdotoolExec'   in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
-        if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
-        if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
-        if 'launcher'     in values.keys(): self.launcherList.setCurrentIndex(self.launcherList.findText(values['launcher']))
-        if 'language'     in values.keys(): self.languageList.setCurrentIndex(self.languageList.findText(values['language']))
-        self.changeLauncher()
-
         if 'settingsVisible' in values.keys(): self.main.settings.setVisible(values['settingsVisible'])
         if 'newsVisible' in values.keys(): self.main.news.setVisible(values['newsVisible'])
         if 'patchVisible' in values.keys(): self.main.patch.setVisible(values['patchVisible'])
-
         if 'multiAccount' in values.keys(): 
           self.main.credentials.multiAccount.setChecked(values['multiAccount'])
           self.main.credentials.updateMultiAccount()
         
-        if 'lastWorld' in values.keys(): self.main.credentials.selectWorld(values['lastWorld'])
-        if 'lastAccounts' in values.keys(): self.main.credentials.selectAccounts(values['lastAccounts'])
+        files = glob.glob(P_DEFAULT_CONFIGDIR+os.sep+"profile_*.json")
+        files = [ os.path.splitext(os.path.os.path.basename(f))[0][8:].strip() for f in files ]
+        self.setProfilesList(files)
+        if 'lastProfile'  in values.keys():
+          self.profile.lineEdit().setText(values['lastProfile'])
+          self.loadProfile()
 
       except Exception as e:
         self.console.error(f"cSettings.load: error loading settings from {P_DEFAULT_CONFIGFILE}", e)
@@ -312,26 +410,12 @@ class cSettings(cTab):
     except: pass
 
     values = {}
-    values['wineExec']      = self.wineExec
-    values['protonExec' ]   = self.protonExec
-    values['winePrefix']    = self.winePrefix
-    values['protonPrefix']  = self.protonPrefix
-    values['launcher']      = self.launcherList.currentText()
-    values['language']      = self.languageList.currentText()
-    values['gameExec']      = self.gameExec.text()
-    values['steamRoot']     = self.steamRoot.text()
-    values['useHighRes']    = self.useHighRes.isChecked()
-    values['usexdotool']    = self.usexdotool.isChecked()
-    values['useDungeonHelper'] = self.useDungeonHelper.isChecked()
-    values['xdotoolExec'] = self.xdotoolExec.text()
-    values['DungeonHelperExec'] = self.DungeonHelperExec.text()
-
     values['settingsVisible'] = self.main.settings.isVisible()
     values['newsVisible'] = self.main.news.isVisible()
     values['patchVisible']= self.main.patch.isVisible()
     values['multiAccount']  = self.main.credentials.multiAccount.isChecked()
-    values['lastWorld']     = self.main.credentials.getSelectedWorld()
-    values['lastAccounts']  = self.main.credentials.getSelectedAccounts()
+    values['lastProfile']   = self.profile.lineEdit().text()
+    self.saveProfile()
 
     try:
       json.dump(values, open(P_DEFAULT_CONFIGFILE,"w"), separators=(', ',': '), indent=2)

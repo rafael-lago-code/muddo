@@ -21,7 +21,7 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QComboBox
+from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, pyqtSignal
 from cCredentials import cCredentials
@@ -34,8 +34,6 @@ from cProcess import cProcessManager, cProcessItem
 from tAccount import tAccount
 from util import *
 import json
-
-P_DEFAULT_WINDOWSPREFERENCE=P_DEFAULT_CONFIGDIR+os.sep+"windowPreferences.json"
 
 class cMainWindow(QMainWindow):
   sigAuthenticatedUser = pyqtSignal(str)
@@ -50,11 +48,6 @@ class cMainWindow(QMainWindow):
     self.windowsPreferences = {}
 
     self.btnLaunch = QPushButton(" &Launch")
-    self.profile = QComboBox()
-    self.profile.addItem("Profile1")
-    self.profile.addItem("Profile2")
-    self.profile.addItem("Profile4")
-    self.profile.setFixedSize(QtCore.QSize(120,34))
     self.btnLaunch.setEnabled(False)
     self.btnLaunch.setIcon(getIcon(P_ICON_D20))
     self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
@@ -77,7 +70,7 @@ class cMainWindow(QMainWindow):
 
     self.DungeonHelperWidget = cDungeonHelper(self)
     lButtonsBar = newHLayout(self.DungeonHelperWidget.getWidgets()+ ['__stretch__',\
-                             "Profile: ", self.profile, self.btnLaunch, btnQuit])
+                             self.btnLaunch, btnQuit])
 
     tabController  = QWidget()
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, self.patch.toggler, self.news.toggler]))
@@ -100,7 +93,6 @@ class cMainWindow(QMainWindow):
     # self.patch.initialize()
 
     self.sigQueuedUserDone.connect(self.launchUser)
-
 
   #----------------------------------------------------------------------------------------------------------
   # This will queue everything; once a user is done queuing, it will emit 
@@ -125,27 +117,6 @@ class cMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def launchUser(self, username):
     self.processManager.items[username].launch()
-
-  #----------------------------------------------------------------------------------------------------------
-  def loadWindowsPreferences(self):
-    values = None
-    if os.path.exists(P_DEFAULT_WINDOWSPREFERENCE):
-      with open(P_DEFAULT_WINDOWSPREFERENCE,"r") as f:
-        values = json.load(f)
-      self.windowsPreferences = values
-
-  #----------------------------------------------------------------------------------------------------------
-  def saveWindowsPreferences(self):
-    if not self.windowsPreferences: return
-
-    try:
-      os.mkdir(os.path.dirname(P_DEFAULT_WINDOWSPREFERENCE))
-    except: pass
-
-    try:
-      json.dump(self.windowsPreferences, open(P_DEFAULT_WINDOWSPREFERENCE,"w"), separators=(', ',': '), indent=2)
-    except Exception as e:
-      self.console.error(f"cMain.saveWindowsPreferences: could not create {P_DEFAULT_WINDOWSPREFERENCE} to store windows preferences!",e)
 
   #----------------------------------------------------------------------------------------------------------
   def close(self):

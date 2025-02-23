@@ -139,9 +139,8 @@ class cCredentials(QWidget):
   
   #----------------------------------------------------------------------------------------------------------
   def getSelectedAccounts(self):
-    s = self.listAccounts.selectedItems()
     acc = []
-    for i in s:
+    for i in self.listAccounts.selectedItems():
       acc.append(i.text())
     return acc
 
@@ -162,6 +161,7 @@ class cCredentials(QWidget):
   #----------------------------------------------------------------------------------------------------------
   def selectAccounts(self, accs : list):
     if not accs: return
+    self.listAccounts.clearSelection()
     for name in accs:
       try:
         m = self.listAccounts.findItems(name, QtCore.Qt.MatchFlag.MatchExactly)
