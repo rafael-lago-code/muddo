@@ -41,6 +41,7 @@ P_DEFAULT_CONFIGFILE = P_DEFAULT_CONFIGDIR + "/settings.json"
 
 P_DEFAULT_ICON_SIZE=QtCore.QSize(28,28)
 P_DEFAULT_ICON_EXTENSION=".svg"
+P_ICON_NONE      = "none"
 P_ICON_UNDO      = "edit-undo"
 P_ICON_SORT      = "view-sort"
 P_ICON_OPEN      = "document-open"
@@ -89,6 +90,8 @@ P_ICON_SKULL = "human-skull-white"
 P_ICON_SKULL_RED = "human-skull-red"
 P_ICON_LOCKOPEN_GREEN = "document-decrypt-green"
 P_ICON_LOCKCLOSE_RED  = "document-encrypted-red"
+P_ICON_CONNECTED_GREEN = "network-connect-green"
+P_ICON_DISCONNECTED_RED  = "network-disconnect-red"
 P_ICON_SKULL = "human-skull-white"
 
 P_DEFAULT_ICON_PATHS  = [os.path.dirname(os.path.abspath(__file__))+'/images/custom-icons/',

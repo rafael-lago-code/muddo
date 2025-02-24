@@ -75,8 +75,8 @@ class cMainWindow(QMainWindow):
     tabController  = QWidget()
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, self.patch.toggler, self.news.toggler]))
 
-    l = newVLayout([self.credentials, lButtonsBar, newHLine(), tabController, 
-                    self.settings, self.processManager, self.news, self.patch, self.console])
+    l = newVLayout([self.credentials, tabController, self.settings, 
+                    self.processManager, self.news, self.patch, self.console, lButtonsBar])
     w = QWidget()
     w.setLayout(l)
     self.setCentralWidget(w)

@@ -48,15 +48,24 @@ class cWorld(QListWidgetItem):
   def setText(self, name, update=False):
     if update: self.updateStatus()
 
+    tooltip  = f"<b>{self.name} Server Info:</b><br>"
+
     if self.status == cWorld.UP:
-      self.setForeground(QBrush(Qt.GlobalColor.green))
-      self.setFont(QFont(self.font().families(), italic=False))
+      self.setIcon(getIcon(P_ICON_CONNECTED_GREEN))
+      tooltip += f"<b>Status:</b> UP<br>"
     elif self.status == cWorld.DOWN:
-      self.setForeground(QBrush(Qt.GlobalColor.red))
-      self.setFont(QFont(self.font().families(), italic=False))
+      self.setIcon(getIcon(P_ICON_DISCONNECTED_RED))
+      tooltip += f"<b>Status:</b> DOWN<br>"
     else:
-      self.setForeground(QBrush())
-      self.setFont(QFont(self.font().families(), italic=True))
+      self.setIcon(getIcon(P_ICON_NONE))
+      tooltip += f"<b>Status:</b> UNKNOWN<br>"
+
+    tooltip += f"<b>chatServer:</b> {self.chatServer}<br>"
+    tooltip += f"<b>statusServer:</b> {self.statusServer}<br>"
+    tooltip += f"<b>loginServer:</b> {self.loginServer}<br>"
+    tooltip += f"<b>queueURL:</b> {self.queueURL if self.queueURL else "?"}<br>"
+    tooltip += f"<b>nowServing:</b> {self.nowServing if self.nowServing else "?"}<br>"
+    self.setToolTip(tooltip)
     super().setText(name)
 
   #----------------------------------------------------------------------------------------------------------
