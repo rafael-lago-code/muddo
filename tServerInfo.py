@@ -17,8 +17,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
+#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
+#    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
 from __future__ import annotations
@@ -73,7 +73,7 @@ class tServerInfo(QRunnable):
       gameConfig = gameDir+os.sep+P_DDO_LAUNCHERCONFIG
     
     if not os.path.exists(gameConfig):
-      raise Exception(f"tDDO.init: could not find {P_DDO_LAUNCHERCONFIG} in directory \"{gameDir}\
+      raise Exception(f"tServerInfo.init: could not find {P_DDO_LAUNCHERCONFIG} in directory \"{gameDir}\
                       \".<br>Game executable: \"{self.exec}\"")
     else:
       try:

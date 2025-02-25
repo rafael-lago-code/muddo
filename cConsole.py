@@ -17,8 +17,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
+#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
+#    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
 from PyQt6.QtWidgets import QTextEdit

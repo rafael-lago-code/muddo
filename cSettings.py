@@ -17,8 +17,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
+#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
+#    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
 from __future__ import annotations
@@ -58,6 +58,7 @@ class cSettings(cTab):
     self.profile = QComboBox()
     self.profile.setEditable(True)
     self.profile.currentIndexChanged.connect(self.loadProfile)
+
     self.windowsPreferences = {}
     self.btnSave = QPushButton(getIcon(P_ICON_SAVE), "Save")
     self.btnSave.setToolTip("Save current settings and profile")
@@ -177,7 +178,7 @@ class cSettings(cTab):
     values['protonPrefix']  = self.protonPrefix
     values['launcher']      = self.launcherList.currentText()
     values['language']      = self.languageList.currentText()
-    values['gameExec']      = self.gameDir.text()
+    values['gameDir']       = self.gameDir.text()
     values['steamRoot']     = self.steamRoot.text()
     values['useHighRes']    = self.useHighRes.isChecked()
     values['usexdotool']    = self.usexdotool.isChecked()
@@ -229,7 +230,7 @@ class cSettings(cTab):
         if 'protonExec' in values.keys(): self.protonExec = values['protonExec']
         if 'winePrefix'   in values.keys(): self.winePrefix   = values['winePrefix']
         if 'protonPrefix' in values.keys(): self.protonPrefix = values['protonPrefix']
-        if 'gameExec'     in values.keys(): self.gameDir.setText(values['gameExec'])
+        if 'gameDir'     in values.keys(): self.gameDir.setText(values['gameDir'])
         if 'steamRoot'    in values.keys(): self.steamRoot.setText(values['steamRoot'])
         if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
         if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
@@ -254,10 +255,7 @@ class cSettings(cTab):
     self.profile.currentIndexChanged.disconnect(self.loadProfile)
     self.profile.clear()
     self.main.launchMenu.clear()
-    self.main.launchMenu.addSection("Launch with...")
-    act = QAction("current profile", self.main)
-    act.triggered.connect(self.main.queueAll)
-    self.main.launchMenu.addAction(act)
+    self.main.launchMenu.addSection("Switch profile to...")
     for p in profiles: 
       if p != "":
         self.profile.addItem(p)
@@ -269,7 +267,7 @@ class cSettings(cTab):
   #----------------------------------------------------------------------------------------------------------
   def connectAction2Profile(self, a : QAction, p : str):
     idx = self.profile.findText(p)
-    a.triggered.connect(lambda x : self.main.queueAll(idx))
+    a.triggered.connect(lambda x : self.profile.setCurrentIndex(idx))
 
   #----------------------------------------------------------------------------------------------------------
   def copyPrefixText(self):
@@ -359,7 +357,6 @@ class cSettings(cTab):
   def selectPrefix(self):
     filename = QFileDialog.getExistingDirectory(self, "Select Prefix...")
     if filename:
-      print(filename)
       self.launcherPrefix.setText(filename[0])
 
   #----------------------------------------------------------------------------------------------------------
@@ -415,8 +412,8 @@ class cSettings(cTab):
         files = [ os.path.splitext(os.path.os.path.basename(f))[0][8:].strip() for f in files ]
         self.setProfilesList(files)
         if 'lastProfile'  in values.keys():
-          self.profile.lineEdit().setText(values['lastProfile'])
-          self.loadProfile()
+          self.profile.setCurrentIndex(-1)
+          self.profile.setCurrentIndex(self.profile.findText(values['lastProfile']))
 
       except Exception as e:
         self.console.error(f"cSettings.load: error loading settings from {P_DEFAULT_CONFIGFILE}", e)

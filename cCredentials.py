@@ -17,13 +17,13 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
+#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
+#    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,\
-    QLabel, QLineEdit, QCheckBox, QListWidget, QPushButton, QSizePolicy, QListWidgetItem
+from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QCheckBox, QListWidget, \
+  QPushButton, QSizePolicy, QListWidgetItem
 from PyQt6 import QtCore
 from cWorlds import cWorldList
 from tServerInfo import tServerInfo
@@ -49,9 +49,7 @@ class cCredentials(QWidget):
     self.serverInfo = None
 
     self.listAccounts = QListWidget()
-    # self.listAccounts.setFixedHeight(200)
     self.listWorlds = cWorldList(main)
-    # self.listWorlds.setFixedHeight(200)
     self.username = QLineEdit()
     self.password = QLineEdit()
     self.password.setEchoMode(QLineEdit.EchoMode.Password)
@@ -79,34 +77,22 @@ class cCredentials(QWidget):
     logo = QLabel()
     logo.setPixmap(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DDOBanner.png'))
     logo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-    g2 = QGridLayout()
-    g2.addWidget(logo, 0, 0, 1, 3)
-    g2.addWidget(newRQLabel("Username: "), 1, 0, 1, 1)
-    g2.addWidget(newRQLabel("Password: "), 2, 0, 1, 1)
-    g2.addWidget(self.username, 1, 1, 1, 2)
-    g2.addWidget(self.password, 2, 1, 1, 2)
-    g2.addWidget(btnAdd,4, 0)
-    g2.addWidget(btnDel, 4, 1)
-    g2.addWidget(btnClear, 4, 2)
-    h = QHBoxLayout()
-    h.addWidget(self.showPassword)
-    h.addWidget(self.multiAccount)
-    g2.addLayout(h, 3, 0, 1, 3)
+    g = QGridLayout()
+    g.addWidget(logo, 0, 0, 1, 3)
+    g.addWidget(newRQLabel("Username: "), 1, 0, 1, 1)
+    g.addWidget(newRQLabel("Password: "), 2, 0, 1, 1)
+    g.addWidget(self.username, 1, 1, 1, 2)
+    g.addWidget(self.password, 2, 1, 1, 2)
+    g.addWidget(btnAdd,4, 0)
+    g.addWidget(btnDel, 4, 1)
+    g.addWidget(btnClear, 4, 2)
+    g.addLayout(newHLayout([self.showPassword, self.multiAccount]), 3, 0, 1, 3)
 
-    v1 = QVBoxLayout()
-    v1.addWidget(QLabel("Accounts:"))
-    v1.addWidget(self.listAccounts)
-                 
-    v2 = QVBoxLayout()
-    v2.addWidget(QLabel("Worlds:"))
-    v2.addWidget(self.listWorlds)
-
-    h3 = QHBoxLayout()
-    h3.addLayout(g2)
-    h3.addLayout(v1)
-    h3.addLayout(v2)
-    self.setLayout(h3)
+    self.setLayout(newHLayout([g,\
+                              newVLayout(["Accounts:", self.listAccounts]),\
+                              newVLayout(["Worlds:", self.listWorlds])]))
     self.loadAccounts()
+    self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
     self.sigFetchedWorld.connect(self.listWorlds.updateWorld)
     self.sigFetchedQueueInfo.connect(self.main.btnLaunch.setEnabled)
 

@@ -166,8 +166,6 @@ class cProcessItem(QWidget):
 
     arg = self.parseArguments()
     gameDir = self.main.settings.gameDir.text()
-    # gameDir = os.path.dirname(gameExec)
-    # gameDir = os.path.dirname(gameDir)
     # TODO: gameExec is supposed to be something like 
     #    'x64/' if self.settings.use64bits.isChecked() else '' + self.account.serverInfo.gameClientFilename
     # Since I'm not testing for 32-bits client anyways, I might as well just keep it hardcoded.
@@ -183,7 +181,7 @@ class cProcessItem(QWidget):
 
     self.profile.setText(self.main.settings.profile.lineEdit().text())
 
-    exec = tGameExecutable(self,cmd)
+    exec = tGameExecutable(self.main, cmd, arg)
     QtCore.QThreadPool.globalInstance().start(exec)
     pidw = tPIDWatcher(self, gameExec)
     QtCore.QThreadPool.globalInstance().start(pidw)
@@ -274,15 +272,35 @@ class cProcessItem(QWidget):
 
 #----------------------------------------------------------------------------------------------------------
 class tGameExecutable(QRunnable):
-  def __init__(self, processWidget, exec):
+  def __init__(self, main : cMainWindow, exec, arg):
     super().__init__()
-    self.processWidget = processWidget
     self.exec = exec
-    # self.logname = logname
+    # self.main = main
+    
+    # self.gameDir = self.main.settings.gameDir.text()
+    # # TODO: gameExec is supposed to be something like 
+    # #    'x64/' if self.settings.use64bits.isChecked() else '' + self.account.serverInfo.gameClientFilename
+    # # Since I'm not testing for 32-bits client anyways, I might as well just keep it hardcoded.
+    # gameExec = 'x64/dndclient64.exe'
+    # self.evars = {}
+    # self.evars['PROTON_LOG'] = "1"
+    # self.evars['STEAM_ROOT'] = self.main.settings.steamRoot.text()
+    # self.evars['STEAM_COMPAT_DATA_PATH'] = self.main.settings.protonPrefix
+    # self.evars['STEAM_COMPAT_CLIENT_INSTALL_PATH'] = self.main.settings.protonPrefix
+
+    # self.cmd = f"\"{self.main.settings.protonExec}\" run \"{gameExec} {arg}\""
+
   #----------------------------------------------------------------------------------------------------------
   def run(self):
-    # os.system(self.exec)
-    out = subprocess.call([self.exec], shell=True)
+    os.system(self.exec)
+    # out = subprocess.Popen([self.cmd], cwd=self.gameDir, env=self.evars, \
+    #                        stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+    # while True:
+    #   line = out.stdout.readline()
+    #   if line: print(line)
+    #   line = out.stderr.readline()
+    #   if line: print(line)
+
 
 
 #----------------------------------------------------------------------------------------------------------

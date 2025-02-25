@@ -17,8 +17,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
+#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
+#    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
 from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu, QToolButton
@@ -55,7 +55,6 @@ class cMainWindow(QMainWindow):
     self.btnProfile.setFixedWidth(25)
 
     self.btnLaunch = QPushButton(getIcon(P_ICON_D20), " &Launch")
-    # self.btnLaunch.setToolTip(f"Launches selected accounts in selected world with selected profile")
     self.btnLaunch.setEnabled(False)
     self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
     self.btnLaunch.setFixedWidth(120)
@@ -71,9 +70,9 @@ class cMainWindow(QMainWindow):
 
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
+    self.settings = cSettings(self)
     self.news = cNews()
     self.patch = cPatch(self)
-    self.settings = cSettings(self)
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)
 
@@ -106,9 +105,7 @@ class cMainWindow(QMainWindow):
   # This will queue everything; once a user is done queuing, it will emit 
   # sigQueuedUserDone. This will cause self.launchUser() to be triggered
   # for each user individually
-  def queueAll(self, profileIdx : int = -1):
-    if profileIdx >= 0: self.settings.profile.setCurrentIndex(profileIdx)
-
+  def queueAll(self):
     accs = self.credentials.getSelectedAccounts()
     if not accs: accs = [self.credentials.username.text()]
     if not accs:

@@ -1,0 +1,214 @@
+#!/bin/bash
+
+# Companion script for lotrolauncher.script to show some progress
+# indication/estimation while patching a LOTRO installation.
+#
+# Called from the launcher script when patching.
+#
+# CopyLeft (C) 2011-2013 SNy <SNy@SNy.name>
+#
+
+# the dots that the patcher prints seemed to indicate some block of
+# data (assumption was 10kB), but it tends to be off in both directions
+BLOCKSIZE=10240
+
+# this handles the file progress indicator
+# a file download starts with "Downloading filename.ext" followed by a
+#  number of dots which might wrap around to the next line
+# each dot seems to indicate a chunk of 10k.
+# when we arrive here, "Downloadin" has already been read en-bloc
+# continue reading single characters until the next none-dot line starts
+# then read the rest of that line and return it to the caller
+function fileProgressMonitor {
+
+    local _c
+    local _localLine=$1
+    local _file="$2"
+    local _spinner="/-\|"
+    local _spinChar=1
+    local _dots=1                   # first dot has already been read!
+    local _fileBytes=0
+    local _fileCountStr="$fileCount"
+
+    printf -v _file "%40s" $_file    # indent, first fit to 40 chars
+    printf -v _file "%.40s" $_file   # indent, cut off after 40 chars
+    printf -v _files "%*s/%d" ${#_fileCountStr} "$readFiles" $fileCount
+
+    _fileBytes=$(( ${_dots} * ${BLOCKSIZE} ))
+    printf -v percentage "%3d" $(( ($readBytes + $_fileBytes) * 100 / $byteCount))
+    echo -en " $percentage%  ${_file}  ${_files}  Downloading... "
+    echo -n "${_spinner:_spinChar++%${#_spinner}:1}"
+    echo -en "\r"
+
+    # now go read one dot at a time until the character read is neither a dot nor empty
+    # empty would mean a linebreak occured, continue reading, next char might still be a dot
+    while read -n 1 _c ; do
+        if ! [[ "$_c" == "." || -z "$_c" ]] ; then
+            break;
+        fi
+        _dots=$(( $_dots + 1 ))
+        _fileBytes=$(( $_dots * ${BLOCKSIZE} ))
+        printf -v percentage "%3d" $(( ($readBytes + $_fileBytes) * 100 / $byteCount))
+        echo -en " $percentage%  ${_file}  ${_files}  Downloading... "
+        echo -n "${_spinner:_spinChar++%${#_spinner}:1}"
+        echo -en "\r"
+    done
+    # OK, so the next character was not a dot
+    # read the rest of the block 
+    read -N 9 _localLine
+    _localLine=${_c}${_localLine}
+
+    # now, there could be a decryption block
+    if [[ "$_localLine" =~ ^Decrypting$ ]] ; then
+        while read -n 1 _c ; do
+            if ! [[ "$_c" == "." || -z "$_c" ]] ; then
+                break;
+            fi
+            printf -v percentage "%3d" $(( ($readBytes + $_fileBytes) * 100 / $byteCount))
+            echo -en " $percentage%  ${_file}  ${_files}  Decrypting... "
+            echo -n "${_spinner:_spinChar++%${#_spinner}:1}"
+            echo -en "\r"
+        done
+        # OK, so the next character was not a dot
+        # read the rest of the block 
+        read -N 9 _localLine
+        _localLine=${_c}${_localLine}
+    fi
+
+    printf -v percentage "%3d" $(( ($readBytes + $_fileBytes) * 100 / $byteCount))
+    echo -en " $percentage%  ${_file}  ${_files}  Done.           \n"
+
+    readBytes=$(( $readBytes + $_fileBytes ))
+    eval $3=\$_localLine     # return the next line to process in the ref parameter
+    return 0
+}
+
+
+# this is the main patching progress monitor
+# starts the process in the background, redirecting its output
+# then parses the output using the function above for each individual file
+#  and displays some progress indication
+function patchProgressMonitor {
+
+    fileCount=0
+    byteCount=0
+    readFiles=0
+    readBytes=0
+
+    local dotsRead
+
+    IFS=$'\r\n'     # we deal with a windows program, set the delimiter accordingly
+
+    exec 10<&0	    # save stdin
+
+    keepTrying=1
+    while [[ "$keepTrying" == "1" ]] ; do
+
+        # start subprocess, redirect its stderr to dev null
+        # redirect stdout from subprocess to stdin
+        exec < <(
+            "$@" 2> /dev/null | tee /tmp/lotro-patch-input-`date`
+        )
+        # >&3 3>/tmp/lotro-patch-input-`date`
+
+        if [[ $? -ne 0 ]] ; then
+            echo -e "\nPatching failed. Retrying in 5s..."
+            sleep 5
+        else
+            keepTrying=0
+        fi
+
+    done
+
+    # read and process the patching output
+    # start with 10 chars of a line
+    # then check wether the line might be a file starter
+    # if it is, read single characters to update regularly
+    read -N 10 line
+    while ! [[ -z "$line" ]] ; do
+
+        # "Downloading $file...." (one dot per chunk of 10kB)
+        if [[ "$line" =~ ^Downloadin$ ]] ; then
+
+            # keep reading single characters until the dots start
+            # unfortunately, the dot was a poor choice by Turbine
+            #  due to it also being the filename.ext delimiter
+            dotsRead=0
+            while [[ $dotsRead -lt 2 ]] ; do
+                read -N 1 c
+                if [[ "$c" == "." ]] ; then
+                    dotsRead=$(( $dotsRead + 1 ))
+                fi
+                line=${line}$c
+            done
+
+            # line containing the file name and dots per download chunk
+            # reading single characters so there should be exactly one dot at the end
+            if [[ "$line" =~ ^Downloading\ ([^\.]*[.][^\.]*)[.]$ ]] ; then
+                file="${BASH_REMATCH[1]}"
+                readFiles=$(( $readFiles + 1 ))
+                fileProgressMonitor "$line" "$file" line      # reference to line, will change it
+            fi
+
+        # "Applying $num forward iterations....." (again, one dot per chunk)
+        elif [[ "$line" =~ ^Applying\ [0-9]$ ]] ; then
+
+            # keep reading single characters until the dots start
+            # unfortunately, the dot was a poor choice by Turbine
+            #  due to it also being the filename.ext delimiter
+            dotsRead=0
+            while [[ $dotsRead -lt 1 ]] ; do
+                read -N 1 c
+                if [[ "$c" == "." ]] ; then
+                    dotsRead=$(( $dotsRead + 1 ))
+                fi
+                line=${line}${c}
+            done
+
+            # line containing the number of iterations and dots per download chunk
+            # reading single characters so there should be exactly one dot at the end
+            if [[ "$line" =~ ^Applying\ ([0-9]*)\ forward\ iterations[.]$ ]] ; then
+                file="${BASH_REMATCH[1]} forward iterations"
+                #readFiles=$(( $readFiles + 1 ))              # not sure about this one, does it count?
+                fileProgressMonitor "$line" "$file" line      # reference to line, will change it
+            fi
+
+        # some other line
+        else
+            read lineRest
+            line=${line}${lineRest}
+
+            # announcement line containing the number of files and bytes for program section
+            if [[ "$line" =~ ^.*files\ to\ patch:\ ([0-9]*)\ bytes\ to\ download:\ ([0-9]*)$ ]] ; then
+                fileCount=${BASH_REMATCH[1]}
+                byteCount=${BASH_REMATCH[2]}
+                readFiles=0
+                readBytes=0
+                if [[ $byteCount -gt 0 ]] ; then
+                    echo "Downloading $fileCount program files, $byteCount bytes..."
+                else
+                    echo "Program files are up to date."
+                fi
+
+            # announcement line containing the number of files and bytes for data section
+            elif [[ "$line" =~ ^.*data\ patches:\ ([0-9]*)\ bytes\ to\ download:\ ([0-9]*)$ ]] ; then
+                fileCount=${BASH_REMATCH[1]}
+                byteCount=${BASH_REMATCH[2]}
+                readFiles=0
+                readBytes=0
+                if [[ $byteCount -gt 0 ]] ; then
+                    echo "Downloading $fileCount data files, $byteCount bytes..."
+                else
+                    echo "Data files are up to date."
+                fi
+            fi
+
+            # normal line, read the start of the next one
+            # this is NOT done for the file download branches here, but instead done there
+            read -N 10 line
+        fi
+    done
+
+    unset IFS
+    exec <&10 10<&-     # restore stdin
+}

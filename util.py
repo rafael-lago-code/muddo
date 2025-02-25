@@ -17,8 +17,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
+#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
+#    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
 import os
@@ -78,6 +78,7 @@ P_ICON_TRASH     = "edit-delete"
 P_ICON_REDX      = "paint-none"
 P_ICON_PROCSTOP  = "process-stop"
 P_ICON_NOTES     = "view-pim-notes"
+P_ICON_DOWNLOAD  = "edit-download"
 
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"

@@ -9,12 +9,16 @@ An Linux-based launcher for the game Dungeons & Dragons Online, using Python and
 Links:
 - https://www.ddo.com
 - https://github.com/Lynx3d/pylotro
+- http://sny.name/LOTRO/
 - https://dungeonhelper.com/
 
 
 ## TODO
 - implement the patching capabilities
-- implement news visualization
+  - files patching seems to be working, but not data patching
+- migrate the game launcher from os.system to subprocess
+  - currently it doesn't start but also doesn't show any specific error
+- implement news display
 - use keyring to store passwords instead of plain text format
 - test the launcher with Wine (currently tested with Steam Proton)
 - add cmd line option for verbosity
