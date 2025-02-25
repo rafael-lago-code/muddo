@@ -21,18 +21,23 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
+from __future__ import annotations
 from PyQt6.QtWidgets import QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
   QPushButton, QCheckBox, QLineEdit, QWidget
+from PyQt6.QtGui import QAction
 from util import *
 from cTab import cTab
 import os
 import subprocess
 import json
 import glob
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMainWindow import cMainWindow
 
 class cSettings(cTab):
 
-  def __init__(self, main):
+  def __init__(self, main : cMainWindow):
     super().__init__("&Settings")
     self.main = main
     self.console = main.console
@@ -54,17 +59,25 @@ class cSettings(cTab):
     self.profile.setEditable(True)
     self.profile.currentIndexChanged.connect(self.loadProfile)
     self.windowsPreferences = {}
-    self.btnAddProfile = newToolbarButton(P_ICON_SAVE, "Save current profile", self.saveProfile)
-    self.btnDelProfile = newToolbarButton(P_ICON_TRASH, "Delete current profile", self.removeProfile)
-    self.btnAddProfile.setEnabled(True)
-    self.btnDelProfile.setEnabled(True)
+    self.btnSave = QPushButton(getIcon(P_ICON_SAVE), "Save")
+    self.btnSave.setToolTip("Save current settings and profile")
+    self.btnSave.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.btnSave.clicked.connect(self.save)
+    self.btnDelete = QPushButton(getIcon(P_ICON_TRASH), "Delete")
+    self.btnDelete.setToolTip("Delete current profile and its associated files (main settings remain untouched)")
+    self.btnDelete.clicked.connect(self.removeProfile)
+    self.btnDelete.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.btnReload = QPushButton(getIcon(P_ICON_REFRESH), "Reload")
+    self.btnReload.setToolTip("Reload current profile and all settings from file")
+    self.btnReload.clicked.connect(self.load)
+    self.btnReload.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
     self.launcherBinary = QLineEdit()
     self.wineExec = ""
     self.protonExec = ""
     self.winePrefix = ""
     self.protonPrefix = ""
-    self.gameExec = QLineEdit()
+    self.gameDir = QLineEdit()
     self.launcherPrefix   = QLineEdit()
     self.steamRoot= QLineEdit()
     self.xdotoolExec = QLineEdit()
@@ -72,21 +85,21 @@ class cSettings(cTab):
     self.btnSelectLauncher = QPushButton()
     self.btnSelectPrefix   = QPushButton()
     self.btnSelectSteamRoot= QPushButton()
-    self.btnSelectGameExec = QPushButton()
+    self.btnSelectGameDir = QPushButton()
     self.btnSelectDungeonHelperExec = QPushButton()
     self.btnSelectxdotoolExec = QPushButton()
 
     self.btnSelectLauncher.setIcon(getIcon(P_ICON_OPENFOLDER))
     self.btnSelectPrefix.setIcon(getIcon(P_ICON_OPENFOLDER))
     self.btnSelectSteamRoot.setIcon(getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectGameExec.setIcon(getIcon(P_ICON_OPENFOLDER))
+    self.btnSelectGameDir.setIcon(getIcon(P_ICON_OPENFOLDER))
     self.btnSelectDungeonHelperExec.setIcon(getIcon(P_ICON_OPENFOLDER))
     self.btnSelectxdotoolExec.setIcon(getIcon(P_ICON_OPENFOLDER))
 
     self.btnSelectLauncher.clicked.connect(self.selectLauncher)
     self.btnSelectPrefix.clicked.connect(self.selectPrefix)
     self.btnSelectSteamRoot.clicked.connect(self.selectSteamRoot)
-    self.btnSelectGameExec.clicked.connect(self.selectGameExec)
+    self.btnSelectGameDir.clicked.connect(self.selectGameExec)
     self.btnSelectxdotoolExec.clicked.connect(self.selectxdotoolExec)
     self.btnSelectDungeonHelperExec.clicked.connect(self.selectDungeonHelperExec)
 
@@ -96,21 +109,13 @@ class cSettings(cTab):
     self.launcherBinary.textChanged.connect(self.copyLauncherBinaryText)
     self.launcherPrefix.textChanged.connect(self.copyPrefixText)
 
-    btnSave = QPushButton("Save")
-    btnSave.setIcon(getIcon(P_ICON_SAVE))
-    btnRefresh = QPushButton("Reload")
-    btnRefresh.setIcon(getIcon(P_ICON_REFRESH))
-    btnSave.clicked.connect(self.save)
-    btnRefresh.clicked.connect(self.load)
-        
     g = QGridLayout()
-    g.addLayout(newHLayout([profileLbl, self.profile, self.btnAddProfile, self.btnDelProfile]),  0, 0, 1, 4)
+    g.addLayout(newHLayout([profileLbl, self.profile, self.btnSave, self.btnDelete, self.btnReload]),  0, 0, 1, 4)
     g.addWidget(self.launcherList,  1, 0)
     g.addWidget(self.languageList,  2, 0)
     g.addWidget(self.useHighRes, 3, 0)
     g.addWidget(self.usexdotool, 5, 0)
     g.addWidget(self.useDungeonHelper, 6, 0)
-    g.addLayout(newHLayout([btnSave, btnRefresh]), 7, 0)
 
     g.addWidget(newRQLabel("Launcher exec: "), 1, 1)
     g.addWidget(self.launcherBinary,  1,  2)
@@ -124,9 +129,9 @@ class cSettings(cTab):
     g.addWidget(self.steamRoot, 3, 2)
     g.addWidget(self.btnSelectSteamRoot, 3, 3)
 
-    g.addWidget(newRQLabel("Game exec: "), 4, 1)
-    g.addWidget(self.gameExec, 4, 2)
-    g.addWidget(self.btnSelectGameExec, 4, 3)
+    g.addWidget(newRQLabel("Game Path: "), 4, 1)
+    g.addWidget(self.gameDir, 4, 2)
+    g.addWidget(self.btnSelectGameDir, 4, 3)
 
     g.addWidget(newRQLabel("xdotool exec: "), 5, 1)
     g.addWidget(self.xdotoolExec, 5, 2)
@@ -172,7 +177,7 @@ class cSettings(cTab):
     values['protonPrefix']  = self.protonPrefix
     values['launcher']      = self.launcherList.currentText()
     values['language']      = self.languageList.currentText()
-    values['gameExec']      = self.gameExec.text()
+    values['gameExec']      = self.gameDir.text()
     values['steamRoot']     = self.steamRoot.text()
     values['useHighRes']    = self.useHighRes.isChecked()
     values['usexdotool']    = self.usexdotool.isChecked()
@@ -224,7 +229,7 @@ class cSettings(cTab):
         if 'protonExec' in values.keys(): self.protonExec = values['protonExec']
         if 'winePrefix'   in values.keys(): self.winePrefix   = values['winePrefix']
         if 'protonPrefix' in values.keys(): self.protonPrefix = values['protonPrefix']
-        if 'gameExec'     in values.keys(): self.gameExec.setText(values['gameExec'])
+        if 'gameExec'     in values.keys(): self.gameDir.setText(values['gameExec'])
         if 'steamRoot'    in values.keys(): self.steamRoot.setText(values['steamRoot'])
         if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
         if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
@@ -247,10 +252,24 @@ class cSettings(cTab):
   #----------------------------------------------------------------------------------------------------------
   def setProfilesList(self, profiles):
     self.profile.currentIndexChanged.disconnect(self.loadProfile)
+    self.profile.clear()
+    self.main.launchMenu.clear()
+    self.main.launchMenu.addSection("Launch with...")
+    act = QAction("current profile", self.main)
+    act.triggered.connect(self.main.queueAll)
+    self.main.launchMenu.addAction(act)
     for p in profiles: 
-      if p != "": 
+      if p != "":
         self.profile.addItem(p)
+        act = QAction(f"\"{p}\" profile", self.main)
+        self.main.launchMenu.addAction(act)
+        self.connectAction2Profile(act, p)
     self.profile.currentIndexChanged.connect(self.loadProfile)
+
+  #----------------------------------------------------------------------------------------------------------
+  def connectAction2Profile(self, a : QAction, p : str):
+    idx = self.profile.findText(p)
+    a.triggered.connect(lambda x : self.main.queueAll(idx))
 
   #----------------------------------------------------------------------------------------------------------
   def copyPrefixText(self):
@@ -258,7 +277,6 @@ class cSettings(cTab):
       self.protonPrefix = self.launcherPrefix.text()
     else:
       self.winePrefix = self.launcherPrefix.text()
-
 
   #----------------------------------------------------------------------------------------------------------
   def copyLauncherBinaryText(self):
@@ -273,7 +291,7 @@ class cSettings(cTab):
 
   #----------------------------------------------------------------------------------------------------------
   def changeLauncher(self):
-    self.console.info(f"Setting up {self.launcherList.currentText()}...")
+    # self.console.info(f"Setting up {self.launcherList.currentText()}...")
     if self.launcherList.currentText()=="Steam Proton":
       self.lblPrefix.setText("STEAM_COMPAT_DATA: ")
       self.steamRoot.setEnabled(True)
@@ -366,7 +384,7 @@ class cSettings(cTab):
   def selectGameExec(self):
     filename = QFileDialog.getOpenFileName(self, "Select game executable...")
     if filename:
-      self.gameExec.setText(filename[0])
+      self.gameDir.setText(filename[0])
 
   #----------------------------------------------------------------------------------------------------------
   def selectLauncher(self):

@@ -17,8 +17,6 @@ Links:
 - implement news visualization
 - use keyring to store passwords instead of plain text format
 - test the launcher with Wine (currently tested with Steam Proton)
-- use GameDir instead of GameExec (which is currently hard-coded)
-- add context menu for launch button for selecting profiles
 - add cmd line option for verbosity
 - finalize DungeonHelper support
   - maybe add support for downloading/installing DungeonHelper.exe?

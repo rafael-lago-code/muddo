@@ -21,6 +21,7 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
+from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QLabel, QSizePolicy, QComboBox
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
@@ -30,10 +31,14 @@ from collections import OrderedDict
 import subprocess
 import os, time
 from util import *
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMainWindow import cMainWindow
+   from cWorlds import cWorld
 
 class cProcessManager(cTab):
 
-  def __init__(self, main):
+  def __init__(self, main : cMainWindow):
     super().__init__("Process Manager")
     self.main = main
     self.console = main.console
@@ -83,7 +88,7 @@ class cProcessManager(cTab):
     for u in self.items.keys(): self.items[u].restoreWindow()
 
   #----------------------------------------------------------------------------------------------------------
-  def addProcess(self, p):
+  def addProcess(self, p : cProcessItem):
     self.btnKill.setEnabled(True)
     self.btnSave.setEnabled(True)
     self.btnRestore.setEnabled(True)
@@ -93,7 +98,7 @@ class cProcessManager(cTab):
     self.content.addWidget(p)
   
   #----------------------------------------------------------------------------------------------------------
-  def setColour(self,p):
+  def setColour(self,p : cProcessItem):
     pal = QPalette()
     pal.setColor(QPalette.ColorRole.Window, self.colour2)
     p.setAutoFillBackground(True)
@@ -122,7 +127,7 @@ class cProcessItem(QWidget):
   P_STATUS_RUNNING = 1
   P_STATUS_KILLED = 2
 
-  def __init__(self, main, username, world):
+  def __init__(self, main : cMainWindow, username : str, world : cWorld):
     super().__init__()
     self.main = main
     self.account = tAccount(main, username, world)
@@ -135,9 +140,6 @@ class cProcessItem(QWidget):
     self.worldname = newProcessField(world.name)
     self.username = QLabel(username)
     self.profile.setFixedWidth(80)
-    # for i in range(self.main.settings.profile.count()):
-      # self.profile.addItem(self.main.settings.profile.itemText(i))
-    
 
     self.btnToggle  = newToolbarButton(P_ICON_PLAY,  "Toggle (kill/start) process", self.toggle)
     self.btnDetails = newToolbarButton(P_ICON_NOTES, "Prints full commandline with all arguments", self.details)
@@ -158,15 +160,18 @@ class cProcessItem(QWidget):
     self.btnRemove.setEnabled(True)
 
     self.console.info(f"Launching {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
-    logname = P_DEFAULT_CONFIGDIR+os.sep+self.account.world.name+"_"+self.account.username
-    if os.path.exists(logname+".out"): os.rename(logname+".out",logname+".out.old")
-    if os.path.exists(logname+".err"): os.rename(logname+".err",logname+".err.old")
+    # logname = P_DEFAULT_CONFIGDIR+os.sep+self.account.world.name+"_"+self.account.username
+    # if os.path.exists(logname+".out"): os.rename(logname+".out",logname+".out.old")
+    # if os.path.exists(logname+".err"): os.rename(logname+".err",logname+".err.old")
 
     arg = self.parseArguments()
-    gameExec = self.main.settings.gameExec.text()
-    gameDir = os.path.dirname(gameExec)
-    gameDir = os.path.dirname(gameDir)
-    gameExec = 'x64/dndclient64.exe' #TODO this needs to be done properly, not hard-coded...
+    gameDir = self.main.settings.gameDir.text()
+    # gameDir = os.path.dirname(gameExec)
+    # gameDir = os.path.dirname(gameDir)
+    # TODO: gameExec is supposed to be something like 
+    #    'x64/' if self.settings.use64bits.isChecked() else '' + self.account.serverInfo.gameClientFilename
+    # Since I'm not testing for 32-bits client anyways, I might as well just keep it hardcoded.
+    gameExec = 'x64/dndclient64.exe'
 
     cmd  = f"cd \"{gameDir}\" ; "
     cmd += f"STEAM_ROOT=\"{self.main.settings.steamRoot.text()}\" PROTON_LOG=1 "
@@ -174,7 +179,7 @@ class cProcessItem(QWidget):
     cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.main.settings.protonPrefix}\" "
     cmd += f"\"{self.main.settings.protonExec}\" run "
     cmd += f"{gameExec} "
-    cmd += f"{arg} &> {logname}.out"
+    cmd += f"{arg}"
 
     self.profile.setText(self.main.settings.profile.lineEdit().text())
 
@@ -191,7 +196,6 @@ class cProcessItem(QWidget):
   
   #----------------------------------------------------------------------------------------------------------
   def remove(self):
-    # self.main.processManager.remove(self.account.username)
     try:
       self.main.processManager.layout().removeWidget(self)
       del self.main.processManager.items[self.username.text()]
@@ -221,6 +225,7 @@ class cProcessItem(QWidget):
   
 #----------------------------------------------------------------------------------------------------------
   def kill(self):
+    if self.pid.text() == "NA": return
     self.console.info(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
     try:
       out = subprocess.check_output([f"kill -9 {self.pid.text()}"], shell=True)

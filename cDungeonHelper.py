@@ -21,13 +21,16 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
+from __future__ import annotations
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
 from util import *
 import os
 import subprocess
 import time
-import json
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMainWindow import cMainWindow
 
 class cDungeonHelper(QWidget):
     sigGotPID = pyqtSignal(bool)
@@ -35,7 +38,7 @@ class cDungeonHelper(QWidget):
     P_STATUS_LAUNCHING = 1
     P_STATUS_RUNNING = 2
 
-    def __init__(self, main):
+    def __init__(self, main : cMainWindow):
       super().__init__()
       self.main = main
       self.console = main.console
@@ -111,7 +114,7 @@ class tDungeonHelperExecutable(QRunnable):
 
 #----------------------------------------------------------------------------------------------------------
 class tDHPIDWatcher(QRunnable):
-  def __init__(self, dhWidget, exec):
+  def __init__(self, dhWidget : cDungeonHelper, exec : str):
     super().__init__()
     self.dhWidget = dhWidget
     self.exec = exec

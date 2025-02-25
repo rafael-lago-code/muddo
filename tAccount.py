@@ -21,11 +21,16 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
+from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from util import *
 import os
 import xml.dom.minidom
 import urllib
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMainWindow import cMainWindow
+   from cWorlds import cWorld
 
 class tAccount(QRunnable):
   P_STATUS_ERROR = -1
@@ -34,7 +39,7 @@ class tAccount(QRunnable):
   P_STATUS_AUTHENTICATING = 3
   P_STATUS_QUEUEING = 4
 
-  def __init__(self, main, username, world):
+  def __init__(self, main : cMainWindow, username : str, world : cWorld):
     super().__init__()
     self.main = main
     self.console = main.console

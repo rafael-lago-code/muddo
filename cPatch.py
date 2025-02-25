@@ -21,17 +21,57 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from __future__ import annotations
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
 from cTab import cTab
+import subprocess
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMainWindow import cMainWindow
+   from cWorlds import cWorld
 
 class cPatch(cTab):
 
-  def __init__(self):
+  def __init__(self, main : cMainWindow):
     super().__init__("Patch")
+    self.patchClient = "patchclient.dll"
+    self.btnPatch = QPushButton("Patch Now")
+    self.main = main
+    self.console = main.console
     
     v = QVBoxLayout()
     v.addWidget(QLabel("TODO"))
+    v.addWidget(self.btnPatch)
+    self.btnPatch.clicked.connect(self.patch)
+    
     self.setLayout(v)
+  
+  #----------------------------------------------------------------------------------------------------------
+  def patch(self):
+    
+    cmd  = f"cd {self.main.settings.gameDir.text()}; "
+    cmd += f"\"{self.main.settings.launcherBinary.text()}\" run "
+    cmd += f"\"C:/windows/system32/rundll32.exe {self.patchClient},Patch "
+    cmd += f"{self.main.credentials.serverInfo.patchServer} "
+    cmd += f"--language {self.main.settings.languageList.currentText()} "
+    cmd += f"--productcode {self.main.credentials.serverInfo.patchProductCode} --filesonly "
+    if self.main.settings.useHighRes.isChecked(): cmd += " --highres "
+    cmd += "\""
+    
+    self.console.info(cmd)
+    out = subprocess.check_output([cmd], shell=True)
+
+  #----------------------------------------------------------------------------------------------------------
+  def readOutput(self):
+    pass
+		# line = QByteArray2str(self.process.readAllStandardOutput())
+		# self.uiLog.txtLog.append(line)
+		# self.progressMonitor.parseOutput(line)
+
+  #----------------------------------------------------------------------------------------------------------
+  def readErrors(self):
+    pass
+		# self.uiLog.txtLog.append(QByteArray2str(self.process.readAllStandardError()))
     
 
 

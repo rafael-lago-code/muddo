@@ -21,7 +21,7 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu
+from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu, QToolButton
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, pyqtSignal
 from cCredentials import cCredentials
@@ -47,38 +47,47 @@ class cMainWindow(QMainWindow):
 
     self.windowsPreferences = {}
 
-    self.btnLaunch = QPushButton(" &Launch")
+    self.launchMenu = QMenu() # filled in cSettings
+
+    self.btnProfile = QPushButton()
+    self.btnProfile.setMenu(self.launchMenu)
+    self.btnProfile.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.btnProfile.setFixedWidth(25)
+
+    self.btnLaunch = QPushButton(getIcon(P_ICON_D20), " &Launch")
+    # self.btnLaunch.setToolTip(f"Launches selected accounts in selected world with selected profile")
     self.btnLaunch.setEnabled(False)
-    self.btnLaunch.setIcon(getIcon(P_ICON_D20))
     self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
     self.btnLaunch.setFixedWidth(120)
-    btnQuit = QPushButton(" &Quit")
-    btnQuit.setIcon(getIcon(P_ICON_EXIT))
+    self.btnLaunch.clicked.connect(self.queueAll)
+    
+    launchLay = newHLayout([self.btnLaunch, self.btnProfile])
+    launchLay.setSpacing(0)
+
+    btnQuit = QPushButton(getIcon(P_ICON_EXIT), " &Quit")
     btnQuit.setIconSize(P_DEFAULT_ICON_SIZE)
     btnQuit.setFixedWidth(120)
-
     btnQuit.clicked.connect(self.close)
-    self.btnLaunch.clicked.connect(self.queueAll)
 
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
     self.news = cNews()
-    self.patch = cPatch()
+    self.patch = cPatch(self)
     self.settings = cSettings(self)
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)
 
     self.DungeonHelperWidget = cDungeonHelper(self)
     lButtonsBar = newHLayout(self.DungeonHelperWidget.getWidgets()+ ['__stretch__',\
-                             self.btnLaunch, btnQuit])
+                             launchLay, btnQuit])
 
     tabController  = QWidget()
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, self.patch.toggler, self.news.toggler]))
 
-    l = newVLayout([self.credentials, tabController, self.settings, 
-                    self.processManager, self.news, self.patch, self.console, lButtonsBar])
+
     w = QWidget()
-    w.setLayout(l)
+    w.setLayout(newVLayout([self.credentials, tabController, self.settings, 
+                self.processManager, self.news, self.patch, self.console, lButtonsBar]))
     self.setCentralWidget(w)
     self.resize(768,1024)
 
@@ -91,14 +100,15 @@ class cMainWindow(QMainWindow):
     self.credentials.initialize()
     # self.news.initialize()
     # self.patch.initialize()
-
     self.sigQueuedUserDone.connect(self.launchUser)
 
   #----------------------------------------------------------------------------------------------------------
   # This will queue everything; once a user is done queuing, it will emit 
   # sigQueuedUserDone. This will cause self.launchUser() to be triggered
   # for each user individually
-  def queueAll(self):
+  def queueAll(self, profileIdx : int = -1):
+    if profileIdx >= 0: self.settings.profile.setCurrentIndex(profileIdx)
+
     accs = self.credentials.getSelectedAccounts()
     if not accs: accs = [self.credentials.username.text()]
     if not accs:
@@ -112,7 +122,6 @@ class cMainWindow(QMainWindow):
       proc = cProcessItem(self, username, world)
       self.processManager.addProcess(proc)
     self.console.info("Finished submitting authentication, waiting for tickets")
-
 
   #----------------------------------------------------------------------------------------------------------
   def launchUser(self, username):

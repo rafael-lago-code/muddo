@@ -21,10 +21,14 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
+from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from util import *
 import os
 import xml.dom.minidom
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMainWindow import cMainWindow
 
 P_DDO_LAUNCHERCONFIG='ddo.launcherconfig'
 
@@ -34,7 +38,7 @@ class tServerInfo(QRunnable):
   P_STATUS_UNKNOWN = 1
   P_STATUS_DONE = 2
 
-  def __init__(self, main):
+  def __init__(self, main : cMainWindow):
     super().__init__()
     self.main = main
     self.console = main.console
@@ -43,8 +47,8 @@ class tServerInfo(QRunnable):
     self.patchServer = ""
     self.launchConfigServer = ""
     self.realmList = []
-    self.gamePrefix = ""
-    self.gameConfig = ""
+    # self.gameDir = ""
+    # self.gameConfig = ""
 
     self.gameClientFilename = ""
     self.gameClientArgTemplate = ""
@@ -60,21 +64,20 @@ class tServerInfo(QRunnable):
   def run(self):
     self.status = self.P_STATUS_WORKING
 
-    self.exec = self.main.settings.gameExec.text()
-    self.gamePrefix = os.path.dirname(self.exec)
-    self.gameConfig = self.gamePrefix+os.sep+P_DDO_LAUNCHERCONFIG
+    gameDir = self.main.settings.gameDir.text()
+    gameConfig = gameDir+os.sep+P_DDO_LAUNCHERCONFIG
     for i in range(4):
-      if os.path.exists(self.gameConfig):
+      if os.path.exists(gameConfig):
         break
-      self.gamePrefix = os.path.dirname(self.gamePrefix)
-      self.gameConfig = self.gamePrefix+os.sep+P_DDO_LAUNCHERCONFIG
+      gameDir = os.path.dirname(gameDir)
+      gameConfig = gameDir+os.sep+P_DDO_LAUNCHERCONFIG
     
-    if not os.path.exists(self.gameConfig):
-      raise Exception(f"tDDO.init: could not find {P_DDO_LAUNCHERCONFIG} in directory \"{self.gamePrefix}\
+    if not os.path.exists(gameConfig):
+      raise Exception(f"tDDO.init: could not find {P_DDO_LAUNCHERCONFIG} in directory \"{gameDir}\
                       \".<br>Game executable: \"{self.exec}\"")
     else:
       try:
-        doc = xml.dom.minidom.parse(self.gameConfig)
+        doc = xml.dom.minidom.parse(gameConfig)
 
         nodes = doc.getElementsByTagName("appSettings")[0].childNodes
         for node in nodes:

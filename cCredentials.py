@@ -21,6 +21,7 @@
 #    (<SNy@bmx-chemnitz.de>)
 #
 #
+from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QGridLayout, QVBoxLayout, QHBoxLayout,\
     QLabel, QLineEdit, QCheckBox, QListWidget, QPushButton, QSizePolicy, QListWidgetItem
 from PyQt6 import QtCore
@@ -29,13 +30,17 @@ from tServerInfo import tServerInfo
 from util import *
 import json
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMainWindow import cMainWindow
+
 class cCredentials(QWidget):
   sigFetchedGLS        = QtCore.pyqtSignal(bool)
   sigFetchedWorld      = QtCore.pyqtSignal(tuple)
   sigFetchedWorldsInfo = QtCore.pyqtSignal(bool)
   sigFetchedQueueInfo  = QtCore.pyqtSignal(bool)
 
-  def __init__(self, main):
+  def __init__(self, main : cMainWindow):
     super().__init__()
 
     self.main = main
@@ -208,7 +213,7 @@ class cCredentials(QWidget):
   def clearEdits(self):
     self.username.clear()
     self.password.clear()
-    self.listAccounts.setCurrentRow(-1)
+    self.listAccounts.clearSelection()
   
   #----------------------------------------------------------------------------------------------------------
   def updateShowPassword(self):
