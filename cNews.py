@@ -37,6 +37,10 @@ class cNews(cTab):
     v = QVBoxLayout()
     v.addWidget(self.context)
     self.setLayout(v)
+  
+    #----------------------------------------------------------------------------------------------------------
+  def initialize(self):
+    pass
 
 
 

@@ -46,7 +46,7 @@ class cWorld(QListWidgetItem):
 
   #----------------------------------------------------------------------------------------------------------
   def setText(self, name, update=False):
-    if update: self.updateStatus()
+    if update: self.checkStatus()
 
     tooltip  = f"<b>{self.name} Server Info:</b><br>"
 
@@ -79,7 +79,7 @@ class cWorldList(QListWidget):
                    "Khyber", "Orien", "Sarlona", "Thelanis", "Wayfinder"]
   def __init__(self, main):
     super().__init__()
-    self.worlds = {}
+    self.worlds : dict[str, cWorld] = {}
     self.main = main
     self.console = main.console
 

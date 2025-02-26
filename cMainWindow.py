@@ -29,6 +29,7 @@ from cSettings import cSettings
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
+from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager, cProcessItem
 from tAccount import tAccount
@@ -39,14 +40,12 @@ class cMainWindow(QMainWindow):
   sigAuthenticatedUser = pyqtSignal(str)
   sigQueuedUser = pyqtSignal(str)
   sigQueuedUserDone = pyqtSignal(str)
+  sigProfileChanged = pyqtSignal(list)
 
   def __init__(self):
     super().__init__()
     self.setWindowTitle("μDDO")
     self.setWindowIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/icon.png')))
-
-    self.windowsPreferences = {}
-
     self.launchMenu = QMenu() # filled in cSettings
 
     self.btnProfile = QPushButton()
@@ -70,19 +69,17 @@ class cMainWindow(QMainWindow):
 
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
-    self.settings = cSettings(self)
     self.news = cNews()
     self.patch = cPatch(self)
+    self.settings = cSettings(self)
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)
 
     self.DungeonHelperWidget = cDungeonHelper(self)
-    lButtonsBar = newHLayout(self.DungeonHelperWidget.getWidgets()+ ['__stretch__',\
-                             launchLay, btnQuit])
+    lButtonsBar = newHLayout(self.DungeonHelperWidget.getWidgets()+ ['__stretch__',launchLay, btnQuit])
 
     tabController  = QWidget()
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, self.patch.toggler, self.news.toggler]))
-
 
     w = QWidget()
     w.setLayout(newVLayout([self.credentials, tabController, self.settings, 
@@ -90,16 +87,32 @@ class cMainWindow(QMainWindow):
     self.setCentralWidget(w)
     self.resize(768,1024)
 
-    self.settings.load()
     if not P_CERTFILE:
       self.console.error(f"Failed to intialize certificate, is the file \"{P_CERTFILE}\" accessible? ")
     else:
       self.console.info(f"SSL certificate verification enabled! Using {P_CERTFILE}")
     
+  #----------------------------------------------------------------------------------------------------------
+  def initialize(self):
+    self.settings.initialize()
+    if self.profile() is None:
+      self.console.abort("No valid profile loaded!")
     self.credentials.initialize()
-    # self.news.initialize()
-    # self.patch.initialize()
+
+    self.DungeonHelperWidget.initialize()
+    self.news.initialize()
+    self.patch.initialize()
     self.sigQueuedUserDone.connect(self.launchUser)
+
+  #----------------------------------------------------------------------------------------------------------
+  def profile(self, pname : str = None) -> cProfil:
+    if pname in self.settings.profiles.keys():
+      return self.settings.profiles[pname]
+    if self.settings.profileList.currentText() in self.settings.profiles.keys():
+      return self.settings.profiles[self.settings.profileList.currentText()]
+    else:
+      return None
+
 
   #----------------------------------------------------------------------------------------------------------
   # This will queue everything; once a user is done queuing, it will emit 

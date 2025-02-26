@@ -55,11 +55,8 @@ class cProfil(QWidget):
     self.launcherCombo.addItems(["Steam Proton", "Wine64", "Wine32"])
     
     self.windowsPreferences = {}
-
-    self.wineExecold = ""
-    self.protonExecold = ""
-    self.winePrefixold = ""
-    self.protonPrefixold = ""
+    self.lastAccounts = []
+    self.lastWorld = ""
 
     self.protonExec  = QLineEdit()
     self.wineExec    = QLineEdit()
@@ -153,6 +150,7 @@ class cProfil(QWidget):
       os.mkdir(P_DEFAULT_CONFIGDIR)
     except: pass
 
+    self.aggregate()
     values = {}
     values['launcher']     = self.launcherCombo.currentText()
     values['language']     = self.languageCombo.currentText()
@@ -168,8 +166,8 @@ class cProfil(QWidget):
     values['useDungeonHelper']  = self.useDungeonHelper.isChecked()
     values['DungeonHelperExec'] = self.DungeonHelperExec.text()
 
-    values['lastWorld']     = self.main.credentials.getSelectedWorld()
-    values['lastAccounts']  = self.main.credentials.getSelectedAccounts()
+    values['lastWorld']     = self.lastWorld
+    values['lastAccounts']  = self.lastAccounts
     values['windowsPreferences']  = self.windowsPreferences
 
     filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.name + ".json"
@@ -208,14 +206,25 @@ class cProfil(QWidget):
         if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
         if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
 
-        if 'lastWorld'    in values.keys(): self.main.credentials.selectWorld(values['lastWorld'])
-        if 'lastAccounts' in values.keys(): self.main.credentials.selectAccounts(values['lastAccounts'])
+        if 'lastWorld'    in values.keys(): self.lastWorld = values['lastWorld']
+        if 'lastAccounts' in values.keys(): self.lastAccounts = values['lastAccounts']
         if 'windowsPreferences' in values.keys(): self.windowsPreferences = values['windowsPreferences']
 
       except Exception as e:
         self.console.error(f"cProfil.load: error loading profile from {filename}", e)
-
-
+    self.propagate()
+  
+  #----------------------------------------------------------------------------------------------------------
+  def propagate(self):
+    if self.lastWorld: self.main.credentials.selectWorld(self.lastWorld)
+    if self.lastAccounts: self.main.credentials.selectAccounts(self.lastAccounts)
+    self.main.patch.updateTimestamp()
+  
+  #----------------------------------------------------------------------------------------------------------
+  def aggregate(self):
+    self.lastWorld = self.main.credentials.getSelectedWorld()
+    self.lastAccounts = self.main.credentials.getSelectedAccounts()
+  
   # #----------------------------------------------------------------------------------------------------------
   # def connectAction2Profile(self, a : QAction, p : str):
   #   idx = self.profile.findText(p)

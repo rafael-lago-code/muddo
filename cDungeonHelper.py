@@ -42,6 +42,7 @@ class cDungeonHelper(QWidget):
       super().__init__()
       self.main = main
       self.console = main.console
+      self.profile = main.profile()  # we should freeze the profile here, but this class needs some reworking...
       self.btnLaunch  = newToolbarButton(P_ICON_PLAY,  "Start DungeonHelper", self.launch)
       self.btnKill  = newToolbarButton(P_ICON_SKULL,  "Stop DungeonHelper", self.kill)
       self.statusLbl = QLabel()
@@ -57,10 +58,11 @@ class cDungeonHelper(QWidget):
       self.icon = QLabel()
       self.icon.setPixmap(pmap.scaled(P_DEFAULT_ICON_SIZE))
       self.iconLabel = newRQLabel('Dungeon Helper: ')
-
-      self.setVisible(self.main.settings.useDungeonHelper.isChecked())
-      self.main.settings.useDungeonHelper.toggled.connect(self.setVisible)
     
+    #----------------------------------------------------------------------------------------------------------
+    def initialize(self):
+      self.main.sigProfileChanged.connect(lambda : self.setVisible(self.main.profile().useDungeonHelper.isChecked()))
+
     #----------------------------------------------------------------------------------------------------------
     def setVisible(self, val : bool):
       self.icon.setVisible(val)
@@ -75,15 +77,16 @@ class cDungeonHelper(QWidget):
 
     #----------------------------------------------------------------------------------------------------------
     def launch(self):
+      self.profile = self.main.profile()
       if self.status != self.P_STATUS_RUNNING:
         self.console.info(f"Launching DungeonHelper.exe...")
         self.status = self.P_STATUS_LAUNCHING
 
-        dhexec = self.main.settings.DungeonHelperExec.text()
-        cmd  = f"STEAM_ROOT=\"{self.main.settings.steamRoot.text()}\" PROTON_LOG=1 "
-        cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.main.settings.protonPrefix}\" "
-        cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.main.settings.protonPrefix}\" "
-        cmd += f"\"{self.main.settings.protonExec}\" run "
+        dhexec = self.profile.DungeonHelperExec.text()
+        cmd  = f"STEAM_ROOT=\"{self.profile.steamRoot.text()}\" PROTON_LOG=1 "
+        cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile.compatData.text()}\" "
+        cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.profile.compatData.text()}\" "
+        cmd += f"\"{self.profile.protonExec.text()}\" run "
         cmd += f"\"{pathLinux2Windows(dhexec)}\""
 
         exec = tDungeonHelperExecutable(cmd)
@@ -123,16 +126,18 @@ class tDHPIDWatcher(QRunnable):
   def run(self):
     baseExec = os.path.basename(self.exec)
     for i in range(100):
-      out = subprocess.check_output([f"ps x | grep {baseExec}"], shell=True)
-      for line in out.decode().strip().split('\n'):
-        line = line.split()
-        if line[4].startswith("C:\\"):
-          self.dhWidget.pid = line[0]
-          self.dhWidget.status = self.dhWidget.P_STATUS_RUNNING
-          self.dhWidget.statusLbl.setText(f"Running with PID={line[0]}")
-          self.dhWidget.sigGotPID.emit(True)
-          return True
-        time.sleep(0.1)
+      try:
+        out = subprocess.check_output([f"ps x | grep {baseExec}"], shell=True)
+        for line in out.decode().strip().split('\n'):
+          line = line.split()
+          if line[4].startswith("C:\\"):
+            self.dhWidget.pid = line[0]
+            self.dhWidget.status = self.dhWidget.P_STATUS_RUNNING
+            self.dhWidget.statusLbl.setText(f"Running with PID={line[0]}")
+            self.dhWidget.sigGotPID.emit(True)
+            return True
+          time.sleep(0.1)
+      except: pass
     self.dhWidget.console.error("cDungeonHelper.getPID: could not get PID, process may not be running anymore...")
     self.dhWidget.sigGotPID.emit(False)
     return False

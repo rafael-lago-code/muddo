@@ -57,19 +57,17 @@ class cPatch(cTab):
     self.readFiles = 0
     self.readBytes = 0
     
+    self.setLayout(newVLayout([self.log, newHLayout([self.timestamp, self.btnPatch])]))
+
+  #----------------------------------------------------------------------------------------------------------
+  def initialize(self):
     self.btnPatch.clicked.connect(self.patch)
     self.sigPatchInfo.connect(self.log.append)
     self.sigPatchDone.connect(self.updateTimestamp)
-    self.main.settings.gameDir.textChanged.connect(self.updateTimestamp)
 
-    if self.main.settings.gameDir.text(): self.updateTimestamp()
-
-    self.setLayout(newVLayout([self.log,\
-                               newHLayout([self.timestamp, self.btnPatch])]))
-    
   #----------------------------------------------------------------------------------------------------------
   def updateTimestamp(self):
-    timestampFilename = self.main.settings.gameDir.text()+os.sep+P_TIMESTAMP_FILE
+    timestampFilename = self.main.profile().gameDir.text()+os.sep+P_TIMESTAMP_FILE
     if os.path.exists(timestampFilename):
       try:
         with open(timestampFilename, 'r') as f:
@@ -107,7 +105,7 @@ class tPatcher(QRunnable):
                                        [*] Patching completed!<br>------------------------------------------</b></font>")
 
     try:
-      timestampFilename = self.main.settings.gameDir.text()+os.sep+P_TIMESTAMP_FILE
+      timestampFilename = self.main.profile().gameDir.text()+os.sep+P_TIMESTAMP_FILE
       with open(timestampFilename, 'w') as f:
         f.write(f"{datetime.now().strftime("%Y-%m-%d, at %H:%M:%S")}")
     except Exception as e:
@@ -120,15 +118,15 @@ class tPatcher(QRunnable):
   def runTarget(self, target : str):
     # if usingProton:
     if True:
-      protonWine = os.path.dirname(self.main.settings.launcherBinary.text()) + "/dist/bin/wine"
-      evars = {'WINEPREFIX': f"{self.main.settings.protonPrefix}/pfx"}
+      protonWine = os.path.dirname(self.main.profile().protonExec.text()) + "/dist/bin/wine"
+      evars = {'WINEPREFIX': f"{self.main.profile().compatData.text()}/pfx"}
       cmd  = f"\"{protonWine}\" rundll32.exe patchclient.dll,Patch "
       cmd += f"{self.main.credentials.serverInfo.patchServer} "
-      cmd += f"--language {self.main.settings.languageList.currentText()} "
+      cmd += f"--language {self.main.profile().languageCombo.currentText()} "
       cmd += f"--productcode {self.main.credentials.serverInfo.patchProductCode} "
-      if self.main.settings.useHighRes.isChecked(): cmd += " --highres "
-    
-    out = subprocess.Popen([f"{cmd} {target}"], cwd=self.main.settings.gameDir.text(), env=evars, \
+      if self.main.profile().useHighRes.isChecked(): cmd += " --highres "
+
+    out = subprocess.Popen([f"{cmd} {target}"], cwd=self.main.profile().gameDir.text(), env=evars, \
                         stderr=subprocess.DEVNULL, stdout=subprocess.PIPE, shell=True)
     while True:
       line = out.stdout.readline().decode()

@@ -30,5 +30,6 @@ import sys
 if __name__ == '__main__':
   app = QApplication(sys.argv)
   window = cMainWindow()
+  window.initialize()
   window.show()
   app.exec()

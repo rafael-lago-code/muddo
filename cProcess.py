@@ -133,13 +133,14 @@ class cProcessItem(QWidget):
     self.account = tAccount(main, username, world)
     self.console = main.console
     self.status = self.P_STATUS_UNKNOWN
+    self.profile = main.profile() # yes, we freeze the profile here!
     
     self.pid = newProcessField("NA", 50)
     self.winID = newProcessField("NA")
-    self.profile = newProcessField("NA")
+    self.profileID = newProcessField(self.profile.name)
     self.worldname = newProcessField(world.name)
     self.username = QLabel(username)
-    self.profile.setFixedWidth(80)
+    self.profileID.setFixedWidth(80)
 
     self.btnToggle  = newToolbarButton(P_ICON_PLAY,  "Toggle (kill/start) process", self.toggle)
     self.btnDetails = newToolbarButton(P_ICON_NOTES, "Prints full commandline with all arguments", self.details)
@@ -147,7 +148,7 @@ class cProcessItem(QWidget):
     self.btnRestore = newToolbarButton(P_ICON_UNDO,  "Restore previously saved windows position", self.restoreWindow)
     self.btnRemove  = newToolbarButton(P_ICON_TRASH, "Removes this process from the list of processes",  self.remove)
     
-    self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profile, 
+    self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
                               self.btnRemove, self.btnDetails]))
     QtCore.QThreadPool.globalInstance().start(self.account)
@@ -165,21 +166,19 @@ class cProcessItem(QWidget):
     # if os.path.exists(logname+".err"): os.rename(logname+".err",logname+".err.old")
 
     arg = self.parseArguments()
-    gameDir = self.main.settings.gameDir.text()
+    gameDir = self.profile.gameDir.text()
     # TODO: gameExec is supposed to be something like 
     #    'x64/' if self.settings.use64bits.isChecked() else '' + self.account.serverInfo.gameClientFilename
     # Since I'm not testing for 32-bits client anyways, I might as well just keep it hardcoded.
     gameExec = 'x64/dndclient64.exe'
 
     cmd  = f"cd \"{gameDir}\" ; "
-    cmd += f"STEAM_ROOT=\"{self.main.settings.steamRoot.text()}\" PROTON_LOG=1 "
-    cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.main.settings.protonPrefix}\" "
-    cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.main.settings.protonPrefix}\" "
-    cmd += f"\"{self.main.settings.protonExec}\" run "
+    cmd += f"STEAM_ROOT=\"{self.profile.steamRoot.text()}\" PROTON_LOG=1 "
+    cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile.compatData.text()}\" "
+    cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.profile.compatData.text()}\" "
+    cmd += f"\"{self.profile.protonExec.text()}\" run "
     cmd += f"{gameExec} "
     cmd += f"{arg}"
-
-    self.profile.setText(self.main.settings.profileList.lineEdit().text())
 
     exec = tGameExecutable(self.main, cmd, arg)
     QtCore.QThreadPool.globalInstance().start(exec)
@@ -232,7 +231,7 @@ class cProcessItem(QWidget):
 
     self.pid.setText("NA")
     self.winID.setText("NA")
-    self.profile.setText("")
+    self.profileID.setText("")
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
@@ -266,7 +265,7 @@ class cProcessItem(QWidget):
     arg = arg.replace("{LANG}", "English")
     arg = arg.replace("{GLSTICKETLIFETIME}", self.account.serverInfo.gameClientGLSTicketLifetime)
     arg = arg.replace("{SUBSCRIPTION}", self.account.subscription)
-    if not self.main.settings.useHighRes.isEnabled():
+    if not self.profile.useHighRes.isEnabled():
       arg += " --HighResOutOfDate"
     return arg
 
@@ -277,18 +276,18 @@ class tGameExecutable(QRunnable):
     self.exec = exec
     # self.main = main
     
-    # self.gameDir = self.main.settings.gameDir.text()
+    # self.gameDir = self.profile.gameDir.text()
     # # TODO: gameExec is supposed to be something like 
     # #    'x64/' if self.settings.use64bits.isChecked() else '' + self.account.serverInfo.gameClientFilename
     # # Since I'm not testing for 32-bits client anyways, I might as well just keep it hardcoded.
     # gameExec = 'x64/dndclient64.exe'
     # self.evars = {}
     # self.evars['PROTON_LOG'] = "1"
-    # self.evars['STEAM_ROOT'] = self.main.settings.steamRoot.text()
-    # self.evars['STEAM_COMPAT_DATA_PATH'] = self.main.settings.protonPrefix
-    # self.evars['STEAM_COMPAT_CLIENT_INSTALL_PATH'] = self.main.settings.protonPrefix
+    # self.evars['STEAM_ROOT'] = self.profile.steamRoot.text()
+    # self.evars['STEAM_COMPAT_DATA_PATH'] = self.profile.protonPrefix
+    # self.evars['STEAM_COMPAT_CLIENT_INSTALL_PATH'] = self.profile.protonPrefix
 
-    # self.cmd = f"\"{self.main.settings.protonExec}\" run \"{gameExec} {arg}\""
+    # self.cmd = f"\"{self.profile.protonExec}\" run \"{gameExec} {arg}\""
 
   #----------------------------------------------------------------------------------------------------------
   def run(self):
@@ -305,7 +304,7 @@ class tGameExecutable(QRunnable):
 
 #----------------------------------------------------------------------------------------------------------
 class tPIDWatcher(QRunnable):
-  def __init__(self, processWidget, gameExec):
+  def __init__(self, processWidget : cProcessItem, gameExec):
     super().__init__()
     self.processWidget = processWidget
     self.gameExec = gameExec
@@ -313,21 +312,23 @@ class tPIDWatcher(QRunnable):
   #----------------------------------------------------------------------------------------------------------
   def run(self):
     for i in range(100):
-      out = subprocess.check_output([f"ps a -o pid,command | grep {self.processWidget.account.subscription}"], shell=True)
-      for line in out.decode().strip().split('\n'):
-        line = line.split()
-        if line[1] == self.gameExec:
-          self.processWidget.pid.setText(line[0])
-          self.processWidget.sigGotPID.emit(True)
-          return True
-        time.sleep(0.1)
+      try:
+        out = subprocess.check_output([f"ps a -o pid,command | grep {self.processWidget.account.subscription}"], shell=True)
+        for line in out.decode().strip().split('\n'):
+          line = line.split()
+          if line[1] == self.gameExec:
+            self.processWidget.pid.setText(line[0])
+            self.processWidget.sigGotPID.emit(True)
+            return True
+          time.sleep(0.1)
+      except: pass
     self.processWidget.console.error("cProcessItem.getPID: could not get PID, process may not be running anymore...")
     self.processWidget.sigGotPID.emit(False)
     return False
   
 #----------------------------------------------------------------------------------------------------------
 class tWinManager(QRunnable):
-  def __init__(self, processWidget, cmd):
+  def __init__(self, processWidget : cProcessItem, cmd):
     super().__init__()
     self.processWidget = processWidget
     self.cmd = cmd
@@ -344,15 +345,15 @@ class tWinManager(QRunnable):
 
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
-    if not self.processWidget.main.settings.usexdotool.isChecked(): return
-    bin = self.processWidget.main.settings.xdotoolExec.text()
+    if not self.processWidget.profile.usexdotool.isChecked(): return
+    bin = self.processWidget.profile.xdotoolExec.text()
     for i in range(5):
       try:
         out = subprocess.check_output([f"{bin} getwindowgeometry {self.processWidget.winID.text()}"], shell=True)
         out = out.decode().strip().split('\n')
         pos = out[1].split()[1].split(',')
-        self.processWidget.main.settings.windowsPreferences[self.processWidget.username.text()] = (int(pos[0]), int(pos[1]))
-        self.processWidget.main.settings.saveProfile()
+        self.processWidget.profile.windowsPreferences[self.processWidget.username.text()] = (int(pos[0]), int(pos[1]))
+        self.processWidget.profile.save()
       except Exception as e:
         self.getWinID()
       else:
@@ -365,11 +366,11 @@ class tWinManager(QRunnable):
   #    Tries to restore window preferences. It always checks the WinID again because these change 
   #    every now and then, which is weird. It will loop a few times until it gets a valid winID.
   def restoreWindow(self):
-    if not self.processWidget.main.settings.usexdotool.isChecked(): return
-    bin = self.processWidget.main.settings.xdotoolExec.text()
-    # self.processWidget.main.settings.loadProfile()
-    if self.processWidget.username.text() in self.processWidget.main.settings.windowsPreferences.keys():
-      pos1, pos2 = self.processWidget.main.settings.windowsPreferences[self.processWidget.username.text()]
+    if not self.processWidget.profile.usexdotool.isChecked(): return
+    bin = self.processWidget.profile.xdotoolExec.text()
+    # self.processWidget.profile.loadProfile()
+    if self.processWidget.username.text() in self.processWidget.profile.windowsPreferences.keys():
+      pos1, pos2 = self.processWidget.profile.windowsPreferences[self.processWidget.username.text()]
       for i in range(5):
         try:
           out = subprocess.check_output([f"{bin} windowmove --sync {self.processWidget.winID.text()} {pos1} {pos2}"], shell=True)
@@ -404,8 +405,8 @@ class tWinManager(QRunnable):
   
   #----------------------------------------------------------------------------------------------------------
   def probeWinID(self):
-    if not self.processWidget.main.settings.usexdotool.isChecked(): return
-    bin = self.processWidget.main.settings.xdotoolExec.text()
+    if not self.processWidget.profile.usexdotool.isChecked(): return
+    bin = self.processWidget.profile.xdotoolExec.text()
     try:
       out = subprocess.check_output([f"{bin} search --sync --pid {self.processWidget.pid.text()}"], shell=True)
       out = out.decode().strip().split('\n')
@@ -421,8 +422,8 @@ class tWinManager(QRunnable):
   
     #----------------------------------------------------------------------------------------------------------
   def checkWinID(self):
-    if not self.processWidget.main.settings.usexdotool.isChecked(): return
-    bin = self.processWidget.main.settings.xdotoolExec.text()
+    if not self.processWidget.profile.usexdotool.isChecked(): return
+    bin = self.processWidget.profile.xdotoolExec.text()
     try:
       out = subprocess.check_output([f"{bin} getwindowname {self.processWidget.winID.text()}"], shell=True)
     except:

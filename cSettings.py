@@ -25,6 +25,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
   QPushButton, QCheckBox, QLineEdit, QWidget
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import pyqtSignal
 from util import *
 from cTab import cTab
 from cProfil import cProfil
@@ -42,27 +43,14 @@ class cSettings(cTab):
     super().__init__("&Settings")
     self.main = main
     self.console = main.console
-    self.profile  : cProfil = None           # This will hold currently selected profile
     self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
+    self.lastProfile = ""
 
-    self.useHighRes = QCheckBox("Use HighRes")
-    self.usexdotool = QCheckBox("Use xdotool")
-    self.useDungeonHelper = QCheckBox("Use DungeonHelper")
-    self.useHighRes.setChecked(True)
-    self.languageList = QComboBox()
-    self.languageList.addItems(["English", "German", "French"])
-    self.languageList.currentIndexChanged.connect(self.changeLanguage)
-
-    self.launcherList = QComboBox()
-    self.launcherList.addItems(["Steam Proton", "Wine64", "Wine32"])
-    self.launcherList.currentIndexChanged.connect(self.changeLauncher)
-    
     profileLbl = QLabel("Profile: ")
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
     self.profileList = QComboBox()
     self.profileList.setEditable(True)
 
-    self.windowsPreferences = {}
     self.btnSave = QPushButton(getIcon(P_ICON_SAVE), "Save")
     self.btnSave.setToolTip("Save current settings and profile")
     self.btnSave.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
@@ -73,141 +61,20 @@ class cSettings(cTab):
     self.btnReload.setToolTip("Reload current profile and all settings from file")
     self.btnReload.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
-    self.launcherBinary = QLineEdit()
-    self.wineExec = ""
-    self.protonExec = ""
-    self.winePrefix = ""
-    self.protonPrefix = ""
-    self.gameDir = QLineEdit()
-    self.launcherPrefix   = QLineEdit()
-    self.steamRoot= QLineEdit()
-    self.xdotoolExec = QLineEdit()
-    self.DungeonHelperExec = QLineEdit()
-    self.btnSelectLauncher = QPushButton()
-    self.btnSelectPrefix   = QPushButton()
-    self.btnSelectSteamRoot= QPushButton()
-    self.btnSelectGameDir = QPushButton()
-    self.btnSelectDungeonHelperExec = QPushButton()
-    self.btnSelectxdotoolExec = QPushButton()
-
-    self.btnSelectLauncher.setIcon(getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectPrefix.setIcon(getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectSteamRoot.setIcon(getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectGameDir.setIcon(getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectDungeonHelperExec.setIcon(getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectxdotoolExec.setIcon(getIcon(P_ICON_OPENFOLDER))
-
-    self.btnSelectLauncher.clicked.connect(self.selectLauncher)
-    self.btnSelectPrefix.clicked.connect(self.selectPrefix)
-    self.btnSelectSteamRoot.clicked.connect(self.selectSteamRoot)
-    self.btnSelectGameDir.clicked.connect(self.selectGameExec)
-    self.btnSelectxdotoolExec.clicked.connect(self.selectxdotoolExec)
-    self.btnSelectDungeonHelperExec.clicked.connect(self.selectDungeonHelperExec)
-
-    self.lblPrefix     = newRQLabel("STEAM_COMPAT_DATA: ")
-    self.lblSteamRoot  = newRQLabel("STEAM_ROOT: ")
-
-    self.launcherBinary.textChanged.connect(self.copyLauncherBinaryText)
-    self.launcherPrefix.textChanged.connect(self.copyPrefixText)
-
     g = QGridLayout()
     g.addLayout(newHLayout([profileLbl, self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  0, 0, 1, 4)
-    # g.addWidget(self.launcherList,  1, 0)
-    # g.addWidget(self.languageList,  2, 0)
-    # g.addWidget(self.useHighRes, 3, 0)
-    # g.addWidget(self.usexdotool, 5, 0)
-    # g.addWidget(self.useDungeonHelper, 6, 0)
-
-    # g.addWidget(newRQLabel("Launcher exec: "), 1, 1)
-    # g.addWidget(self.launcherBinary,  1,  2)
-    # g.addWidget(self.btnSelectLauncher, 1, 3)
-
-    # g.addWidget(self.lblPrefix, 2, 1)
-    # g.addWidget(self.launcherPrefix, 2, 2)
-    # g.addWidget(self.btnSelectPrefix, 2, 3)
-
-    # g.addWidget(self.lblSteamRoot, 3, 1)
-    # g.addWidget(self.steamRoot, 3, 2)
-    # g.addWidget(self.btnSelectSteamRoot, 3, 3)
-
-    # g.addWidget(newRQLabel("Game Path: "), 4, 1)
-    # g.addWidget(self.gameDir, 4, 2)
-    # g.addWidget(self.btnSelectGameDir, 4, 3)
-
-    # g.addWidget(newRQLabel("xdotool exec: "), 5, 1)
-    # g.addWidget(self.xdotoolExec, 5, 2)
-    # g.addWidget(self.btnSelectxdotoolExec, 5, 3)
-
-    # g.addWidget(newRQLabel("DungeonHelper exec: "), 6, 1)
-    # g.addWidget(self.DungeonHelperExec, 6, 2)
-    # g.addWidget(self.btnSelectDungeonHelperExec, 6, 3)
-
     self.tmplay = QVBoxLayout()
     g.addLayout(self.tmplay, 7, 0, 1, 4)
     self.setLayout(g)
 
+  #----------------------------------------------------------------------------------------------------------
+  def initialize(self):
+    self.load()
+
     self.btnSave.clicked.connect(self.save)
     self.btnRemoveProfile.clicked.connect(self.removeProfile)
     self.btnReload.clicked.connect(self.load)
-
-    self.profileList.currentIndexChanged.connect(self.loadProfile)
     self.profileList.currentIndexChanged.connect(self.changeProfile)
-
-    self.usexdotool.toggled.connect(self.btnSelectxdotoolExec.setEnabled)
-    self.usexdotool.toggled.connect(self.xdotoolExec.setEnabled)
-    # self.usexdotool.toggled.connect(self.findxdotool)
-    self.usexdotool.setChecked(False)
-    self.xdotoolExec.setEnabled(False)
-    self.btnSelectxdotoolExec.setEnabled(False)
-
-    self.useDungeonHelper.toggled.connect(self.btnSelectDungeonHelperExec.setEnabled)
-    self.useDungeonHelper.toggled.connect(self.DungeonHelperExec.setEnabled)
-    self.useDungeonHelper.toggled.connect(self.findDungeonHelper)
-    self.useDungeonHelper.setChecked(False)
-    self.btnSelectDungeonHelperExec.setEnabled(False)
-    self.DungeonHelperExec.setEnabled(False)
-
-
-  #----------------------------------------------------------------------------------------------------------
-  def saveProfile(self):
-    name = self.profileList.lineEdit().text()
-    if self.profileList.findText(name, QtCore.Qt.MatchFlag.MatchExactly)>=0:
-      self.console.info(f"Updating profile {name}")
-    else:
-      self.console.info(f"Saving profile {name}")
-      self.profileList.addItem(name)
-    
-    try:
-      os.mkdir(P_DEFAULT_CONFIGDIR)
-    except: pass
-
-    values = {}
-    values['wineExec']      = self.wineExec
-    values['protonExec' ]   = self.protonExec
-    values['winePrefix']    = self.winePrefix
-    values['protonPrefix']  = self.protonPrefix
-    values['launcher']      = self.launcherList.currentText()
-    values['language']      = self.languageList.currentText()
-    values['gameDir']       = self.gameDir.text()
-    values['steamRoot']     = self.steamRoot.text()
-    values['useHighRes']    = self.useHighRes.isChecked()
-    values['usexdotool']    = self.usexdotool.isChecked()
-    values['useDungeonHelper']  = self.useDungeonHelper.isChecked()
-    values['xdotoolExec']       = self.xdotoolExec.text()
-    values['DungeonHelperExec'] = self.DungeonHelperExec.text()
-
-    values['lastWorld']     = self.main.credentials.getSelectedWorld()
-    values['lastAccounts']  = self.main.credentials.getSelectedAccounts()
-    values['windowsPreferences']  = self.windowsPreferences
-
-    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + name + ".json"
-    try:
-      json.dump(values, open(filename,"w"), separators=(', ',': '), indent=2)
-    except Exception as e:
-      self.console.error(f"cSettings.saveProfile: could not create {filename} to store profile settings!",e)
-    else:
-      self.console.info(f"Profile saved in {filename}")
-
 
   #----------------------------------------------------------------------------------------------------------
   def removeProfile(self):
@@ -221,49 +88,10 @@ class cSettings(cTab):
       pass
 
   #----------------------------------------------------------------------------------------------------------
-  def loadProfile(self):
-    name = self.profileList.lineEdit().text()
-    if not name: return
-
-    values = None
-    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + name + ".json"
-    if os.path.exists(filename):
-      with open(filename,"r") as f:
-        values = json.load(f)
-      self.console.info(f'Profile loaded from {filename}')
-    else:
-      self.console.error(f"cSettings.loadProfile: file {filename} not found")
-    
-    if values:
-      try:
-        if 'wineExec'   in values.keys(): self.wineExec   = values['wineExec']
-        if 'protonExec' in values.keys(): self.protonExec = values['protonExec']
-        if 'winePrefix'   in values.keys(): self.winePrefix   = values['winePrefix']
-        if 'protonPrefix' in values.keys(): self.protonPrefix = values['protonPrefix']
-        if 'gameDir'     in values.keys(): self.gameDir.setText(values['gameDir'])
-        if 'steamRoot'    in values.keys(): self.steamRoot.setText(values['steamRoot'])
-        if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
-        if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
-        if 'xdotoolExec'   in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
-        if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
-        if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
-        if 'launcher'     in values.keys(): self.launcherList.setCurrentIndex(self.launcherList.findText(values['launcher']))
-        if 'language'     in values.keys(): self.languageList.setCurrentIndex(self.languageList.findText(values['language']))
-        self.changeLauncher()
-
-        if 'lastWorld'    in values.keys(): self.main.credentials.selectWorld(values['lastWorld'])
-        if 'lastAccounts' in values.keys(): self.main.credentials.selectAccounts(values['lastAccounts'])
-        if 'windowsPreferences' in values.keys(): self.windowsPreferences = values['windowsPreferences']
-
-      except Exception as e:
-        self.console.error(f"cSettings.loadProfile: error loading settings from {filename}", e)
-    # self.profile.lineEdit().setText(name)
-
-
-  #----------------------------------------------------------------------------------------------------------
   def setProfilesList(self, profiles):
-    self.profileList.currentIndexChanged.disconnect(self.loadProfile)
-    self.profileList.currentIndexChanged.disconnect(self.changeProfile)
+    try:
+      self.profileList.currentIndexChanged.disconnect(self.changeProfile)
+    except: pass
     self.profileList.clear()
     self.main.launchMenu.clear()
     self.main.launchMenu.addSection("Switch profile to...")
@@ -273,15 +101,11 @@ class cSettings(cTab):
       act = QAction(f"\"{p}\" profile", self.main)
       self.main.launchMenu.addAction(act)
       self.connectAction2Profile(act, p)
-      if p in self.profiles.keys():
-        self.tmplay.removeWidget(self.profiles[p])
-        self.profiles[p].deleteLater()
-        del self.profiles[p]
-      self.profiles[p] = cProfil(self.main, p)
-      self.tmplay.addWidget(self.profiles[p])
+      if p not in self.profiles.keys():
+        self.profiles[p] = cProfil(self.main, p)
+        self.tmplay.addWidget(self.profiles[p])
       self.profiles[p].setVisible(False)
       self.profiles[p].load()
-    self.profileList.currentIndexChanged.connect(self.loadProfile)
     self.profileList.currentIndexChanged.connect(self.changeProfile)
 
   #----------------------------------------------------------------------------------------------------------
@@ -290,82 +114,25 @@ class cSettings(cTab):
     a.triggered.connect(lambda x : self.profileList.setCurrentIndex(idx))
 
   #----------------------------------------------------------------------------------------------------------
-  def copyPrefixText(self):
-    if self.launcherList.currentText()=="Steam Proton":
-      self.protonPrefix = self.launcherPrefix.text()
-    else:
-      self.winePrefix = self.launcherPrefix.text()
-
-  #----------------------------------------------------------------------------------------------------------
-  def copyLauncherBinaryText(self):
-    if self.launcherList.currentText()=="Steam Proton":
-      self.protonExec = self.launcherBinary.text()
-    else:
-      self.wineExec = self.launcherBinary.text()
-
+  def changeLanguage(self):
+    self.console.info(f"[W] Switching languages is not yet supported!!")
+  
   #----------------------------------------------------------------------------------------------------------
   def changeProfile(self):
-    p = self.profileList.currentText()
-    if not p: return
-    if p and p in self.profiles.keys():
-      if self.profile: self.profile.setVisible(False)
-      self.profile = self.profiles[p]
-      self.profile.setVisible(True)
+    pname = self.profileList.currentText()
+    if not pname: return
+    if pname in self.profiles.keys():
+      if self.lastProfile in self.profiles.keys():
+        self.profiles[self.lastProfile].setVisible(False)
+        self.profiles[self.lastProfile].aggregate()
+      self.profiles[pname].setVisible(True)
+      self.profiles[pname].propagate()
+      self.main.patch.updateTimestamp()
+      self.lastProfile = pname
+      self.main.sigProfileChanged.emit([self.lastProfile, pname])
     else:
       self.console.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{p}\",\
                           but it was not found! Doing nothing instead...")
-
-
-  #----------------------------------------------------------------------------------------------------------
-  def changeLanguage(self):
-    self.console.info(f"[W] Switching languages is not yet supported!!")
-
-  #----------------------------------------------------------------------------------------------------------
-  def changeLauncher(self):
-    # self.console.info(f"Setting up {self.launcherList.currentText()}...")
-    if self.launcherList.currentText()=="Steam Proton":
-      self.lblPrefix.setText("STEAM_COMPAT_DATA: ")
-      self.steamRoot.setEnabled(True)
-      self.btnSelectSteamRoot.setEnabled(True)
-      self.launcherBinary.setText(self.protonExec)
-      self.launcherPrefix.setText(self.protonPrefix)
-      self.findProton()
-    else:
-      self.console.info(f"[W] Wine32 and Wine64 are untested!")
-      s = self.lblPrefix.size()
-      self.lblPrefix.setText("WINEPREFIX: ")
-      self.lblPrefix.setFixedSize(s)
-      self.steamRoot.setEnabled(False)
-      self.btnSelectSteamRoot.setEnabled(False)
-      self.launcherBinary.setText(self.wineExec)
-      self.launcherPrefix.setText(self.winePrefix)
-      self.findWine()
-  
-  #----------------------------------------------------------------------------------------------------------
-  def findWine(self):
-    if self.launcherBinary.text()=="":
-      result = subprocess.run(["which", "wine"], stdout=subprocess.PIPE)
-      if result.stdout:
-        result = result.stdout.decode('utf-8').strip()
-        self.launcherBinary.setText(result)
-        self.console.info(f"Setting wine binary to {result}...")
-      else:
-        self.console.info("[W] Wine binary not found! Please set it manually...")
-
-  #----------------------------------------------------------------------------------------------------------
-  def findDungeonHelper(self):
-    if self.useDungeonHelper.isChecked() and self.DungeonHelperExec.text()=="":
-      if self.launcherPrefix.text():
-        try:
-          out = subprocess.check_output([f"find {self.launcherPrefix.text()} -iname DungeonHelper.exe"], shell=True)
-          if out:
-            out = out.decode('utf-8').strip()
-            self.DungeonHelperExec.setText(out)
-            self.console.info(f"Setting DungeonHelper binary to {out}...")
-          else:
-            self.console.info("[W] DungeonHelper binary not found! Is it installed? If so, please set it manually...")
-        except Exception as e:
-          self.console.error("Error looking for DungeonHelper binary", e)
 
   #----------------------------------------------------------------------------------------------------------
   def findxdotool(self):
@@ -380,47 +147,6 @@ class cSettings(cTab):
           self.console.info("[W] xdotool binary not found! Is it installed? If so, please set it manually...")
       except Exception as e:
         self.console.error("Error looking for xdotool binary", e)
-
-  #----------------------------------------------------------------------------------------------------------
-  def findProton(self):
-    if self.launcherBinary.text()=="":
-      self.console.info("[W] findProton function not yet implemented!")
-  
-  #----------------------------------------------------------------------------------------------------------
-  def selectPrefix(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select Prefix...")
-    if filename:
-      self.launcherPrefix.setText(filename[0])
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectDungeonHelperExec(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select DungeonHelper executable...")
-    if filename:
-      self.DungeonHelperExec.setText(filename)
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectxdotoolExec(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select xdotool executable...")
-    if filename:
-      self.xdotoolExec.setText(filename)
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectSteamRoot(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select STEAM_ROOT...")
-    if filename:
-      self.steamRoot.setText(filename)
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectGameExec(self):
-    filename = QFileDialog.getOpenFileName(self, "Select game executable...")
-    if filename:
-      self.gameDir.setText(filename[0])
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectLauncher(self):
-    filename = QFileDialog.getOpenFileName(self, "Select launcher executable...")
-    if filename:
-      self.launcherBinary.setText(filename[0])
 
   #----------------------------------------------------------------------------------------------------------
   def load(self):
@@ -442,13 +168,16 @@ class cSettings(cTab):
           self.main.credentials.updateMultiAccount()
         
         files = glob.glob(P_DEFAULT_CONFIGDIR+os.sep+"profile_*.json")
-        files = [ os.path.splitext(os.path.os.path.basename(f))[0][8:].strip() for f in files ]
+        files = [ os.path.splitext(os.path.basename(f))[0][8:].strip() for f in files ]
         self.setProfilesList(files)
         if 'lastProfile' in values.keys():
+          self.lastProfile = values['lastProfile']
           self.profileList.setCurrentIndex(-1)
-          self.profileList.setCurrentIndex(self.profileList.findText(values['lastProfile']))
+          self.profileList.setCurrentIndex(self.profileList.findText(self.lastProfile))
+        else:
+          self.profileList.setCurrentIndex(0)
         
-        if self.profile: self.profile.load()
+        if self.profileList.currentText(): self.main.profile().load()
 
       except Exception as e:
         self.console.error(f"cSettings.load: error loading settings from {P_DEFAULT_CONFIGFILE}", e)
@@ -465,7 +194,7 @@ class cSettings(cTab):
     values['patchVisible'] = self.main.patch.isVisible()
     values['multiAccount'] = self.main.credentials.multiAccount.isChecked()
     values['lastProfile']  = self.profileList.currentText()
-    if self.profile: self.profile.save()
+    if self.profileList.currentText(): self.main.profile().save()
 
     try:
       json.dump(values, open(P_DEFAULT_CONFIGFILE,"w"), separators=(', ',': '), indent=2)
