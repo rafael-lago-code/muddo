@@ -179,7 +179,7 @@ class cProcessItem(QWidget):
     cmd += f"{gameExec} "
     cmd += f"{arg}"
 
-    self.profile.setText(self.main.settings.profile.lineEdit().text())
+    self.profile.setText(self.main.settings.profileList.lineEdit().text())
 
     exec = tGameExecutable(self.main, cmd, arg)
     QtCore.QThreadPool.globalInstance().start(exec)

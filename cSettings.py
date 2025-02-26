@@ -42,8 +42,8 @@ class cSettings(cTab):
     super().__init__("&Settings")
     self.main = main
     self.console = main.console
-    self.profiles : dict[str, cProfil] = {}
-
+    self.profile  : cProfil = None           # This will hold currently selected profile
+    self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
 
     self.useHighRes = QCheckBox("Use HighRes")
     self.usexdotool = QCheckBox("Use xdotool")
@@ -59,22 +59,18 @@ class cSettings(cTab):
     
     profileLbl = QLabel("Profile: ")
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.profile = QComboBox()
-    self.profile.setEditable(True)
-    self.profile.currentIndexChanged.connect(self.loadProfile)
+    self.profileList = QComboBox()
+    self.profileList.setEditable(True)
 
     self.windowsPreferences = {}
     self.btnSave = QPushButton(getIcon(P_ICON_SAVE), "Save")
     self.btnSave.setToolTip("Save current settings and profile")
     self.btnSave.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.btnSave.clicked.connect(self.save)
-    self.btnDelete = QPushButton(getIcon(P_ICON_TRASH), "Delete")
-    self.btnDelete.setToolTip("Delete current profile and its associated files (main settings remain untouched)")
-    self.btnDelete.clicked.connect(self.removeProfile)
-    self.btnDelete.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.btnRemoveProfile = QPushButton(getIcon(P_ICON_TRASH), "Delete")
+    self.btnRemoveProfile.setToolTip("Delete current profile and its associated files (main settings remain untouched)")
+    self.btnRemoveProfile.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
     self.btnReload = QPushButton(getIcon(P_ICON_REFRESH), "Reload")
     self.btnReload.setToolTip("Reload current profile and all settings from file")
-    self.btnReload.clicked.connect(self.load)
     self.btnReload.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
     self.launcherBinary = QLineEdit()
@@ -115,43 +111,51 @@ class cSettings(cTab):
     self.launcherPrefix.textChanged.connect(self.copyPrefixText)
 
     g = QGridLayout()
-    g.addLayout(newHLayout([profileLbl, self.profile, self.btnSave, self.btnDelete, self.btnReload]),  0, 0, 1, 4)
-    g.addWidget(self.launcherList,  1, 0)
-    g.addWidget(self.languageList,  2, 0)
-    g.addWidget(self.useHighRes, 3, 0)
-    g.addWidget(self.usexdotool, 5, 0)
-    g.addWidget(self.useDungeonHelper, 6, 0)
+    g.addLayout(newHLayout([profileLbl, self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  0, 0, 1, 4)
+    # g.addWidget(self.launcherList,  1, 0)
+    # g.addWidget(self.languageList,  2, 0)
+    # g.addWidget(self.useHighRes, 3, 0)
+    # g.addWidget(self.usexdotool, 5, 0)
+    # g.addWidget(self.useDungeonHelper, 6, 0)
 
-    g.addWidget(newRQLabel("Launcher exec: "), 1, 1)
-    g.addWidget(self.launcherBinary,  1,  2)
-    g.addWidget(self.btnSelectLauncher, 1, 3)
+    # g.addWidget(newRQLabel("Launcher exec: "), 1, 1)
+    # g.addWidget(self.launcherBinary,  1,  2)
+    # g.addWidget(self.btnSelectLauncher, 1, 3)
 
-    g.addWidget(self.lblPrefix, 2, 1)
-    g.addWidget(self.launcherPrefix, 2, 2)
-    g.addWidget(self.btnSelectPrefix, 2, 3)
+    # g.addWidget(self.lblPrefix, 2, 1)
+    # g.addWidget(self.launcherPrefix, 2, 2)
+    # g.addWidget(self.btnSelectPrefix, 2, 3)
 
-    g.addWidget(self.lblSteamRoot, 3, 1)
-    g.addWidget(self.steamRoot, 3, 2)
-    g.addWidget(self.btnSelectSteamRoot, 3, 3)
+    # g.addWidget(self.lblSteamRoot, 3, 1)
+    # g.addWidget(self.steamRoot, 3, 2)
+    # g.addWidget(self.btnSelectSteamRoot, 3, 3)
 
-    g.addWidget(newRQLabel("Game Path: "), 4, 1)
-    g.addWidget(self.gameDir, 4, 2)
-    g.addWidget(self.btnSelectGameDir, 4, 3)
+    # g.addWidget(newRQLabel("Game Path: "), 4, 1)
+    # g.addWidget(self.gameDir, 4, 2)
+    # g.addWidget(self.btnSelectGameDir, 4, 3)
 
-    g.addWidget(newRQLabel("xdotool exec: "), 5, 1)
-    g.addWidget(self.xdotoolExec, 5, 2)
-    g.addWidget(self.btnSelectxdotoolExec, 5, 3)
+    # g.addWidget(newRQLabel("xdotool exec: "), 5, 1)
+    # g.addWidget(self.xdotoolExec, 5, 2)
+    # g.addWidget(self.btnSelectxdotoolExec, 5, 3)
 
-    g.addWidget(newRQLabel("DungeonHelper exec: "), 6, 1)
-    g.addWidget(self.DungeonHelperExec, 6, 2)
-    g.addWidget(self.btnSelectDungeonHelperExec, 6, 3)
+    # g.addWidget(newRQLabel("DungeonHelper exec: "), 6, 1)
+    # g.addWidget(self.DungeonHelperExec, 6, 2)
+    # g.addWidget(self.btnSelectDungeonHelperExec, 6, 3)
 
     self.tmplay = QVBoxLayout()
     g.addLayout(self.tmplay, 7, 0, 1, 4)
+    self.setLayout(g)
+
+    self.btnSave.clicked.connect(self.save)
+    self.btnRemoveProfile.clicked.connect(self.removeProfile)
+    self.btnReload.clicked.connect(self.load)
+
+    self.profileList.currentIndexChanged.connect(self.loadProfile)
+    self.profileList.currentIndexChanged.connect(self.changeProfile)
 
     self.usexdotool.toggled.connect(self.btnSelectxdotoolExec.setEnabled)
     self.usexdotool.toggled.connect(self.xdotoolExec.setEnabled)
-    self.usexdotool.toggled.connect(self.findxdotool)
+    # self.usexdotool.toggled.connect(self.findxdotool)
     self.usexdotool.setChecked(False)
     self.xdotoolExec.setEnabled(False)
     self.btnSelectxdotoolExec.setEnabled(False)
@@ -163,16 +167,15 @@ class cSettings(cTab):
     self.btnSelectDungeonHelperExec.setEnabled(False)
     self.DungeonHelperExec.setEnabled(False)
 
-    self.setLayout(g)
 
   #----------------------------------------------------------------------------------------------------------
   def saveProfile(self):
-    name = self.profile.lineEdit().text()
-    if self.profile.findText(name, QtCore.Qt.MatchFlag.MatchExactly)>=0:
+    name = self.profileList.lineEdit().text()
+    if self.profileList.findText(name, QtCore.Qt.MatchFlag.MatchExactly)>=0:
       self.console.info(f"Updating profile {name}")
     else:
       self.console.info(f"Saving profile {name}")
-      self.profile.addItem(name)
+      self.profileList.addItem(name)
     
     try:
       os.mkdir(P_DEFAULT_CONFIGDIR)
@@ -208,18 +211,18 @@ class cSettings(cTab):
 
   #----------------------------------------------------------------------------------------------------------
   def removeProfile(self):
-    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.profile.lineEdit().text() + ".json"
+    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.profileList.lineEdit().text() + ".json"
     try:
-      idx = self.profile.findText(self.profile.lineEdit().text(), QtCore.Qt.MatchFlag.MatchExactly)
+      idx = self.profileList.findText(self.profileList.lineEdit().text(), QtCore.Qt.MatchFlag.MatchExactly)
       if idx >= 0:
-        self.profile.removeItem(idx)
+        self.profileList.removeItem(idx)
       os.remove(filename)
     except:
       pass
 
   #----------------------------------------------------------------------------------------------------------
   def loadProfile(self):
-    name = self.profile.lineEdit().text()
+    name = self.profileList.lineEdit().text()
     if not name: return
 
     values = None
@@ -259,29 +262,32 @@ class cSettings(cTab):
 
   #----------------------------------------------------------------------------------------------------------
   def setProfilesList(self, profiles):
-    self.profile.currentIndexChanged.disconnect(self.loadProfile)
-    self.profile.clear()
+    self.profileList.currentIndexChanged.disconnect(self.loadProfile)
+    self.profileList.currentIndexChanged.disconnect(self.changeProfile)
+    self.profileList.clear()
     self.main.launchMenu.clear()
     self.main.launchMenu.addSection("Switch profile to...")
-    for p in profiles: 
-      if p != "":
-        self.profile.addItem(p)
-        act = QAction(f"\"{p}\" profile", self.main)
-        self.main.launchMenu.addAction(act)
-        self.connectAction2Profile(act, p)
-        if p in self.profiles.keys():
-          self.tmplay.removeWidget(self.profiles[p])
-          self.profiles[p].deleteLater()
-          del self.profiles[p]
-        self.profiles[p] = cProfil(self.main, p)
-        self.tmplay.addWidget(self.profiles[p])
-        self.profiles[p].load()
-    self.profile.currentIndexChanged.connect(self.loadProfile)
+    for p in profiles:
+      if p == "": continue
+      self.profileList.addItem(p)
+      act = QAction(f"\"{p}\" profile", self.main)
+      self.main.launchMenu.addAction(act)
+      self.connectAction2Profile(act, p)
+      if p in self.profiles.keys():
+        self.tmplay.removeWidget(self.profiles[p])
+        self.profiles[p].deleteLater()
+        del self.profiles[p]
+      self.profiles[p] = cProfil(self.main, p)
+      self.tmplay.addWidget(self.profiles[p])
+      self.profiles[p].setVisible(False)
+      self.profiles[p].load()
+    self.profileList.currentIndexChanged.connect(self.loadProfile)
+    self.profileList.currentIndexChanged.connect(self.changeProfile)
 
   #----------------------------------------------------------------------------------------------------------
   def connectAction2Profile(self, a : QAction, p : str):
-    idx = self.profile.findText(p)
-    a.triggered.connect(lambda x : self.profile.setCurrentIndex(idx))
+    idx = self.profileList.findText(p)
+    a.triggered.connect(lambda x : self.profileList.setCurrentIndex(idx))
 
   #----------------------------------------------------------------------------------------------------------
   def copyPrefixText(self):
@@ -296,6 +302,19 @@ class cSettings(cTab):
       self.protonExec = self.launcherBinary.text()
     else:
       self.wineExec = self.launcherBinary.text()
+
+  #----------------------------------------------------------------------------------------------------------
+  def changeProfile(self):
+    p = self.profileList.currentText()
+    if not p: return
+    if p and p in self.profiles.keys():
+      if self.profile: self.profile.setVisible(False)
+      self.profile = self.profiles[p]
+      self.profile.setVisible(True)
+    else:
+      self.console.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{p}\",\
+                          but it was not found! Doing nothing instead...")
+
 
   #----------------------------------------------------------------------------------------------------------
   def changeLanguage(self):
@@ -416,7 +435,7 @@ class cSettings(cTab):
     if values:
       try:
         if 'settingsVisible' in values.keys(): self.main.settings.setVisible(values['settingsVisible'])
-        if 'newsVisible' in values.keys(): self.main.news.setVisible(values['newsVisible'])
+        if 'newsVisible'  in values.keys(): self.main.news.setVisible(values['newsVisible'])
         if 'patchVisible' in values.keys(): self.main.patch.setVisible(values['patchVisible'])
         if 'multiAccount' in values.keys(): 
           self.main.credentials.multiAccount.setChecked(values['multiAccount'])
@@ -425,9 +444,11 @@ class cSettings(cTab):
         files = glob.glob(P_DEFAULT_CONFIGDIR+os.sep+"profile_*.json")
         files = [ os.path.splitext(os.path.os.path.basename(f))[0][8:].strip() for f in files ]
         self.setProfilesList(files)
-        if 'lastProfile'  in values.keys():
-          self.profile.setCurrentIndex(-1)
-          self.profile.setCurrentIndex(self.profile.findText(values['lastProfile']))
+        if 'lastProfile' in values.keys():
+          self.profileList.setCurrentIndex(-1)
+          self.profileList.setCurrentIndex(self.profileList.findText(values['lastProfile']))
+        
+        if self.profile: self.profile.load()
 
       except Exception as e:
         self.console.error(f"cSettings.load: error loading settings from {P_DEFAULT_CONFIGFILE}", e)
@@ -440,11 +461,11 @@ class cSettings(cTab):
 
     values = {}
     values['settingsVisible'] = self.main.settings.isVisible()
-    values['newsVisible'] = self.main.news.isVisible()
-    values['patchVisible']= self.main.patch.isVisible()
-    values['multiAccount']  = self.main.credentials.multiAccount.isChecked()
-    values['lastProfile']   = self.profile.lineEdit().text()
-    self.saveProfile()
+    values['newsVisible']  = self.main.news.isVisible()
+    values['patchVisible'] = self.main.patch.isVisible()
+    values['multiAccount'] = self.main.credentials.multiAccount.isChecked()
+    values['lastProfile']  = self.profileList.currentText()
+    if self.profile: self.profile.save()
 
     try:
       json.dump(values, open(P_DEFAULT_CONFIGFILE,"w"), separators=(', ',': '), indent=2)

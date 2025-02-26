@@ -53,7 +53,6 @@ class cProfil(QWidget):
 
     self.launcherCombo = QComboBox()
     self.launcherCombo.addItems(["Steam Proton", "Wine64", "Wine32"])
-    self.launcherCombo.currentIndexChanged.connect(self.changeLauncher)
     
     self.windowsPreferences = {}
 
@@ -71,64 +70,82 @@ class cProfil(QWidget):
     self.xdotoolExec = QLineEdit()
     self.DungeonHelperExec = QLineEdit()
 
-    self.btnSelectLauncher    = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectPrefix      = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectSteamRoot   = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectGameDir     = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectxdotoolExec = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    self.btnSelectDungeonHelperExec = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectProtonExec  = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectCompatData  = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectWineExec    = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectWinePrefix  = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectSteamRoot   = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectGameDir     = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectxdotoolExec = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectDungeonHelperExec = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
 
-    self.btnSelectLauncher.clicked.connect(self.selectLauncher)
-    self.btnSelectPrefix.clicked.connect(self.selectPrefix)
-    self.btnSelectSteamRoot.clicked.connect(self.selectSteamRoot)
-    self.btnSelectGameDir.clicked.connect(self.selectGameExec)
-    self.btnSelectxdotoolExec.clicked.connect(self.selectxdotoolExec)
-    self.btnSelectDungeonHelperExec.clicked.connect(self.selectDungeonHelperExec)
+    lblWineExec   = newRQLabel("Wine Executable: ")
+    lblWinePrefix = newRQLabel("WINEPREFIX: ")
+    lblProtonExec = newRQLabel("Proton Executable: ")
+    lblCompatData = newRQLabel("STEAM_COMPAT_DATA: ")
+    lblSteamRoot  = newRQLabel("STEAM_ROOT: ")
 
-    self.lblWineExec   = newRQLabel("Wine Executable: ")
-    self.lblWinePrefix = newRQLabel("WINEPREFIX: ")
-    self.lblProtonExec = newRQLabel("Proton Executable: ")
-    self.lblCompatData = newRQLabel("STEAM_COMPAT_DATA: ")
-    self.lblSteamRoot  = newRQLabel("STEAM_ROOT: ")
-
-    self.lblWineExec.setVisible(False)
-    self.lblWinePrefix.setVisible(False)
+    lblWineExec.setVisible(False)
+    lblWinePrefix.setVisible(False)
     self.wineExec.setVisible(False)
     self.winePrefix.setVisible(False)
+    btnSelectWineExec.setVisible(False)
+    btnSelectWinePrefix.setVisible(False)
 
     g = cGridLayout()
-    # g.appendColumn([self.launcherCombo, self.languageCombo, self.useHighRes,
-                    # self.usexdotool, self.useDungeonHelper])
-    # g.firstColumn = 1
+    g.appendRow([self.launcherCombo,    lblProtonExec, self.protonExec,  btnSelectProtonExec])
+    g.appendRow([self.languageCombo,    lblCompatData, self.compatData,  btnSelectCompatData])
+    g.appendRow([None,                  lblSteamRoot,  self.steamRoot,   btnSelectSteamRoot])
+    g.appendRow([self.useHighRes,       newRQLabel("Game Path: "),    self.gameDir,     btnSelectGameDir])
+    g.appendRow([self.useDungeonHelper, newRQLabel("DungeonHelper exec: "), self.DungeonHelperExec, btnSelectDungeonHelperExec])
+    g.appendRow([self.usexdotool,       newRQLabel("xdotool exec: "), self.xdotoolExec, btnSelectxdotoolExec])
 
-    g.appendRow([self.launcherCombo, self.lblProtonExec, self.protonExec,  self.btnSelectLauncher])
-    g.appendRow([self.languageCombo, self.lblCompatData, self.compatData,  self.btnSelectPrefix])
-    g.appendRow([None,               self.lblSteamRoot,  self.steamRoot,   self.btnSelectSteamRoot])
-    g.appendRow([self.useHighRes,    newRQLabel("Game Path: "),           self.gameDir,     self.btnSelectGameDir])
-    g.appendRow([self.usexdotool,    newRQLabel("xdotool exec: "),        self.xdotoolExec, self.btnSelectxdotoolExec])
-    g.appendRow([self.useDungeonHelper, newRQLabel("DungeonHelper exec: "), self.DungeonHelperExec, self.btnSelectDungeonHelperExec])
+    # I am overlapping on purpose, because only one of the two will be visible at the same time
+    g.lastRow = 0
+    g.appendRow([self.launcherCombo, lblWineExec,   self.wineExec,   btnSelectWineExec])
+    g.appendRow([None,               lblWinePrefix, self.winePrefix, btnSelectWinePrefix])
+    g.setColumnMinimumWidth(1, 150)
+    self.setLayout(g)
 
-
-    g.addWidget(self.lblWineExec, 0, 1)
-    g.addWidget(self.wineExec,    0, 2)
-    g.addWidget(self.lblWinePrefix, 1, 1)
-    g.addWidget(self.winePrefix, 1, 2)
-
-    self.usexdotool.toggled.connect(self.btnSelectxdotoolExec.setEnabled)
+    self.usexdotool.toggled.connect(btnSelectxdotoolExec.setEnabled)
     self.usexdotool.toggled.connect(self.xdotoolExec.setEnabled)
     self.usexdotool.toggled.connect(self.findxdotool)
     self.usexdotool.setChecked(False)
     self.xdotoolExec.setEnabled(False)
-    self.btnSelectxdotoolExec.setEnabled(False)
+    btnSelectxdotoolExec.setEnabled(False)
 
-    self.useDungeonHelper.toggled.connect(self.btnSelectDungeonHelperExec.setEnabled)
+    self.useDungeonHelper.toggled.connect(btnSelectDungeonHelperExec.setEnabled)
     self.useDungeonHelper.toggled.connect(self.DungeonHelperExec.setEnabled)
     self.useDungeonHelper.toggled.connect(self.findDungeonHelper)
     self.useDungeonHelper.setChecked(False)
-    self.btnSelectDungeonHelperExec.setEnabled(False)
     self.DungeonHelperExec.setEnabled(False)
-    
-    self.setLayout(g)
+    btnSelectDungeonHelperExec.setEnabled(False)
+
+    self.launcherCombo.currentIndexChanged.connect(lambda : lblWineExec.setVisible(self.launcherCombo.currentText().startswith("Wine")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : self.wineExec.setVisible(self.launcherCombo.currentText().startswith("Wine")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : btnSelectWineExec.setVisible(self.launcherCombo.currentText().startswith("Wine")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : lblWinePrefix.setVisible(self.launcherCombo.currentText().startswith("Wine")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : self.winePrefix.setVisible(self.launcherCombo.currentText().startswith("Wine")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : btnSelectWinePrefix.setVisible(self.launcherCombo.currentText().startswith("Wine")))
+
+    self.launcherCombo.currentIndexChanged.connect(lambda : lblProtonExec.setVisible(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : self.protonExec.setVisible(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : btnSelectProtonExec.setVisible(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : lblCompatData.setVisible(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : self.compatData.setVisible(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : btnSelectCompatData.setVisible(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : lblSteamRoot.setVisible(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : self.steamRoot.setEnabled(self.launcherCombo.currentText().startswith("Steam Proton")))
+    self.launcherCombo.currentIndexChanged.connect(lambda : btnSelectSteamRoot.setEnabled(self.launcherCombo.currentText().startswith("Steam Proton")))
+
+    btnSelectWineExec.clicked.connect(   lambda x : self.selectDialog(self.steamRoot, "wine executable", False))
+    btnSelectWinePrefix.clicked.connect( lambda x : self.selectDialog(self.steamRoot, "WINEPREFIX"))
+    btnSelectProtonExec.clicked.connect( lambda x : self.selectDialog(self.steamRoot, "Steam Proton executable", False))
+    btnSelectCompatData.clicked.connect( lambda x : self.selectDialog(self.steamRoot, "STEAM_COMPAT_DATA"))
+    btnSelectSteamRoot.clicked.connect(  lambda x : self.selectDialog(self.steamRoot, "STEAM_ROOT"))
+    btnSelectGameDir.clicked.connect(    lambda x : self.selectDialog(self.gameDir,   "game path"))
+    btnSelectxdotoolExec.clicked.connect(lambda x : self.selectDialog(self.xdotoolExec, "xdotool executable", False))
+    btnSelectDungeonHelperExec.clicked.connect(lambda x : self.selectDialog(self.xdotoolExec, "DungeonHelper executable", False))
 
   #----------------------------------------------------------------------------------------------------------
   def save(self):
@@ -137,12 +154,12 @@ class cProfil(QWidget):
     except: pass
 
     values = {}
+    values['launcher']     = self.launcherCombo.currentText()
+    values['language']     = self.languageCombo.currentText()
     values['wineExec']     = self.wineExec.text()
     values['protonExec' ]  = self.protonExec.text()
     values['winePrefix']   = self.winePrefix.text()
-    values['protonPrefix'] = self.compatData.text()
-    values['launcher']     = self.launcherCombo.currentText()
-    values['language']     = self.languageCombo.currentText()
+    values['compatData']   = self.compatData.text()
     values['gameDir']      = self.gameDir.text()
     values['steamRoot']    = self.steamRoot.text()
     values['useHighRes']   = self.useHighRes.isChecked()
@@ -159,7 +176,7 @@ class cProfil(QWidget):
     try:
       json.dump(values, open(filename,"w"), separators=(', ',': '), indent=2)
     except Exception as e:
-      self.console.error(f"cSettings.saveProfile: could not create {filename} to store profile settings!",e)
+      self.console.error(f"cProfil.save: could not create {filename} to store profile!",e)
     else:
       self.console.info(f"Profile saved in {filename}")
 
@@ -173,10 +190,12 @@ class cProfil(QWidget):
         values = json.load(f)
       self.console.info(f'Profile loaded from {filename}')
     else:
-      self.console.error(f"cSettings.loadProfile: file {filename} not found")
+      self.console.error(f"cProfil.load: file {filename} not found")
     
     if values:
       try:
+        if 'launcher'     in values.keys(): self.launcherCombo.setCurrentIndex(self.launcherCombo.findText(values['launcher']))
+        if 'language'     in values.keys(): self.languageCombo.setCurrentIndex(self.languageCombo.findText(values['language']))
         if 'wineExec'     in values.keys(): self.wineExec.setText(values['wineExec'])
         if 'protonExec'   in values.keys(): self.protonExec.setText(values['protonExec'])
         if 'winePrefix'   in values.keys(): self.winePrefix.setText(values['winePrefix'])
@@ -186,87 +205,40 @@ class cProfil(QWidget):
         if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
         if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
         if 'xdotoolExec'  in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
-        if 'launcher'     in values.keys(): self.launcherCombo.setCurrentIndex(self.launcherCombo.findText(values['launcher']))
-        if 'language'     in values.keys(): self.languageCombo.setCurrentIndex(self.languageCombo.findText(values['language']))
         if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
         if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
-        self.changeLauncher()
 
         if 'lastWorld'    in values.keys(): self.main.credentials.selectWorld(values['lastWorld'])
         if 'lastAccounts' in values.keys(): self.main.credentials.selectAccounts(values['lastAccounts'])
         if 'windowsPreferences' in values.keys(): self.windowsPreferences = values['windowsPreferences']
 
       except Exception as e:
-        self.console.error(f"cSettings.loadProfile: error loading settings from {filename}", e)
+        self.console.error(f"cProfil.load: error loading profile from {filename}", e)
 
 
-  #----------------------------------------------------------------------------------------------------------
-  def connectAction2Profile(self, a : QAction, p : str):
-    idx = self.profile.findText(p)
-    a.triggered.connect(lambda x : self.profile.setCurrentIndex(idx))
+  # #----------------------------------------------------------------------------------------------------------
+  # def connectAction2Profile(self, a : QAction, p : str):
+  #   idx = self.profile.findText(p)
+  #   a.triggered.connect(lambda x : self.profile.setCurrentIndex(idx))
 
-  #----------------------------------------------------------------------------------------------------------
-  def copyPrefixText(self):
-    if self.launcherCombo.currentText()=="Steam Proton":
-      self.protonPrefixold = self.compatData.text()
-    else:
-      self.winePrefixold = self.compatData.text()
+  # #----------------------------------------------------------------------------------------------------------
+  # def copyPrefixText(self):
+  #   if self.launcherCombo.currentText()=="Steam Proton":
+  #     self.protonPrefixold = self.compatData.text()
+  #   else:
+  #     self.winePrefixold = self.compatData.text()
 
-  #----------------------------------------------------------------------------------------------------------
-  def copyLauncherBinaryText(self):
-    if self.launcherCombo.currentText()=="Steam Proton":
-      self.protonExecold = self.protonExec.text()
-    else:
-      self.wineExecold = self.protonExec.text()
+  # #----------------------------------------------------------------------------------------------------------
+  # def copyLauncherBinaryText(self):
+  #   if self.launcherCombo.currentText()=="Steam Proton":
+  #     self.protonExecold = self.protonExec.text()
+  #   else:
+  #     self.wineExecold = self.protonExec.text()
 
   #----------------------------------------------------------------------------------------------------------
   def changeLanguage(self):
-    self.console.info(f"[W] Switching languages is not yet supported!!")
+    self.console.info(f"{C_RED}[WARNING]</font> Switching languages is not yet supported!!")
 
-  #----------------------------------------------------------------------------------------------------------
-  def changeLauncher(self):
-    # self.console.info(f"Setting up {self.launcherList.currentText()}...")
-    # proton = True
-    if self.launcherCombo.currentText()=="Steam Proton":
-      self.lblWineExec.setVisible(False)
-      self.lblWinePrefix.setVisible(False)
-      self.wineExec.setVisible(False)
-      self.winePrefix.setVisible(False)
-
-      self.lblProtonExec.setVisible(True)
-      self.lblCompatData.setVisible(True)
-      self.protonExec.setVisible(True)
-      self.compatData.setVisible(True)
-
-      self.lblSteamRoot.setVisible(True)
-      self.steamRoot.setVisible(True)
-      self.btnSelectSteamRoot.setVisible(True)
-
-      self.steamRoot.setEnabled(True)
-      self.btnSelectSteamRoot.setEnabled(True)
-    else:
-      self.console.info(f"{C_RED}[WARNING]</font> Wine32 and Wine64 are untested!")
-      s = self.lblCompatData.size()
-      self.lblWinePrefix.setFixedSize(s) # only need to resize one to the widest size
-                                         # since the layout is
-
-      self.lblWineExec.setVisible(True)
-      self.lblWinePrefix.setVisible(True)
-      self.wineExec.setVisible(True)
-      self.winePrefix.setVisible(True)
-
-      self.lblProtonExec.setVisible(False)
-      self.lblCompatData.setVisible(False)
-      self.protonExec.setVisible(False)
-      self.compatData.setVisible(False)
-
-      self.lblSteamRoot.setVisible(False)
-      self.steamRoot.setVisible(False)
-      self.btnSelectSteamRoot.setVisible(False)
-
-      self.steamRoot.setEnabled(False)
-      self.btnSelectSteamRoot.setEnabled(False)
-  
   #----------------------------------------------------------------------------------------------------------
   def findWine(self):
     if self.protonExec.text()=="":
@@ -313,39 +285,10 @@ class cProfil(QWidget):
       self.console.info(f"{C_RED}[WARNING]</font> findProton function not yet implemented!")
   
   #----------------------------------------------------------------------------------------------------------
-  def selectPrefix(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select Prefix...")
+  def selectDialog(self, target : QLineEdit, title, dir = True):
+    if dir: filename = QFileDialog.getExistingDirectory(self, f"Select {title}...")
+    else: filename = QFileDialog.getOpenFileName(self, f"Select {title}...")
     if filename:
-      self.compatData.setText(filename[0])
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectDungeonHelperExec(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select DungeonHelper executable...")
-    if filename:
-      self.DungeonHelperExec.setText(filename)
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectxdotoolExec(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select xdotool executable...")
-    if filename:
-      self.xdotoolExec.setText(filename)
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectSteamRoot(self):
-    filename = QFileDialog.getExistingDirectory(self, "Select STEAM_ROOT...")
-    if filename:
-      self.steamRoot.setText(filename)
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectGameExec(self):
-    filename = QFileDialog.getOpenFileName(self, "Select game executable...")
-    if filename:
-      self.gameDir.setText(filename[0])
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectLauncher(self):
-    filename = QFileDialog.getOpenFileName(self, "Select launcher executable...")
-    if filename:
-      self.protonExec.setText(filename[0])
-
-  
+      target.setText(filename[0])
+    else:
+      self.console.error(f"{C_RED}[WARNING] invalid {title} selected, doing nothing...")
