@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
 from PyQt6.QtGui import QAction
 from util import *
 from cTab import cTab
+from cProfil import cProfil
 import os
 import subprocess
 import json
@@ -41,6 +42,9 @@ class cSettings(cTab):
     super().__init__("&Settings")
     self.main = main
     self.console = main.console
+    self.profiles : dict[str, cProfil] = {}
+
+
     self.useHighRes = QCheckBox("Use HighRes")
     self.usexdotool = QCheckBox("Use xdotool")
     self.useDungeonHelper = QCheckBox("Use DungeonHelper")
@@ -142,6 +146,9 @@ class cSettings(cTab):
     g.addWidget(self.DungeonHelperExec, 6, 2)
     g.addWidget(self.btnSelectDungeonHelperExec, 6, 3)
 
+    self.tmplay = QVBoxLayout()
+    g.addLayout(self.tmplay, 7, 0, 1, 4)
+
     self.usexdotool.toggled.connect(self.btnSelectxdotoolExec.setEnabled)
     self.usexdotool.toggled.connect(self.xdotoolExec.setEnabled)
     self.usexdotool.toggled.connect(self.findxdotool)
@@ -155,7 +162,7 @@ class cSettings(cTab):
     self.useDungeonHelper.setChecked(False)
     self.btnSelectDungeonHelperExec.setEnabled(False)
     self.DungeonHelperExec.setEnabled(False)
-    
+
     self.setLayout(g)
 
   #----------------------------------------------------------------------------------------------------------
@@ -262,6 +269,13 @@ class cSettings(cTab):
         act = QAction(f"\"{p}\" profile", self.main)
         self.main.launchMenu.addAction(act)
         self.connectAction2Profile(act, p)
+        if p in self.profiles.keys():
+          self.tmplay.removeWidget(self.profiles[p])
+          self.profiles[p].deleteLater()
+          del self.profiles[p]
+        self.profiles[p] = cProfil(self.main, p)
+        self.tmplay.addWidget(self.profiles[p])
+        self.profiles[p].load()
     self.profile.currentIndexChanged.connect(self.loadProfile)
 
   #----------------------------------------------------------------------------------------------------------

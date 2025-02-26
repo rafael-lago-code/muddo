@@ -122,7 +122,7 @@ class tPatcher(QRunnable):
     if True:
       protonWine = os.path.dirname(self.main.settings.launcherBinary.text()) + "/dist/bin/wine"
       evars = {'WINEPREFIX': f"{self.main.settings.protonPrefix}/pfx"}
-      cmd  = f"\"{protonWine}\" rundll32.exe PatchClient,Patch "
+      cmd  = f"\"{protonWine}\" rundll32.exe patchclient.dll,Patch "
       cmd += f"{self.main.credentials.serverInfo.patchServer} "
       cmd += f"--language {self.main.settings.languageList.currentText()} "
       cmd += f"--productcode {self.main.credentials.serverInfo.patchProductCode} "
