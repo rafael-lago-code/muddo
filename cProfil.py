@@ -225,25 +225,6 @@ class cProfil(QWidget):
     self.lastWorld = self.main.credentials.getSelectedWorld()
     self.lastAccounts = self.main.credentials.getSelectedAccounts()
   
-  # #----------------------------------------------------------------------------------------------------------
-  # def connectAction2Profile(self, a : QAction, p : str):
-  #   idx = self.profile.findText(p)
-  #   a.triggered.connect(lambda x : self.profile.setCurrentIndex(idx))
-
-  # #----------------------------------------------------------------------------------------------------------
-  # def copyPrefixText(self):
-  #   if self.launcherCombo.currentText()=="Steam Proton":
-  #     self.protonPrefixold = self.compatData.text()
-  #   else:
-  #     self.winePrefixold = self.compatData.text()
-
-  # #----------------------------------------------------------------------------------------------------------
-  # def copyLauncherBinaryText(self):
-  #   if self.launcherCombo.currentText()=="Steam Proton":
-  #     self.protonExecold = self.protonExec.text()
-  #   else:
-  #     self.wineExecold = self.protonExec.text()
-
   #----------------------------------------------------------------------------------------------------------
   def changeLanguage(self):
     self.console.info(f"{C_RED}[WARNING]</font> Switching languages is not yet supported!!")

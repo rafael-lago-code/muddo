@@ -114,10 +114,6 @@ class cSettings(cTab):
     a.triggered.connect(lambda x : self.profileList.setCurrentIndex(idx))
 
   #----------------------------------------------------------------------------------------------------------
-  def changeLanguage(self):
-    self.console.info(f"[W] Switching languages is not yet supported!!")
-  
-  #----------------------------------------------------------------------------------------------------------
   def changeProfile(self):
     pname = self.profileList.currentText()
     if not pname: return

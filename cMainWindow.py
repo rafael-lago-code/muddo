@@ -57,7 +57,7 @@ class cMainWindow(QMainWindow):
     self.btnLaunch.setEnabled(False)
     self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
     self.btnLaunch.setFixedWidth(120)
-    self.btnLaunch.clicked.connect(self.queueAll)
+    self.btnLaunch.clicked.connect(self.launchAll)
     
     launchLay = newHLayout([self.btnLaunch, self.btnProfile])
     launchLay.setSpacing(0)
@@ -102,7 +102,7 @@ class cMainWindow(QMainWindow):
     self.DungeonHelperWidget.initialize()
     self.news.initialize()
     self.patch.initialize()
-    self.sigQueuedUserDone.connect(self.launchUser)
+    # self.sigQueuedUserDone.connect(self.launchUser)
 
   #----------------------------------------------------------------------------------------------------------
   def profile(self, pname : str = None) -> cProfil:
@@ -118,7 +118,7 @@ class cMainWindow(QMainWindow):
   # This will queue everything; once a user is done queuing, it will emit 
   # sigQueuedUserDone. This will cause self.launchUser() to be triggered
   # for each user individually
-  def queueAll(self):
+  def launchAll(self):
     accs = self.credentials.getSelectedAccounts()
     if not accs: accs = [self.credentials.username.text()]
     if not accs:
@@ -131,11 +131,12 @@ class cMainWindow(QMainWindow):
       self.console.info(f"Authenticating \"{C_SILVER}{username}</font>\"...")
       proc = cProcessItem(self, username, world)
       self.processManager.addProcess(proc)
+      proc.launch()
     self.console.info("Finished submitting authentication, waiting for tickets")
 
-  #----------------------------------------------------------------------------------------------------------
-  def launchUser(self, username):
-    self.processManager.items[username].launch()
+  # #----------------------------------------------------------------------------------------------------------
+  # def launchUser(self, username):
+    # self.processManager.items[username].launch()
 
   #----------------------------------------------------------------------------------------------------------
   def close(self):

@@ -42,7 +42,7 @@ class cProcessManager(cTab):
     super().__init__("Process Manager")
     self.main = main
     self.console = main.console
-    self.items = OrderedDict()
+    self.items : OrderedDict[str, cProcessItem] = OrderedDict()
     pal = QPalette()
     self.colour1 = pal.color(QPalette.ColorRole.Window)
     self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
@@ -58,11 +58,13 @@ class cProcessManager(cTab):
     self.btnClear   = newToolbarButton(P_ICON_CLEARALL, "Removes all processes from the list of processes", self.removeAll)
 
     buttons = QWidget()
-    buttons.setLayout(newHLayout([newRQLabel("All processes: "), self.btnStart, self.btnSave,\
-                                  self.btnRestore, self.btnClear, self.btnKill]))
+    buttons.setLayout(newHLayout([newRQLabel("All processes: "), self.btnStart, self.btnKill, self.btnSave,\
+                                  self.btnRestore, self.btnClear]))
 
     self.content = newVLayout([header])
     self.setLayout(newVLayout([self.content, buttons]))
+    self.main.sigQueuedUserDone.connect(lambda u: self.items[u].launch())
+    self.main.sigAuthenticatedUser.connect(lambda u: self.items[u].updateTooltip())
 
   #----------------------------------------------------------------------------------------------------------
   def removeAll(self):
@@ -93,7 +95,7 @@ class cProcessManager(cTab):
     self.btnSave.setEnabled(True)
     self.btnRestore.setEnabled(True)
     self.btnClear.setEnabled(True)
-    self.items[p.account.username] = p
+    self.items[p.username.text()] = p
     self.setColour(p)
     self.content.addWidget(p)
   
@@ -130,7 +132,8 @@ class cProcessItem(QWidget):
   def __init__(self, main : cMainWindow, username : str, world : cWorld):
     super().__init__()
     self.main = main
-    self.account = tAccount(main, username, world)
+    self.account : tAccount = None
+    self.world = world
     self.console = main.console
     self.status = self.P_STATUS_UNKNOWN
     self.profile = main.profile() # yes, we freeze the profile here!
@@ -143,24 +146,34 @@ class cProcessItem(QWidget):
     self.profileID.setFixedWidth(80)
 
     self.btnToggle  = newToolbarButton(P_ICON_PLAY,  "Toggle (kill/start) process", self.toggle)
-    self.btnDetails = newToolbarButton(P_ICON_NOTES, "Prints full commandline with all arguments", self.details)
     self.btnSave    = newToolbarButton(P_ICON_SAVE,  "Save this windows's position", self.saveWindow)
     self.btnRestore = newToolbarButton(P_ICON_UNDO,  "Restore previously saved windows position", self.restoreWindow)
     self.btnRemove  = newToolbarButton(P_ICON_TRASH, "Removes this process from the list of processes",  self.remove)
+    self.updateTooltip()
+
     
     self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
-                              self.btnRemove, self.btnDetails]))
-    QtCore.QThreadPool.globalInstance().start(self.account)
+                              self.btnRemove]))
 
   
   #----------------------------------------------------------------------------------------------------------
-  def launch(self):
-    self.btnToggle.setEnabled(True)
-    self.btnDetails.setEnabled(True)
-    self.btnRemove.setEnabled(True)
+  def authenticate(self):
+    self.account = tAccount(self.main, self.username.text(), self.world)
+    QtCore.QThreadPool.globalInstance().start(self.account)
+    # Once queue is done, tAccount will emit sigQueueDone which calls self.launch()
+    
 
+  #----------------------------------------------------------------------------------------------------------
+  def launch(self):
+    if self.account is None:
+      self.authenticate()
+      return
+    
+    self.btnToggle.setEnabled(True)
+    self.btnRemove.setEnabled(True)
     self.console.info(f"Launching {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+    # Logfile is not working anyways...
     # logname = P_DEFAULT_CONFIGDIR+os.sep+self.account.world.name+"_"+self.account.username
     # if os.path.exists(logname+".out"): os.rename(logname+".out",logname+".out.old")
     # if os.path.exists(logname+".err"): os.rename(logname+".err",logname+".err.old")
@@ -172,6 +185,9 @@ class cProcessItem(QWidget):
     # Since I'm not testing for 32-bits client anyways, I might as well just keep it hardcoded.
     gameExec = 'x64/dndclient64.exe'
 
+    # TODO: I was supposed to use subprocess and set environment variables and CWD properly
+    # but it simply does not start the game. Once I figure it out I will use it instead of
+    # os.system call. For the time being, everything needs to be a oneliner.
     cmd  = f"cd \"{gameDir}\" ; "
     cmd += f"STEAM_ROOT=\"{self.profile.steamRoot.text()}\" PROTON_LOG=1 "
     cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile.compatData.text()}\" "
@@ -190,6 +206,21 @@ class cProcessItem(QWidget):
 
     self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
     self.status = self.P_STATUS_RUNNING
+  
+  #----------------------------------------------------------------------------------------------------------
+  def updateTooltip(self):
+    if self.account is None:
+      text = "<i>Not yet authenticated...</i>"
+    else:
+      arg = self.parseArguments().split(" ")
+      text = "<b>Commandline arguments:<br>-----------------------------------------------------</b></br>"
+      for a in arg:
+        if a.startswith("-"):
+          text += "<br><b>"+a+"</b> "
+        else:
+          text += a
+    self.setToolTip(text)
+    
   
   #----------------------------------------------------------------------------------------------------------
   def remove(self):
@@ -231,7 +262,6 @@ class cProcessItem(QWidget):
 
     self.pid.setText("NA")
     self.winID.setText("NA")
-    self.profileID.setText("")
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
@@ -242,18 +272,10 @@ class cProcessItem(QWidget):
     if self.status == self.P_STATUS_RUNNING:
       self.kill()
     else:
-      world = self.account.world
-      del self.account
-      self.account = tAccount(self.main, self.username.text(), world)
-      QtCore.QThreadPool.globalInstance().start(self.account)
-
-  #----------------------------------------------------------------------------------------------------------
-  def details(self):
-    arg = self.parseArguments()
-    self.console.info(f"<br>Arguments for {C_SILVER}{self.username.text()}</font>:")
-    self.console.info(f"--------------------------------------------------------------")
-    self.console.info(arg)
-    self.console.info(f"--------------------------------------------------------------")
+      self.launch()
+      # del self.account
+      # self.account = tAccount(self.main, self.username.text(), world)
+      # QtCore.QThreadPool.globalInstance().start(self.account)
 
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):

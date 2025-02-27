@@ -15,7 +15,7 @@ Links:
 
 ## TODO
 - implement the patching capabilities
-  - files patching seems to be working, but not data patching
+  - the first patching (when you install the game) doesn't seem to be working, but subsequent patches seem to be fine
 - migrate the game launcher from os.system to subprocess
   - currently it doesn't start but also doesn't show any specific error
 - implement news display
