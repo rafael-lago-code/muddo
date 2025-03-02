@@ -114,6 +114,7 @@ class cProfil(QWidget):
     self.useDungeonHelper.toggled.connect(btnSelectDungeonHelperExec.setEnabled)
     self.useDungeonHelper.toggled.connect(self.DungeonHelperExec.setEnabled)
     self.useDungeonHelper.toggled.connect(self.findDungeonHelper)
+    self.useDungeonHelper.toggled.connect(self.main.btnDH.setVisible)
     self.useDungeonHelper.setChecked(False)
     self.DungeonHelperExec.setEnabled(False)
     btnSelectDungeonHelperExec.setEnabled(False)

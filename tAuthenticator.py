@@ -22,49 +22,31 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtCore import QRunnable, pyqtSignal
 from util import *
 import os
 import xml.dom.minidom
 import urllib
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-   from cMainWindow import cMainWindow
-   from cWorlds import cWorld
+   from cDDO import cDDO
 
-class tAccount(QRunnable):
+class tAuthenticator():
   P_STATUS_ERROR = -1
   P_STATUS_UNKNOWN = 0
   P_STATUS_DONE = 1
   P_STATUS_AUTHENTICATING = 3
   P_STATUS_QUEUEING = 4
 
-  def __init__(self, main : cMainWindow, username : str, world : cWorld):
+  def __init__(self, ddo : cDDO):
     super().__init__()
-    self.main = main
-    self.console = main.console
-    self.username = username
-    self.world = world
-    self.serverInfo = main.credentials.serverInfo
+    self.main = ddo.main
+    self.ddo = ddo
+    self.console = ddo.main.console
+    self.credentials = ddo.main.credentials
     self.ticket = None
     self.status = self.P_STATUS_UNKNOWN
     self.subscription = None
 
-  #----------------------------------------------------------------------------------------------------------
-  def run(self):
-    self.status = self.P_STATUS_AUTHENTICATING
-    if self.authenticate():
-      self.main.sigAuthenticatedUser.emit(self.username)
-    else:
-      self.status = self.P_STATUS_ERROR
-      return
-    
-    self.status = self.P_STATUS_QUEUEING
-    if not self.wait():
-      self.status = self.P_STATUS_ERROR
-      return
-
-  
   #----------------------------------------------------------------------------------------------------------
   def authenticate(self):
     SM_TEMPLATE = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\
@@ -74,13 +56,13 @@ class tAccount(QRunnable):
     <soap:Body><LoginAccount xmlns=\"http://www.turbine.com/SE/GLS\"><username>%s</username>\
     <password>%s</password><additionalInfo></additionalInfo></LoginAccount></soap:Body></soap:Envelope>"
 
-    password = self.main.credentials.accounts[self.username]
-    SoapMessage = SM_TEMPLATE%(self.username, password)
+    password = self.credentials.accounts[self.ddo.username.text()]
+    SoapMessage = SM_TEMPLATE%(self.ddo.username.text(), password)
     webresp = None
 
     try:
       msg = SoapMessage.encode()
-      webservice, post = getConnection(self.serverInfo.authServer)
+      webservice, post = getConnection(self.credentials.serverInfo.authServer)
 
       webservice.putrequest("POST", post)
       webservice.putheader("Content-type", "text/xml; charset=\"UTF-8\"")
@@ -96,12 +78,12 @@ class tAccount(QRunnable):
       self.ticket = ""
       tempxml = webresp.read().decode()
 
-      filename = P_DEFAULT_WORKDIR+os.sep+"GLSAuthServer_"+self.username+".xml"
+      filename = P_DEFAULT_WORKDIR+os.sep+"GLSAuthServer_"+self.ddo.username.text()+".xml"
       with open(filename, "w") as f:
         f.write(tempxml)
 
       if tempxml == "":
-        self.console.error(f"Failed to fetch information from \"{self.serverInfo.authServer}\"")
+        self.console.error(f"Failed to fetch information from \"{self.credentials.serverInfo.authServer}\"")
         return False
       else:
         doc = xml.dom.minidom.parseString(tempxml)
@@ -129,7 +111,7 @@ class tAccount(QRunnable):
         #   self.messError = "No Error"
         #   self.authSuccess = True
         # else:
-        #   self.console.error(f"Game account \"{self.username}\" not associated with user account - please visit games website and check account details")
+        #   self.console.error(f"Game account \"{self.ddo.username.text()}\" not associated with user account - please visit games website and check account details")
     except ssl.SSLError as e:
       self.console.error("SSL error occured in HTTPS connection", e)
       return False
@@ -141,9 +123,8 @@ class tAccount(QRunnable):
       return False
     else:
       if self.subscription is None:
-        self.console.error(f"Game account \"{C_SILVER}{self.username}</font>\" not associated with user account - please visit games website and check account details")
+        self.console.error(f"Game account \"{C_SILVER}{self.ddo.username.text()}</font>\" not associated with user account - please visit games website and check account details")
         return False
-      self.console.info(f"Authenticated \"{C_SILVER}{self.username}</font>\"!")
       return True
 
   #----------------------------------------------------------------------------------------------------------
@@ -151,10 +132,11 @@ class tAccount(QRunnable):
     number  = None
     serving = None
     try:
-      webservice, post = getConnection(self.serverInfo.worldQueueURL)
+      webservice, post = getConnection(self.credentials.serverInfo.worldQueueURL)
 
-      argComplete = self.serverInfo.worldQueueParam.replace("{0}", self.subscription).replace("{1}",
-        urllib.parse.quote(self.ticket)).replace("{2}", urllib.parse.quote(self.world.queueURL))
+      argComplete = self.credentials.serverInfo.worldQueueParam.replace("{0}", 
+        self.subscription).replace("{1}", urllib.parse.quote(self.ticket)).replace("{2}", 
+        urllib.parse.quote(self.ddo.world.queueURL))
 
       msg = argComplete.encode()
       webservice.putrequest("POST", post)
@@ -166,7 +148,7 @@ class tAccount(QRunnable):
 
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
-      filename = P_DEFAULT_CONFIGDIR+os.sep+"WorldQueue_"+self.username+".xml"
+      filename = P_DEFAULT_CONFIGDIR+os.sep+"WorldQueue_"+self.ddo.username.text()+".xml"
 
       with open(filename, "w") as f:
         f.write(tempxml)
@@ -178,22 +160,20 @@ class tAccount(QRunnable):
           serving = getText(doc.getElementsByTagName("NowServingNumber")[0].childNodes)
 
     except Exception as e:
-      self.console.error(f"Error checking the queue for \"{C_SILVER}{self.username}</font>\"<br>"+\
-                         f"(number,serving) = ({number},{serving})<br>"+\
-                         f"queueURL={self.world.queueURL}",e)
+      self.console.error(f"Error checking the queue for \"{C_SILVER}{self.ddo.username.text()}</font>\"<br>\
+                         (number,serving) = ({number},{serving})<br>\
+                         queueURL={self.ddo.world.queueURL}",e)
     return (number, serving)
 
   #----------------------------------------------------------------------------------------------------------
   def wait(self):
     (number, serving) = self.queue()
-    if number and serving:
-      self.main.sigQueuedUser.emit(self.username)
     while number > serving:
       if number is None or serving is None:
-        self.console.error(f"Something went wrong while queueing for account \"{C_SILVER}{self.username}</font>\"")
+        self.console.error(f"Something went wrong while queueing for account \"{C_SILVER}\
+                           {self.ddo.username.text()}</font>\"")
         return False
-    self.console.info(f"Queueing done for \"{C_SILVER}{self.username}</font>\", joining server...")
-    self.main.sigQueuedUserDone.emit(self.username)
+    self.console.info(f"Queueing done for \"{C_SILVER}{self.ddo.username.text()}</font>\", joining server...")
     return True
       
 

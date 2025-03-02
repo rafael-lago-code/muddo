@@ -41,11 +41,15 @@ class cTab(QWidget):
       self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
       self.setVisible(True)
     else:
-      self.setVisible(False)
       self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
+      self.setVisible(False)
 
   def setVisible(self, value : bool):
-    super().setVisible(value)
     self.toggler.setChecked(value)
+    if value:
+      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
+    else:
+      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
+    super().setVisible(value)
 
 

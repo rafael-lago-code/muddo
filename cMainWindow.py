@@ -31,15 +31,11 @@ from cPatch import cPatch
 from cConsole import cConsole
 from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
-from cProcess import cProcessManager, cProcessItem
-from tAccount import tAccount
+from cProcess import cProcessManager
+from cDDO import cDDO
 from util import *
-import json
 
 class cMainWindow(QMainWindow):
-  sigAuthenticatedUser = pyqtSignal(str)
-  sigQueuedUser = pyqtSignal(str)
-  sigQueuedUserDone = pyqtSignal(str)
   sigProfileChanged = pyqtSignal(list)
 
   def __init__(self):
@@ -52,6 +48,7 @@ class cMainWindow(QMainWindow):
     self.btnProfile.setMenu(self.launchMenu)
     self.btnProfile.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
     self.btnProfile.setFixedWidth(25)
+    self.lblProfile = QLabel()
 
     self.btnLaunch = QPushButton(getIcon(P_ICON_D20), " &Launch")
     self.btnLaunch.setEnabled(False)
@@ -75,8 +72,12 @@ class cMainWindow(QMainWindow):
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)
 
-    self.DungeonHelperWidget = cDungeonHelper(self)
-    lButtonsBar = newHLayout(self.DungeonHelperWidget.getWidgets()+ ['__stretch__',launchLay, btnQuit])
+    pmap = QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DungeonHelperIcon32.png')
+    self.btnDH = QPushButton(QIcon(pmap), "Dungeon Helper")
+    self.btnDH.setIconSize(P_DEFAULT_ICON_SIZE)
+    self.btnDH.clicked.connect(self.launchDH)
+
+    lButtonsBar = newHLayout([self.btnDH, self.lblProfile,'__stretch__',launchLay, btnQuit])
 
     tabController  = QWidget()
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, self.patch.toggler, self.news.toggler]))
@@ -94,15 +95,16 @@ class cMainWindow(QMainWindow):
     
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
+    self.sigProfileChanged.connect(lambda : self.btnDH.setVisible(self.profile().useDungeonHelper.isChecked()))
+
     self.settings.initialize()
     if self.profile() is None:
       self.console.abort("No valid profile loaded!")
     self.credentials.initialize()
-
-    self.DungeonHelperWidget.initialize()
     self.news.initialize()
     self.patch.initialize()
-    # self.sigQueuedUserDone.connect(self.launchUser)
+
+
 
   #----------------------------------------------------------------------------------------------------------
   def profile(self, pname : str = None) -> cProfil:
@@ -128,15 +130,17 @@ class cMainWindow(QMainWindow):
     self.processManager.setVisible(True)
     world = self.credentials.listWorlds.currentItem()
     for username in accs:
-      self.console.info(f"Authenticating \"{C_SILVER}{username}</font>\"...")
-      proc = cProcessItem(self, username, world)
+      proc = cDDO(self, username, world)
       self.processManager.addProcess(proc)
       proc.launch()
-    self.console.info("Finished submitting authentication, waiting for tickets")
-
-  # #----------------------------------------------------------------------------------------------------------
-  # def launchUser(self, username):
-    # self.processManager.items[username].launch()
+    self.console.info("Finished queueing...")
+  
+  #----------------------------------------------------------------------------------------------------------
+  def launchDH(self):
+    self.processManager.setVisible(True)
+    dh = cDungeonHelper(self)
+    self.processManager.addProcess(dh)
+    dh.launch()
 
   #----------------------------------------------------------------------------------------------------------
   def close(self):

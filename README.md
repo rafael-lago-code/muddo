@@ -24,6 +24,7 @@ Links:
 - add cmd line option for verbosity
 - finalize DungeonHelper support
   - maybe add support for downloading/installing DungeonHelper.exe?
+- move xdotools from cProfil to cSettings
 
 ## License
 

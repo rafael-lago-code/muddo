@@ -103,7 +103,6 @@ P_DEFAULT_ICON_PATHS  = [os.path.dirname(os.path.abspath(__file__))+'/images/cus
                          '/usr/share/icons/gnome',
                          '/usr/share/icons/Humanity-Dark',
                          '/usr/share/icons/Humanity']
-
 P_CERTFILE = None
 P_CERTCTX = None
 
@@ -202,15 +201,32 @@ def newToolbarButton(icon, tooltip, connection):
   btn.setToolTip(tooltip)
   btn.clicked.connect(connection)
   return btn
+
+#----------------------------------------------------------------------------------------------------------
+def newHeaderLabel(title, width=80):
+  hlbl = QLabel(title)
+  hlbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+  hlbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+  hlbl.setFixedWidth(width)
+  return hlbl
+
+#----------------------------------------------------------------------------------------------------------
+def newProcessField(title, width=80):
+  flbl = QLabel(title)
+  flbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
+  flbl.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.TextSelectableByMouse)
+  flbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+  flbl.setFixedWidth(width)
+  return flbl
   
 #----------------------------------------------------------------------------------------------------------
-def pathLinux2Windows(linuxPath):
+def pathLinux2Windows(linuxPath : str):
    tmp = linuxPath.split('/')
    tmp = tmp[tmp.index('drive_c')+1:]
    return "C:\\" + "\\".join(tmp)
 
 #----------------------------------------------------------------------------------------------------------
-def getPrefix(linuxPath):
+def getPrefix(linuxPath : str):
    tmp = linuxPath.split('/')
    return "/".join(tmp[0:tmp.index('drive_c')])
 

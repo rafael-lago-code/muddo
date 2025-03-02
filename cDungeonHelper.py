@@ -17,109 +17,88 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
-#    script by SNy (<SNy@bmx-chemnitz.de>)
+#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
+#    (<SNy@bmx-chemnitz.de>)
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
-from util import *
-import os
+from PyQt6.QtCore import QRunnable, pyqtSignal
+from cProcess import aProcessItem
+from tAuthenticator import tAuthenticator
+from tWinManager import tWinManager
 import subprocess
-import time
+import os, time
+from util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
-
-class cDungeonHelper(QWidget):
-    sigGotPID = pyqtSignal(bool)
-    P_STATUS_UNKNOWN = 0
-    P_STATUS_LAUNCHING = 1
-    P_STATUS_RUNNING = 2
-
-    def __init__(self, main : cMainWindow):
-      super().__init__()
-      self.main = main
-      self.console = main.console
-      self.profile = main.profile()  # we should freeze the profile here, but this class needs some reworking...
-      self.btnLaunch  = newToolbarButton(P_ICON_PLAY,  "Start DungeonHelper", self.launch)
-      self.btnKill  = newToolbarButton(P_ICON_SKULL,  "Stop DungeonHelper", self.kill)
-      self.statusLbl = QLabel()
-      self.pid = ""
-      self.status = self.P_STATUS_UNKNOWN
-
-      self.btnLaunch.setEnabled(True)
-      self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
-      self.btnKill.setEnabled(True)
-      self.btnKill.setIconSize(P_DEFAULT_ICON_SIZE)
-
-      pmap = QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DungeonHelperIcon.png')
-      self.icon = QLabel()
-      self.icon.setPixmap(pmap.scaled(P_DEFAULT_ICON_SIZE))
-      self.iconLabel = newRQLabel('Dungeon Helper: ')
-    
-    #----------------------------------------------------------------------------------------------------------
-    def initialize(self):
-      self.main.sigProfileChanged.connect(lambda : self.setVisible(self.main.profile().useDungeonHelper.isChecked()))
-
-    #----------------------------------------------------------------------------------------------------------
-    def setVisible(self, val : bool):
-      self.icon.setVisible(val)
-      self.iconLabel.setVisible(val)
-      self.btnLaunch.setVisible(val)
-      self.btnKill.setVisible(val)
-      self.statusLbl.setVisible(val)
-    
-    #----------------------------------------------------------------------------------------------------------
-    def getWidgets(self):
-      return [self.icon, self.iconLabel, self.btnLaunch, self.btnKill, self.statusLbl]
-
-    #----------------------------------------------------------------------------------------------------------
-    def launch(self):
-      self.profile = self.main.profile()
-      if self.status != self.P_STATUS_RUNNING:
-        self.console.info(f"Launching DungeonHelper.exe...")
-        self.status = self.P_STATUS_LAUNCHING
-
-        dhexec = self.profile.DungeonHelperExec.text()
-        cmd  = f"STEAM_ROOT=\"{self.profile.steamRoot.text()}\" PROTON_LOG=1 "
-        cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile.compatData.text()}\" "
-        cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.profile.compatData.text()}\" "
-        cmd += f"\"{self.profile.protonExec.text()}\" run "
-        cmd += f"\"{pathLinux2Windows(dhexec)}\""
-
-        exec = tDungeonHelperExecutable(cmd)
-        QtCore.QThreadPool.globalInstance().start(exec)
-        pidw = tDHPIDWatcher(self, dhexec)
-        QtCore.QThreadPool.globalInstance().start(pidw)
-
-    #----------------------------------------------------------------------------------------------------------
-    def kill(self):
-      if self.status == self.P_STATUS_RUNNING:
-        self.console.info(f"Killing DungeonHelper...")
-        try:
-          out = subprocess.check_output([f"kill -9 {self.pid}"], shell=True)
-        except Exception as e:
-          self.console.error(f"cDungeonHelper.kill: unknown error killing process with PID {self.pid}", e)
-        self.status = self.P_STATUS_UNKNOWN
-        self.statusLbl.setText("")
-
+   from cWorlds import cWorld
 
 #----------------------------------------------------------------------------------------------------------
+class cDungeonHelper(aProcessItem):
+  def __init__(self, main : cMainWindow):
+    super().__init__(main)
+    self.key = "dh_"+self.profile.name
+    
+    self.profileID.setText(self.profile.name)
+    self.worldname.setText("NA")
+    self.username.setText("Dungeon Helper")
+    self.updateTooltip()
+    self.btnToggle.setEnabled(True)
+    self.btnSave.setEnabled(False)
+    self.btnRestore.setEnabled(False)
+    self.btnRemove.setEnabled(True)
+
+    self.sigGotPID.connect(self.updateTooltip)
+
+  #----------------------------------------------------------------------------------------------------------
+  def launch(self):
+    if not self.profile.useDungeonHelper.isChecked(): return
+    if self.status != self.P_STATUS_RUNNING:
+      self.console.info(f"Launching DungeonHelper.exe...")
+      self.status = self.P_STATUS_RUNNING
+
+      dhexec = self.profile.DungeonHelperExec.text()
+      cmd  = f"STEAM_ROOT=\"{self.profile.steamRoot.text()}\" PROTON_LOG=1 "
+      cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile.compatData.text()}\" "
+      cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.profile.compatData.text()}\" "
+      cmd += f"\"{self.profile.protonExec.text()}\" run "
+      cmd += f"\"{pathLinux2Windows(dhexec)}\""
+
+      exec = tDungeonHelperExecutable(self, cmd)
+      QtCore.QThreadPool.globalInstance().start(exec)
+      self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
+      self.status = self.P_STATUS_RUNNING
+      self.pid.setText("L")
+      pidw = tDHPIDWatcher(self, dhexec)
+      QtCore.QThreadPool.globalInstance().start(pidw)
+
+  #----------------------------------------------------------------------------------------------------------
+  def updateTooltip(self):
+    if self.pid.text().isdecimal():
+      text = "<b>Running</b>"
+    else:
+      text = "<i>Not running</i>"
+    self.setToolTip(text)
+  
+#----------------------------------------------------------------------------------------------------------
 class tDungeonHelperExecutable(QRunnable):
-  def __init__(self, exec):
+  def __init__(self,dh : cDungeonHelper, exec):
     super().__init__()
+    self.dh = dh
     self.exec = exec
   #----------------------------------------------------------------------------------------------------------
   def run(self):
     os.system(self.exec)
+    if self.dh.status == self.dh.P_STATUS_RUNNING:
+      self.dh.sigTerminated.emit(True)
+
 
 #----------------------------------------------------------------------------------------------------------
 class tDHPIDWatcher(QRunnable):
   def __init__(self, dhWidget : cDungeonHelper, exec : str):
     super().__init__()
-    self.dhWidget = dhWidget
+    self.dh = dhWidget
     self.exec = exec
 
   #----------------------------------------------------------------------------------------------------------
@@ -131,13 +110,13 @@ class tDHPIDWatcher(QRunnable):
         for line in out.decode().strip().split('\n'):
           line = line.split()
           if line[4].startswith("C:\\"):
-            self.dhWidget.pid = line[0]
-            self.dhWidget.status = self.dhWidget.P_STATUS_RUNNING
-            self.dhWidget.statusLbl.setText(f"Running with PID={line[0]}")
-            self.dhWidget.sigGotPID.emit(True)
+            self.dh.pid.setText(line[0])
+            self.dh.status = self.dh.P_STATUS_RUNNING
+            self.dh.sigGotPID.emit(True)
             return True
-          time.sleep(0.1)
       except: pass
-    self.dhWidget.console.error("cDungeonHelper.getPID: could not get PID, process may not be running anymore...")
-    self.dhWidget.sigGotPID.emit(False)
+      time.sleep(0.1)
+    self.dh.console.error("tDHPIDWatcher: could not get PID, process may not be running anymore...")
+    self.dh.sigGotPID.emit(False)
     return False
+  
