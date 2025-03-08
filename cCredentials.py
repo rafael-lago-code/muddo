@@ -23,11 +23,12 @@
 #
 from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QCheckBox, QListWidget, \
-  QPushButton, QSizePolicy, QListWidgetItem
+  QSizePolicy, QListWidgetItem
 from PyQt6 import QtCore
 from cWorlds import cWorldList
 from tServerInfo import tServerInfo
-from util import *
+from cWidgets.cButton import cButton
+from cWidgets.util import *
 import json
 
 from typing import TYPE_CHECKING
@@ -56,14 +57,10 @@ class cCredentials(QWidget):
     self.showPassword = QCheckBox("Sho&w Password")
     self.multiAccount = QCheckBox("&Multi Account")
     
-    btnAdd = QPushButton(" &Add")
-    btnDel = QPushButton(" &Del")
-    btnClear = QPushButton(" &Clear")
+    btnAdd = cButton(" &Add", P_ICON_ADD)
+    btnDel = cButton(" &Del", P_ICON_REMOVE)
+    btnClear = cButton(" &Clear", P_ICON_CLEAR)
     
-    btnAdd.setIcon(getIcon(P_ICON_ADD))
-    btnDel.setIcon(getIcon(P_ICON_REMOVE))
-    btnClear.setIcon(getIcon(P_ICON_CLEAR))
-
     btnAdd.clicked.connect(self.addAccount)
     btnDel.clicked.connect(self.delAccount)
     btnClear.clicked.connect(self.clearEdits)

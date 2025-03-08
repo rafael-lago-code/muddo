@@ -21,7 +21,7 @@
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu, QToolButton
+from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, pyqtSignal
 from cCredentials import cCredentials
@@ -33,7 +33,8 @@ from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cDDO import cDDO
-from util import *
+from cWidgets.cButton import cButton
+from cWidgets.util import *
 
 class cMainWindow(QMainWindow):
   sigProfileChanged = pyqtSignal(list)
@@ -44,22 +45,16 @@ class cMainWindow(QMainWindow):
     self.setWindowIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/icon.png')))
     self.launchMenu = QMenu() # filled in cSettings
 
-    self.btnProfile = QPushButton()
-    self.btnProfile.setMenu(self.launchMenu)
-    self.btnProfile.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.btnProfile.setFixedWidth(25)
     self.lblProfile = QLabel()
+    self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
 
-    self.btnLaunch = QPushButton(getIcon(P_ICON_D20), " &Launch")
-    self.btnLaunch.setEnabled(False)
+    self.btnLaunch = cButton(" &Launch", P_ICON_D20, False)
     self.btnLaunch.setIconSize(P_DEFAULT_ICON_SIZE)
     self.btnLaunch.setFixedWidth(120)
     self.btnLaunch.clicked.connect(self.launchAll)
     
-    launchLay = newHLayout([self.btnLaunch, self.btnProfile])
-    launchLay.setSpacing(0)
-
-    btnQuit = QPushButton(getIcon(P_ICON_EXIT), " &Quit")
+    btnQuit = cButton(" &Quit", P_ICON_EXIT)
     btnQuit.setIconSize(P_DEFAULT_ICON_SIZE)
     btnQuit.setFixedWidth(120)
     btnQuit.clicked.connect(self.close)
@@ -72,12 +67,12 @@ class cMainWindow(QMainWindow):
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)
 
-    pmap = QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DungeonHelperIcon32.png')
-    self.btnDH = QPushButton(QIcon(pmap), "Dungeon Helper")
+    self.btnDH = cButton("Dungeon Helper")
+    self.btnDH.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DungeonHelperIcon32.png')))
     self.btnDH.setIconSize(P_DEFAULT_ICON_SIZE)
     self.btnDH.clicked.connect(self.launchDH)
 
-    lButtonsBar = newHLayout([self.btnDH, self.lblProfile,'__stretch__',launchLay, btnQuit])
+    lButtonsBar = newHLayout([self.btnDH, self.lblProfile, self.btnLaunch, btnQuit])
 
     tabController  = QWidget()
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, self.patch.toggler, self.news.toggler]))
@@ -96,6 +91,7 @@ class cMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     self.sigProfileChanged.connect(lambda : self.btnDH.setVisible(self.profile().useDungeonHelper.isChecked()))
+    self.sigProfileChanged.connect(lambda p: self.lblProfile.setText(f"Profile: {p[1]}{getArrow()}"))
 
     self.settings.initialize()
     if self.profile() is None:
@@ -103,8 +99,6 @@ class cMainWindow(QMainWindow):
     self.credentials.initialize()
     self.news.initialize()
     self.patch.initialize()
-
-
 
   #----------------------------------------------------------------------------------------------------------
   def profile(self, pname : str = None) -> cProfil:

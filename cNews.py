@@ -21,9 +21,9 @@
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QWidget, QTextEdit, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QSizePolicy
-from util import *
-from cTab import cTab
+from PyQt6.QtWidgets import QTextEdit, QVBoxLayout
+from cWidgets.util import *
+from cWidgets.cTab import cTab
 
 class cNews(cTab):
 

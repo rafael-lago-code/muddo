@@ -16,16 +16,12 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
-#
 #
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable
 import subprocess
 import time
-from util import *
+from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cDDO import cDDO
@@ -51,9 +47,10 @@ class tWinManager(QRunnable):
 
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
+    e = None
     for i in range(5):
       try:
-        out = subprocess.check_output([f"{bin} getwindowgeometry {self.ddo.winID.text()}"], shell=True)
+        out = subprocess.check_output([f"{self.bin} getwindowgeometry {self.ddo.winID.text()}"], shell=True)
         out = out.decode().strip().split('\n')
         pos = out[1].split()[1].split(',')
         self.ddo.profile.windowsPreferences[self.ddo.username.text()] = (int(pos[0]), int(pos[1]))
@@ -89,7 +86,7 @@ class tWinManager(QRunnable):
         self.ddo.sigGotWinID.emit(True)
         return
       else:
-        self.ddo.winID.setText("NA")
+        self.ddo.winID.setText("")
         id, e = self.probeWinID()
         if not id.startswith("ERROR"):
           self.ddo.winID.setText(id)

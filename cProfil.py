@@ -22,12 +22,10 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
-  QPushButton, QCheckBox, QLineEdit, QWidget
-from PyQt6.QtGui import QAction
-from util import *
-from cTab import cTab
-from cGridLayout import cGridLayout
+from PyQt6.QtWidgets import QComboBox, QFileDialog, QCheckBox, QLineEdit, QWidget
+from cWidgets.util import *
+from cWidgets.cButton import cButton
+from cWidgets.cGridLayout import cGridLayout
 import os
 import subprocess
 import json
@@ -67,14 +65,14 @@ class cProfil(QWidget):
     self.xdotoolExec = QLineEdit()
     self.DungeonHelperExec = QLineEdit()
 
-    btnSelectProtonExec  = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    btnSelectCompatData  = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    btnSelectWineExec    = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    btnSelectWinePrefix  = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    btnSelectSteamRoot   = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    btnSelectGameDir     = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    btnSelectxdotoolExec = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
-    btnSelectDungeonHelperExec = QPushButton(icon=getIcon(P_ICON_OPENFOLDER))
+    btnSelectProtonExec  = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select Steam Proton executable")
+    btnSelectCompatData  = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select STEAM_COMPAT_DATA")
+    btnSelectWineExec    = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select Wine executable") 
+    btnSelectWinePrefix  = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select WINEPREFIX")
+    btnSelectSteamRoot   = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select STEAM_ROOT")
+    btnSelectGameDir     = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select Dungeons \& Dragons Online game path")
+    btnSelectxdotoolExec = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select xdotool executable")
+    btnSelectDungeonHelperExec = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select DungeonHelper executable")
 
     lblWineExec   = newRQLabel("Wine Executable: ")
     lblWinePrefix = newRQLabel("WINEPREFIX: ")

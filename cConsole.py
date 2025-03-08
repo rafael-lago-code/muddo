@@ -16,14 +16,10 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
-#    script by SNy (<SNy@bmx-chemnitz.de>)
-#
 #
 from PyQt6.QtWidgets import QTextEdit
 from PyQt6.QtCore import pyqtSignal
-from util import *
+from cWidgets.util import *
 from datetime import datetime
 import sys
 

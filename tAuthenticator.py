@@ -22,7 +22,7 @@
 #
 #
 from __future__ import annotations
-from util import *
+from cWidgets.util import *
 import os
 import xml.dom.minidom
 import urllib

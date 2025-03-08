@@ -22,8 +22,8 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtCore import QRunnable, pyqtSignal
-from util import *
+from PyQt6.QtCore import QRunnable
+from cWidgets.util import *
 import os
 import xml.dom.minidom
 from typing import TYPE_CHECKING

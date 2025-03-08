@@ -16,23 +16,16 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
-#
 #
 from __future__ import annotations
-from PyQt6.QtCore import QRunnable, pyqtSignal
+from PyQt6.QtCore import QRunnable
 from cProcess import aProcessItem
-from tAuthenticator import tAuthenticator
-from tWinManager import tWinManager
 import subprocess
 import os, time
-from util import *
+from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
-   from cWorlds import cWorld
 
 #----------------------------------------------------------------------------------------------------------
 class cDungeonHelper(aProcessItem):
@@ -41,7 +34,7 @@ class cDungeonHelper(aProcessItem):
     self.key = "dh_"+self.profile.name
     
     self.profileID.setText(self.profile.name)
-    self.worldname.setText("NA")
+    self.worldname.setText("")
     self.username.setText("Dungeon Helper")
     self.updateTooltip()
     self.btnToggle.setEnabled(True)

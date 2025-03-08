@@ -16,10 +16,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
-#    script by SNy (<SNy@bmx-chemnitz.de>)
-#
 #
 import os
 from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout,\
@@ -95,8 +91,8 @@ P_ICON_CONNECTED_GREEN = "network-connect-green"
 P_ICON_DISCONNECTED_RED  = "network-disconnect-red"
 P_ICON_SKULL = "human-skull-white"
 
-P_DEFAULT_ICON_PATHS  = [os.path.dirname(os.path.abspath(__file__))+'/images/custom-icons/',
-                         os.path.dirname(os.path.abspath(__file__))+'/images/breeze-dark-icons/',
+P_DEFAULT_ICON_PATHS  = [os.path.dirname(os.path.abspath(__file__))+'/../images/custom-icons/',
+                         os.path.dirname(os.path.abspath(__file__))+'/../images/breeze-dark-icons/',
                          '/usr/share/icons/breeze-dark',
                          '/usr/share/icons/breeze',
                          '/usr/share/icons/Adwaita',
@@ -121,7 +117,7 @@ for icon in dir():
       break
 
 #----------------------------------------------------------------------------------------------------------
-P_CERTFILE = os.path.dirname(__file__)+"/certificates/ca_cert2025.pem"
+P_CERTFILE = os.path.dirname(__file__)+"/../certificates/ca_cert2025.pem"
 P_CERTCTX = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
 if not os.access(P_CERTFILE, os.R_OK):
   P_CERTFILE = None
@@ -164,6 +160,11 @@ def stackToLayout(layout : QLayout, objects : list) -> QLayout:
     else:
       layout.addWidget(v)
   return layout
+
+#----------------------------------------------------------------------------------------------------------  
+def getArrow():
+  fs = QLabel().font().pointSize()
+  return f"&nbsp;&nbsp;&nbsp;<span style='font-size:{fs+4}pt'>▾</span>"
 
 #----------------------------------------------------------------------------------------------------------  
 def getPixmap(name:str) -> QIcon:

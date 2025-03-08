@@ -24,7 +24,13 @@ Links:
 - add cmd line option for verbosity
 - finalize DungeonHelper support
   - maybe add support for downloading/installing DungeonHelper.exe?
+  - currently only one instance of Dungeon Helper can be managed, because tDHPIDWatcher 
+  only looks processes containing DungeonHelper.exe and takes the PID of first thing
+  it finds. This means that killing one of them kills both of them.
+  - maybe migrate back to single instance of DungeonHelper?
+
 - move xdotools from cProfil to cSettings
+
 
 ## License
 

@@ -16,18 +16,13 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
-#    script by SNy (<SNy@bmx-chemnitz.de>)
-#
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QHBoxLayout, QGridLayout, QComboBox, QFileDialog,\
-  QPushButton, QCheckBox, QLineEdit, QWidget
+from PyQt6.QtWidgets import QGridLayout, QComboBox
 from PyQt6.QtGui import QAction
-from PyQt6.QtCore import pyqtSignal
-from util import *
-from cTab import cTab
+from cWidgets.util import *
+from cWidgets.cTab import cTab
+from cWidgets.cButton import cButton
 from cProfil import cProfil
 import os
 import subprocess
@@ -51,20 +46,14 @@ class cSettings(cTab):
     self.profileList = QComboBox()
     self.profileList.setEditable(True)
 
-    self.btnSave = QPushButton(getIcon(P_ICON_SAVE), "Save")
-    self.btnSave.setToolTip("Save current settings and profile")
-    self.btnSave.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.btnRemoveProfile = QPushButton(getIcon(P_ICON_TRASH), "Delete")
-    self.btnRemoveProfile.setToolTip("Delete current profile and its associated files (main settings remain untouched)")
-    self.btnRemoveProfile.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.btnReload = QPushButton(getIcon(P_ICON_REFRESH), "Reload")
-    self.btnReload.setToolTip("Reload current profile and all settings from file")
-    self.btnReload.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.btnSave = cButton("Save", P_ICON_SAVE, tooltip="Save current settings and profile")
+    self.btnRemoveProfile = cButton("Delete", P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
+    self.btnReload = cButton("Reload", P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
 
     g = QGridLayout()
-    g.addLayout(newHLayout([profileLbl, self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  0, 0, 1, 4)
-    self.tmplay = QVBoxLayout()
-    g.addLayout(self.tmplay, 7, 0, 1, 4)
+    self.hiddenLayer = QVBoxLayout()
+    g.addLayout(self.hiddenLayer, 0, 0, 1, 4)
+    g.addLayout(newHLayout([profileLbl, self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  1, 0, 1, 4)
     self.setLayout(g)
 
   #----------------------------------------------------------------------------------------------------------
@@ -103,7 +92,7 @@ class cSettings(cTab):
       self.connectAction2Profile(act, p)
       if p not in self.profiles.keys():
         self.profiles[p] = cProfil(self.main, p)
-        self.tmplay.addWidget(self.profiles[p])
+        self.hiddenLayer.addWidget(self.profiles[p])
       self.profiles[p].setVisible(False)
       self.profiles[p].load()
     self.profileList.currentIndexChanged.connect(self.changeProfile)

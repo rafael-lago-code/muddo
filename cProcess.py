@@ -22,20 +22,18 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QWidget, QLabel, QSizePolicy, QComboBox
+from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
-from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
-from cTab import cTab
-from tAuthenticator import tAuthenticator
+from PyQt6.QtCore import pyqtSignal
+from cWidgets.cTab import cTab
 from collections import OrderedDict
 import subprocess
-import os, time
-from util import *
+from cWidgets.util import *
+from cWidgets.cButton import cButton 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
    from cDDO import cDDO
-   from cWorlds import cWorld
 
 class cProcessManager(cTab):
 
@@ -52,47 +50,68 @@ class cProcessManager(cTab):
     header.setLayout(newHLayout([newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
                      newHeaderLabel("World"), newHeaderLabel("Profile"), "Username"]))
 
-    self.btnStart   = newToolbarButton(P_ICON_PLAY,     "Start all non-running processes", self.startAll)
-    self.btnKill    = newToolbarButton(P_ICON_SKULL_RED,"Force-kill all running processes", self.killAll)
-    self.btnSave    = newToolbarButton(P_ICON_SAVEALL,  "Save all windows position", self.saveWindowAll)
-    self.btnRestore = newToolbarButton(P_ICON_UNDO,     "Restore all previously saved windows positions", self.restoreWindowAll)
-    self.btnClear   = newToolbarButton(P_ICON_CLEARALL, "Removes all processes from the list of processes", self.removeAll)
+    self.btnStartAll   = cButton(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
+    self.btnKillAll    = cButton(icon=P_ICON_SKULL_RED, tooltip="Left click: terminates all running processes<br>Ctrl+Left click or Right click: force termination (SIGKILL) all processes")
+    self.btnSaveAll    = cButton(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
+    self.btnRestoreAll = cButton(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
+    self.btnRemoveAll  = cButton(icon=P_ICON_CLEARALL,  tooltip="Left click: clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
+    
+    self.btnStartAll.clicked.connect(self.startAll)
+    self.btnKillAll.clicked.connect(self.killAll)
+    self.btnKillAll.ctrlClicked.connect(lambda : self.killAll(force=True))
+    self.btnKillAll.rightClicked.connect(lambda : self.killAll(force=True))
+    self.btnSaveAll.clicked.connect(self.saveWindowAll)
+    self.btnRestoreAll.clicked.connect(self.restoreWindowAll)
+    self.btnRemoveAll.clicked.connect(self.removeAll)
+    self.btnRemoveAll.ctrlClicked.connect(lambda : self.removeAll(True))
+    self.btnRemoveAll.rightClicked.connect(lambda : self.removeAll(True))
 
     buttons = QWidget()
-    buttons.setLayout(newHLayout(["__stretch__", "All processes: ", self.btnStart,\
-      self.btnKill, self.btnSave, self.btnRestore, self.btnClear]))
+    buttons.setLayout(newHLayout(["__stretch__", "All processes: ", self.btnStartAll,\
+      self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnRemoveAll]))
     
     self.content = newVLayout([header])
     self.setLayout(newVLayout([self.content, buttons]))
     
 
   #----------------------------------------------------------------------------------------------------------
-  def removeProcess(self, item : aProcessItem):
+  def removeItem(self, item : aProcessItem, kill=False):
+    if kill and item.status == item.P_STATUS_RUNNING:
+      try:
+        item.kill()
+      except Exception as e:
+        self.console.error(f"cProcessManager.cleanItem: error killing \"{item.key}\"", e)
+    elif item.status == item.P_STATUS_RUNNING:
+      return
+    
     try:
-      item.kill()
-      item.sigTerminated.disconnect()
       self.layout().removeWidget(item)
       del self.items[item.key]
     except Exception as e:
-      self.console.error(f"cProcessManager.removeItem: unknown error removing item \"{item.key}\"", e)
+      self.console.error(f"cProcessManager.cleanItem: unknown error removing item \"{item.key}\"", e)
 
     item.deleteLater()
     self.main.processManager.resetColour()
 
+
   #----------------------------------------------------------------------------------------------------------
-  def removeAll(self):
-    allItems = set(self.items.values())
-    for i in allItems: self.removeProcess(i)
+  def removeAll(self, kill=False):
+    allItems  = set(self.items.values())
+    for i in allItems: 
+      self.removeItem(i,kill)
 
   #----------------------------------------------------------------------------------------------------------
   def startAll(self):
     for u in self.items.keys(): 
+      if u.startswith("dh_"): continue
       if self.items[u].status == cDDO.P_STATUS_RUNNING:
         self.items[u].launch()
 
   #----------------------------------------------------------------------------------------------------------
-  def killAll(self):
-    for u in self.items.keys(): self.items[u].kill()
+  def killAll(self, force=False):
+    for u in self.items.keys(): 
+      if u.startswith("dh_"): continue
+      self.items[u].kill(force)
     
   #----------------------------------------------------------------------------------------------------------
   def saveWindowAll(self):
@@ -104,10 +123,10 @@ class cProcessManager(cTab):
 
   #----------------------------------------------------------------------------------------------------------
   def addProcess(self, p : cDDO):
-    self.btnKill.setEnabled(True)
-    self.btnSave.setEnabled(True)
-    self.btnRestore.setEnabled(True)
-    self.btnClear.setEnabled(True)
+    self.btnKillAll.setEnabled(True)
+    self.btnSaveAll.setEnabled(True)
+    self.btnRestoreAll.setEnabled(True)
+    self.btnRemoveAll.setEnabled(True)
     self.items[p.key] = p
     self.setColour(p)
     self.content.addWidget(p)
@@ -153,16 +172,24 @@ class aProcessItem(QWidget):
     self.profile = main.profile() # yes, we freeze the profile here!
     self.key = ""
     
-    self.pid = newProcessField("NA", 50)
-    self.winID = newProcessField("NA")
+    self.pid = newProcessField("", 50)
+    self.winID = newProcessField("")
     self.profileID = newProcessField("")
     self.worldname = newProcessField("")
     self.username = QLabel()
 
-    self.btnToggle  = newToolbarButton(P_ICON_PLAY,  "Toggle (kill/start) process", self.toggle)
-    self.btnSave    = newToolbarButton(P_ICON_SAVE,  "Save this windows's position", self.saveWindow)
-    self.btnRestore = newToolbarButton(P_ICON_UNDO,  "Restore previously saved windows position", self.restoreWindow)
-    self.btnRemove  = newToolbarButton(P_ICON_TRASH, "Removes this process from the list of processes",  self.remove)
+    self.btnToggle  = cButton(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
+    self.btnSave    = cButton(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
+    self.btnRestore = cButton(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
+    self.btnRemove  = cButton(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
+    self.btnToggle.clicked.connect(self.toggle)
+    self.btnToggle.rightClicked.connect(lambda : self.toggle(True))
+    self.btnToggle.ctrlClicked.connect(lambda : self.toggle(True))
+    self.btnSave.clicked.connect(self.saveWindow)
+    self.btnRestore.clicked.connect(self.restoreWindow)
+    self.btnRemove.clicked.connect(self.remove)
+    self.btnRemove.ctrlClicked.connect(lambda : self.remove(True))
+    self.btnRemove.rightClicked.connect(lambda : self.remove(True))
 
     self.sigTerminated.connect(self.clean)
     
@@ -175,8 +202,8 @@ class aProcessItem(QWidget):
     pass
 
   #----------------------------------------------------------------------------------------------------------
-  def remove(self):
-    self.main.processManager.removeProcess(self)
+  def remove(self, kill=False):
+    self.main.processManager.removeItem(self, kill)
   
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
@@ -189,29 +216,30 @@ class aProcessItem(QWidget):
   #----------------------------------------------------------------------------------------------------------
   def clean(self):
     # this should be called when the job has already died (i.e. user closed the window)
-    self.pid.setText("NA")
-    self.winID.setText("NA")
+    self.pid.setText("")
+    self.winID.setText("")
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
     self.status = self.P_STATUS_UNKNOWN
 
   #----------------------------------------------------------------------------------------------------------
-  def kill(self):
-    if self.pid.text() == "NA": return
+  def kill(self, force=False):
+    if not force and not self.pid.text().isdigit(): return
     self.console.info(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+    signal = "-9" if force else "-15"
     try:
-      out = subprocess.check_output([f"kill -9 {self.pid.text()}"], shell=True)
+      out = subprocess.check_output([f"kill {signal} {self.pid.text()}"], shell=True)
     except Exception as e:
-      self.console.error(f"cDDO.kill: unknown error killing process with PID {self.pid.text()}", e)
-
-    self.clean()
-    self.status = self.P_STATUS_KILLED
+      self.console.error(f"cDDO.kill: unknown error killing (sginal: {signal})process with PID {self.pid.text()}", e)
+      self.status = self.P_STATUS_ERROR
+    else:
+      self.clean()
   
   #----------------------------------------------------------------------------------------------------------
-  def toggle(self):
+  def toggle(self, force=False):
     if self.status == self.P_STATUS_RUNNING:
-      self.kill()
+      self.kill(force)
     else:
       self.launch()
 

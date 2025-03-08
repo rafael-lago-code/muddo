@@ -28,7 +28,7 @@ from tAuthenticator import tAuthenticator
 from tWinManager import tWinManager
 import subprocess
 import os, time
-from util import *
+from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
@@ -59,20 +59,20 @@ class cDDO(aProcessItem):
     self.sigGotPID.connect(self.btnSave.setEnabled)
     self.sigGotPID.connect(self.btnRestore.setEnabled)
 
-    self.sigAuthenticating.connect(lambda : self.pid.setText("A"))
-    self.sigQueued.connect(lambda : self.pid.setText("Q"))
-    self.sigQueueDone.connect(lambda : self.pid.setText("L"))
+    self.sigAuthenticating.connect(lambda : self.pid.setText("Auth"))
+    self.sigQueued.connect(lambda : self.pid.setText("Queue"))
+    self.sigQueueDone.connect(lambda : self.pid.setText("Launch"))
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
     exec = tGameExecutable(self)
     QtCore.QThreadPool.globalInstance().start(exec)
+    self.status = self.P_STATUS_RUNNING
     self.btnToggle.setEnabled(True)
     self.btnRemove.setEnabled(True)
     self.console.info(f"Launching {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
                       {self.worldname.text()}</font>...")
     self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
-    self.status = self.P_STATUS_RUNNING
   
   #----------------------------------------------------------------------------------------------------------
   def watchPID(self):
@@ -95,22 +95,28 @@ class cDDO(aProcessItem):
   
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
+    if self.status != self.P_STATUS_RUNNING: return
     if not self.profile.usexdotool.isChecked(): return
     wm = tWinManager(self, 'saveWindow')
     QtCore.QThreadPool.globalInstance().start(wm)
 
   #----------------------------------------------------------------------------------------------------------
   def restoreWindow(self):
+    if self.status != self.P_STATUS_RUNNING: return
     if not self.profile.usexdotool.isChecked(): return
     wm = tWinManager(self, 'restoreWindow')
     QtCore.QThreadPool.globalInstance().start(wm)
   
   #----------------------------------------------------------------------------------------------------------
   # autoRestore
-  #   This is silly but it takes a while for the window management to work...
+  #   Cannot connect sigGotPID to restoreWindow because it is called from a different
+  #   thread. It gives a Segfault
   def autoRestore(self):
+    if self.status != self.P_STATUS_RUNNING: return
+    if not self.profile.usexdotool.isChecked(): return
     time.sleep(1.0)
-    self.restoreWindow()
+    wm = tWinManager(self, 'restoreWindow')
+    wm.run()
 
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):
@@ -215,4 +221,6 @@ class tPIDWatcher(QRunnable):
     self.ddo.console.error("tPIDWatcher: could not get PID, process may not be running anymore...")
     self.ddo.sigGotPID.emit(False)
     return False
+
+
   

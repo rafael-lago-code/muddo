@@ -22,16 +22,16 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QTextEdit
+from PyQt6.QtWidgets import QLabel, QTextEdit
 from PyQt6.QtCore import QRunnable, pyqtSignal, QThreadPool
-from cTab import cTab
+from cWidgets.cTab import cTab
+from cWidgets.cButton import cButton
 import subprocess
 from typing import TYPE_CHECKING
 from datetime import datetime
-from util import *
+from cWidgets.util import *
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
-   from cWorlds import cWorld
 
 P_TIMESTAMP_FILE=".muddo_patch_timestamp"
 
@@ -41,9 +41,7 @@ class cPatch(cTab):
 
   def __init__(self, main : cMainWindow):
     super().__init__("Patch")
-    self.btnPatch = QPushButton(getIcon(P_ICON_DOWNLOAD), "Patch Now")
-    self.btnPatch.setIconSize(P_DEFAULT_ICON_SIZE)
-    self.btnPatch.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.btnPatch = cButton("Patch Now", P_ICON_DOWNLOAD)
     self.main = main
     self.console = main.console
     self.timestamp = QLabel("Last patch: <?>")

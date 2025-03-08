@@ -21,10 +21,9 @@
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QWidget, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QTableWidget, QTableWidgetItem
-from PyQt6.QtGui import QBrush, QColor, QFont
-from PyQt6.QtCore import QRunnable, pyqtSignal, Qt
-from util import *
+from PyQt6.QtWidgets import QListWidget, QListWidgetItem
+from PyQt6.QtCore import QRunnable
+from cWidgets.util import *
 import xml.dom.minidom
 
 class cWorld(QListWidgetItem):
