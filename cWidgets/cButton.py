@@ -35,7 +35,6 @@ class cButton(QPushButton):
         if tooltip: self.setToolTip(tooltip)
         self.setEnabled(enabled)
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        
 
     def mousePressEvent(self, event: QMouseEvent):
       if event.button() == Qt.MouseButton.LeftButton:
@@ -48,3 +47,10 @@ class cButton(QPushButton):
           self.ctrlRightClicked.emit()
         else:
           self.rightClicked.emit()
+
+class cLauncherButton(cButton):
+  def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
+    super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
+    self.setFixedHeight(60)
+    self.setFixedWidth(120)
+    self.setIconSize(QtCore.QSize(36,36))

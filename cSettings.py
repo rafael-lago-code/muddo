@@ -37,7 +37,6 @@ class cSettings(cTab):
   def __init__(self, main : cMainWindow):
     super().__init__("&Settings")
     self.main = main
-    self.console = main.console
     self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
     self.lastProfile = ""
 
@@ -46,9 +45,9 @@ class cSettings(cTab):
     self.profileList = QComboBox()
     self.profileList.setEditable(True)
 
-    self.btnSave = cButton("Save", P_ICON_SAVE, tooltip="Save current settings and profile")
-    self.btnRemoveProfile = cButton("Delete", P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
-    self.btnReload = cButton("Reload", P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
+    self.btnSave = cButton(icon=P_ICON_SAVE, tooltip="Save current settings and profile")
+    self.btnRemoveProfile = cButton(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
+    self.btnReload = cButton(icon=P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
 
     g = QGridLayout()
     self.hiddenLayer = QVBoxLayout()
@@ -116,7 +115,7 @@ class cSettings(cTab):
       self.lastProfile = pname
       self.main.sigProfileChanged.emit([self.lastProfile, pname])
     else:
-      self.console.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{p}\",\
+      self.main.console.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{p}\",\
                           but it was not found! Doing nothing instead...")
 
   #----------------------------------------------------------------------------------------------------------
@@ -127,27 +126,33 @@ class cSettings(cTab):
         if result.stdout:
           result = result.stdout.decode('utf-8').strip()
           self.xdotoolExec.setText(result)
-          self.console.info(f"Setting xdotool binary to {result}...")
+          self.main.console.info(f"Setting xdotool binary to {result}...")
         else:
-          self.console.info("[W] xdotool binary not found! Is it installed? If so, please set it manually...")
+          self.main.console.info("[W] xdotool binary not found! Is it installed? If so, please set it manually...")
       except Exception as e:
-        self.console.error("Error looking for xdotool binary", e)
+        self.main.console.error("Error looking for xdotool binary", e)
 
   #----------------------------------------------------------------------------------------------------------
   def load(self):
     values = None
     if os.path.exists(P_DEFAULT_CONFIGFILE):
-      with open(P_DEFAULT_CONFIGFILE,"r") as f:
-        values = json.load(f)
-      self.console.info(f'Settings loaded from {P_DEFAULT_CONFIGFILE}')
+      try:
+        with open(P_DEFAULT_CONFIGFILE,"r") as f:
+          values = json.load(f)
+        self.main.console.info(f'Settings loaded from {P_DEFAULT_CONFIGFILE}')
+      except Exception as e:
+        self.main.console.error(f"{C_RED}ERROR:</font> failed loading {P_DEFAULT_CONFIGFILE}!", e)
+        print(f"{C_RED}ERROR:</font> failed loading {P_DEFAULT_CONFIGFILE}!")
+        print(e)
     else:
-      self.console.error(f"cSettings.load: file {P_DEFAULT_CONFIGFILE} not found")
+      self.main.console.error(f"cSettings.load: file {P_DEFAULT_CONFIGFILE} not found")
     
     if values:
       try:
         if 'settingsVisible' in values.keys(): self.main.settings.setVisible(values['settingsVisible'])
         if 'newsVisible'  in values.keys(): self.main.news.setVisible(values['newsVisible'])
         if 'patchVisible' in values.keys(): self.main.patch.setVisible(values['patchVisible'])
+        if 'shortcutsVisible' in values.keys(): self.main.shortcuts.setVisible(values['shortcutsVisible'])
         if 'multiAccount' in values.keys(): 
           self.main.credentials.multiAccount.setChecked(values['multiAccount'])
           self.main.credentials.updateMultiAccount()
@@ -165,7 +170,7 @@ class cSettings(cTab):
         if self.profileList.currentText(): self.main.profile().load()
 
       except Exception as e:
-        self.console.error(f"cSettings.load: error loading settings from {P_DEFAULT_CONFIGFILE}", e)
+        self.main.console.error(f"cSettings.load: error loading settings from \"{C_SILVER}{P_DEFAULT_CONFIGFILE}</font>\"", e)
 
   #----------------------------------------------------------------------------------------------------------
   def save(self):
@@ -177,16 +182,17 @@ class cSettings(cTab):
     values['settingsVisible'] = self.main.settings.isVisible()
     values['newsVisible']  = self.main.news.isVisible()
     values['patchVisible'] = self.main.patch.isVisible()
+    values['shortcutsVisible'] = self.main.shortcuts.isVisible()
     values['multiAccount'] = self.main.credentials.multiAccount.isChecked()
     values['lastProfile']  = self.profileList.currentText()
     if self.profileList.currentText(): self.main.profile().save()
 
     try:
-      json.dump(values, open(P_DEFAULT_CONFIGFILE,"w"), separators=(', ',': '), indent=2)
+        json.dump(values, open(P_DEFAULT_CONFIGFILE,"w"), cls=muJSONEncoder)
     except Exception as e:
-      self.console.error(f"cSettings.save: could not create {P_DEFAULT_CONFIGFILE} to store settings!",e)
+      self.main.console.error(f"cSettings.save: could not create \"{C_SILVER}{P_DEFAULT_CONFIGFILE}</font>\" to store settings!",e)
     else:
-      self.console.info(f"Settings saved in {P_DEFAULT_CONFIGFILE}")
+      self.main.console.info(f"Settings saved in \"{C_SILVER}{P_DEFAULT_CONFIGFILE}</font>\"")
     
   
 

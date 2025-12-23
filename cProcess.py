@@ -16,10 +16,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
-#
 #
 from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QLabel
@@ -29,11 +25,10 @@ from cWidgets.cTab import cTab
 from collections import OrderedDict
 import subprocess
 from cWidgets.util import *
-from cWidgets.cButton import cButton 
+from cWidgets.cButton import cButton, cLauncherButton
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
-   from cDDO import cDDO
 
 class cProcessManager(cTab):
 
@@ -41,7 +36,7 @@ class cProcessManager(cTab):
     super().__init__("Process Manager")
     self.main = main
     self.console = main.console
-    self.items : OrderedDict[str, cDDO] = OrderedDict()
+    self.items : OrderedDict[str, aProcessItem] = OrderedDict()
     pal = QPalette()
     self.colour1 = pal.color(QPalette.ColorRole.Window)
     self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
@@ -55,7 +50,12 @@ class cProcessManager(cTab):
     self.btnSaveAll    = cButton(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
     self.btnRestoreAll = cButton(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
     self.btnRemoveAll  = cButton(icon=P_ICON_CLEARALL,  tooltip="Left click: clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
+    self.btnCaptureOrphans = cButton("Capture &Orphans", tooltip="Attempts to find running instances of DDO and capture them"\
+                                     " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
+                                     " profile (if any) was used to launch the original DDO instance!")
+    self.btnCaptureOrphans.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/chain.png')))
     
+    self.btnCaptureOrphans.clicked.connect(self.main.captureOrphan)
     self.btnStartAll.clicked.connect(self.startAll)
     self.btnKillAll.clicked.connect(self.killAll)
     self.btnKillAll.ctrlClicked.connect(lambda : self.killAll(force=True))
@@ -67,7 +67,7 @@ class cProcessManager(cTab):
     self.btnRemoveAll.rightClicked.connect(lambda : self.removeAll(True))
 
     buttons = QWidget()
-    buttons.setLayout(newHLayout(["__stretch__", "All processes: ", self.btnStartAll,\
+    buttons.setLayout(newHLayout([self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
       self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnRemoveAll]))
     
     self.content = newVLayout([header])
@@ -104,7 +104,7 @@ class cProcessManager(cTab):
   def startAll(self):
     for u in self.items.keys(): 
       if u.startswith("dh_"): continue
-      if self.items[u].status == cDDO.P_STATUS_RUNNING:
+      if self.items[u].status == aProcessItem.P_STATUS_RUNNING:
         self.items[u].launch()
 
   #----------------------------------------------------------------------------------------------------------
@@ -122,7 +122,7 @@ class cProcessManager(cTab):
     for u in self.items.keys(): self.items[u].restoreWindow()
 
   #----------------------------------------------------------------------------------------------------------
-  def addProcess(self, p : cDDO):
+  def addItem(self, p : aProcessItem):
     self.btnKillAll.setEnabled(True)
     self.btnSaveAll.setEnabled(True)
     self.btnRestoreAll.setEnabled(True)
@@ -130,9 +130,15 @@ class cProcessManager(cTab):
     self.items[p.key] = p
     self.setColour(p)
     self.content.addWidget(p)
+
+  #----------------------------------------------------------------------------------------------------------
+  def isPIDManaged(self, pid : str) -> bool:
+    for i in self.items.values():
+      if i.pid.text() == pid: return True
+    return False
   
   #----------------------------------------------------------------------------------------------------------
-  def setColour(self,p : cDDO):
+  def setColour(self,p : aProcessItem):
     pal = QPalette()
     pal.setColor(QPalette.ColorRole.Window, self.colour2)
     p.setAutoFillBackground(True)
@@ -191,7 +197,7 @@ class aProcessItem(QWidget):
     self.btnRemove.ctrlClicked.connect(lambda : self.remove(True))
     self.btnRemove.rightClicked.connect(lambda : self.remove(True))
 
-    self.sigTerminated.connect(self.clean)
+    self.sigTerminated.connect(lambda : self.setStatus(aProcessItem.P_STATUS_KILLED))
     
     self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
@@ -214,27 +220,56 @@ class aProcessItem(QWidget):
     pass
 
   #----------------------------------------------------------------------------------------------------------
-  def clean(self):
-    # this should be called when the job has already died (i.e. user closed the window)
-    self.pid.setText("")
-    self.winID.setText("")
-    self.btnSave.setEnabled(False)
-    self.btnRestore.setEnabled(False)
-    self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
-    self.status = self.P_STATUS_UNKNOWN
+  def setStatus(self, status):
+    if status == "running" or status == aProcessItem.P_STATUS_RUNNING: 
+      self.status = aProcessItem.P_STATUS_RUNNING
+      self.btnSave.setEnabled(True)
+      self.btnRestore.setEnabled(True)
+      self.btnToggle.setEnabled(True)
+      self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
+      self.btnRemove.setEnabled(True)
+    elif status == "killed" or status == aProcessItem.P_STATUS_KILLED:
+      self.pid.setText("")
+      self.winID.setText("")
+      self.btnSave.setEnabled(False)
+      self.btnRestore.setEnabled(False)
+      self.btnToggle.setEnabled(True)
+      self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
+      self.status = self.P_STATUS_UNKNOWN
+    elif status == "error" or status == aProcessItem.P_STATUS_ERROR:
+      self.username.setText(f"C_RED{self.username.text()}[E]</font>")
+      self.btnSave.setEnabled(False)
+      self.btnRestore.setEnabled(False)
+      self.btnToggle.setEnabled(False)
+      self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
+      self.status = self.P_STATUS_UNKNOWN
+
+
+  # #----------------------------------------------------------------------------------------------------------
+  # def clean(self):
+  #   # this should be called when the job has already died (i.e. user closed the window)
+  #   self.pid.setText("")
+  #   self.winID.setText("")
+  #   self.btnSave.setEnabled(False)
+  #   self.btnRestore.setEnabled(False)
+  #   self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
+  #   self.status = self.P_STATUS_UNKNOWN
 
   #----------------------------------------------------------------------------------------------------------
   def kill(self, force=False):
     if not force and not self.pid.text().isdigit(): return
-    self.console.info(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+    if self.worldname.text():
+      self.console.info(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+    else:
+      self.console.info(f"Killing {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font>...")
     signal = "-9" if force else "-15"
     try:
       out = subprocess.check_output([f"kill {signal} {self.pid.text()}"], shell=True)
     except Exception as e:
-      self.console.error(f"cDDO.kill: unknown error killing (sginal: {signal})process with PID {self.pid.text()}", e)
+      self.console.error(f"aProcessItem.kill: unknown error killing (signal: {signal})process with PID {self.pid.text()}", e)
       self.status = self.P_STATUS_ERROR
     else:
-      self.clean()
+      self.setStatus(aProcessItem.P_STATUS_KILLED)
   
   #----------------------------------------------------------------------------------------------------------
   def toggle(self, force=False):

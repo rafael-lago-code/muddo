@@ -34,6 +34,7 @@ class cConsole(QTextEdit):
     super().__init__()
     self.setReadOnly(True)
     self.setAcceptRichText(True)
+    self.isDebugging = True
     self.logFileName = filename
     try:
       os.mkdir(os.path.dirname(filename))
@@ -53,9 +54,28 @@ class cConsole(QTextEdit):
     self.sigDebug.connect(self.debugMessage)
     self.sigError.connect(self.errorMessage)
 
+    # self.setStyleSheet("""
+    #     * {
+    #         selection-background-color: #4f4f4f; /* light gray */
+    #         selection-color: #ff6c6e;
+    #     }
+    #     QMenu::item:selected {
+    #         background: #4f4f4f;
+    #         color: #ff6c6e;
+    #     }
+    #     QLineEdit, QTextEdit, QPlainTextEdit, QAbstractItemView {
+    #         selection-background-color: #4f4f4f;
+    #         selection-color: #ff6c6e;
+    #     }
+    # """)
+
   def prefixStr(self):
     return f'[ {datetime.now().strftime("%Y/%m/%d %H:%M:%S")} ] '
   
+  #------------------------------------------------------------------------------------
+  def setDebug(self, val):
+    self.isDebugging = val
+
   #------------------------------------------------------------------------------------
   def info(self, message:str):
     self.sigInfo.emit(message)
@@ -104,6 +124,7 @@ class cConsole(QTextEdit):
 
   #------------------------------------------------------------------------------------
   def debugMessage(self, message : str):
+    if not self.isDebugging: return
     self.logFile.writelines(self.prefixStr()+message+"\n")
     self.logFile.flush()
 

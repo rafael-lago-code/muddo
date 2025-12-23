@@ -23,6 +23,7 @@
 #
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable
+from PyQt6.QtCore import pyqtSignal
 from cWidgets.util import *
 import os
 import xml.dom.minidom
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
 P_DDO_LAUNCHERCONFIG='ddo.launcherconfig'
 
 class tServerInfo(QRunnable):
+  sigServerInfo = pyqtSignal(bool)
   P_STATUS_ERROR = -1
   P_STATUS_WORKING = 0
   P_STATUS_UNKNOWN = 1

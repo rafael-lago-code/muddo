@@ -13,10 +13,6 @@
 #    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #    GNU General Public License for more details.
 #
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-#
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable
 import subprocess
@@ -102,6 +98,7 @@ class tWinManager(QRunnable):
   
   #----------------------------------------------------------------------------------------------------------
   def probeWinID(self):
+    worldPrefix = self.ddo.world.name.split(" ")[0]
     try:
       out = subprocess.check_output([f"{self.bin} search --sync --pid {self.ddo.pid.text()}"], shell=True)
       out = out.decode().strip().split('\n')
@@ -109,7 +106,7 @@ class tWinManager(QRunnable):
       for id in out:
         name = subprocess.check_output([f"{self.bin} getwindowname {id}"], shell=True)
         name = name.decode().strip()
-        if name == 'Dungeons and Dragons Online':
+        if name == 'Dungeons and Dragons Online' or worldPrefix in name:
           return id, None
       return "ERROR_UNMATCHING_NAME", None
     except Exception as e:

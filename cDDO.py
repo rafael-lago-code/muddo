@@ -16,18 +16,15 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a script by SNy
-#    (<SNy@bmx-chemnitz.de>)
-#
 #
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
 from tAuthenticator import tAuthenticator
-from tWinManager import tWinManager
+# from tWinManager import tWinManager
+from XHelper import XHelper
 import subprocess
-import os, time
+import os, time, glob
 from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -41,6 +38,7 @@ class cDDO(aProcessItem):
   sigQueued = pyqtSignal(str)
   sigQueueDone = pyqtSignal(str)
   sigGotWinID = pyqtSignal(bool)
+  gameExec = 'x64/dndclient64.exe'
 
   def __init__(self, main : cMainWindow, username : str, world : cWorld):
     super().__init__(main)
@@ -51,13 +49,16 @@ class cDDO(aProcessItem):
     self.profileID.setText(self.profile.name)
     self.worldname.setText(world.name)
     self.username.setText(username)
+    self.btnSave.setEnabled(False)
+    self.btnRestore.setEnabled(False)
     self.updateTooltip()
 
     self.sigAuthenticated.connect(self.updateTooltip) # also calls self.auth.queue()
     self.sigRunning.connect(self.watchPID)
-    self.sigGotPID.connect(self.autoRestore)
-    self.sigGotPID.connect(self.btnSave.setEnabled)
-    self.sigGotPID.connect(self.btnRestore.setEnabled)
+    self.sigGotPID.connect(self.watchWinID)
+    self.sigGotWinID.connect(self.restoreWindow)
+    self.sigGotWinID.connect(self.btnSave.setEnabled)
+    self.sigGotWinID.connect(self.btnRestore.setEnabled)
 
     self.sigAuthenticating.connect(lambda : self.pid.setText("Auth"))
     self.sigQueued.connect(lambda : self.pid.setText("Queue"))
@@ -67,17 +68,32 @@ class cDDO(aProcessItem):
   def launch(self):
     exec = tGameExecutable(self)
     QtCore.QThreadPool.globalInstance().start(exec)
-    self.status = self.P_STATUS_RUNNING
-    self.btnToggle.setEnabled(True)
-    self.btnRemove.setEnabled(True)
+    self.setStatus(cDDO.P_STATUS_RUNNING)
     self.console.info(f"Launching {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
                       {self.worldname.text()}</font>...")
-    self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
   
   #----------------------------------------------------------------------------------------------------------
   def watchPID(self):
     pidw = tPIDWatcher(self)
     QtCore.QThreadPool.globalInstance().start(pidw)
+
+  #----------------------------------------------------------------------------------------------------------
+  def watchWinID(self):
+    def validateWinID(pid : int, winIDList : list):
+      xh = XHelper()
+      if int(self.pid.text()) != pid:
+        print(" --------------> watchWinID: ERROR WRONG PID!!!")
+        return
+      worldPrefix = self.world.name.split(" ")[0]
+      for w in winIDList:
+        title = xh.getWindowTitle(w)
+        if title == 'Dungeons and Dragons Online' or worldPrefix in title:
+          self.winID.setText(str(w))
+          self.sigGotWinID.emit(True)
+  
+    xh = XHelper()
+    xh.sigGotWinID.connect(validateWinID)
+    xh.requestWinID(self.pid.text(), 10.0)
   
   #----------------------------------------------------------------------------------------------------------
   def updateTooltip(self):
@@ -96,28 +112,21 @@ class cDDO(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
-    if not self.profile.usexdotool.isChecked(): return
-    wm = tWinManager(self, 'saveWindow')
-    QtCore.QThreadPool.globalInstance().start(wm)
+    xh = XHelper()
+    geo = xh.getWindowGeometry(int(self.winID.text()))
+    self.profile.windowsPreferences[self.username.text()] = (int(geo[0]), int(geo[1]))
+    self.profile.save()
 
   #----------------------------------------------------------------------------------------------------------
   def restoreWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
-    if not self.profile.usexdotool.isChecked(): return
-    wm = tWinManager(self, 'restoreWindow')
-    QtCore.QThreadPool.globalInstance().start(wm)
+    if self.username.text() in self.profile.windowsPreferences.keys():
+      pos1, pos2 = self.profile.windowsPreferences[self.username.text()]
+    else: 
+      return
+    xh = XHelper()
+    xh.moveWindow(int(self.winID.text()), pos1, pos2)
   
-  #----------------------------------------------------------------------------------------------------------
-  # autoRestore
-  #   Cannot connect sigGotPID to restoreWindow because it is called from a different
-  #   thread. It gives a Segfault
-  def autoRestore(self):
-    if self.status != self.P_STATUS_RUNNING: return
-    if not self.profile.usexdotool.isChecked(): return
-    time.sleep(1.0)
-    wm = tWinManager(self, 'restoreWindow')
-    wm.run()
-
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):
     arg = self.auth.credentials.serverInfo.gameClientArgTemplate
@@ -131,6 +140,45 @@ class cDDO(aProcessItem):
     if not self.profile.useHighRes.isEnabled():
       arg += " --HighResOutOfDate"
     return arg
+  
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def isDDOCmd(line) -> bool:
+    return line.startswith(cDDO.gameExec)
+  
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def createFromOrphan(main : cMainWindow, line : str) -> cDDO:
+    line = line.split(' ')
+    pid = line[0]
+    auth = line[3]        # used to figure out the account
+    loginServer = line[5] # used to figure out the world
+    world = ""
+    username = ""
+
+    accountFiles = glob.glob(tAuthenticator.P_GLSAUTHFILE+"*")
+    for a in accountFiles:
+      with open(a,'r') as f:
+        if auth in f.read():
+          username = ((os.path.basename(a)).replace("GLSAuthServer_","")).replace(".xml","")
+          break
+    if not username:
+      main.console.debugMessage(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
+      return None
+    
+    for w in main.credentials.listWorlds.worlds.values():
+      if w.loginServer == loginServer:
+        world = w
+    if not world:
+      main.console.debugMessage(f" Trying to match orphan process failed; loginServer={loginServer} doesn't match any world")
+      return None
+
+    # missing profile info, what to do?
+    orphan = cDDO(main, username, world)
+    orphan.pid.setText(pid)
+    orphan.setStatus(cDDO.P_STATUS_RUNNING)
+    orphan.watchWinID()
+    return orphan
 
 
 #----------------------------------------------------------------------------------------------------------
@@ -163,17 +211,13 @@ class tGameExecutable(QRunnable):
 
     arg = self.ddo.parseArguments()
     gameDir = self.ddo.profile.gameDir.text()
-    # TODO: gameExec is supposed to be something like 
-    #    'x64/' if self.settings.use64bits.isChecked() else '' + self.auth.serverInfo.gameClientFilename
-    # Since I'm not testing for 32-bits client anyways, I might as well just keep it hardcoded.
-    gameExec = 'x64/dndclient64.exe'
 
     cmd  = f"cd \"{gameDir}\" ; "
     cmd += f"STEAM_ROOT=\"{self.ddo.profile.steamRoot.text()}\" PROTON_LOG=1 "
     cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.ddo.profile.compatData.text()}\" "
     cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.ddo.profile.compatData.text()}\" "
     cmd += f"\"{self.ddo.profile.protonExec.text()}\" run "
-    cmd += f"{gameExec} "
+    cmd += f"{cDDO.gameExec} "
     cmd += f"{arg}"
 
     # TODO: I was supposed to use subprocess and set environment variables and CWD properly
@@ -197,13 +241,12 @@ class tGameExecutable(QRunnable):
     #   if line: print(line)
     #   line = out.stderr.readline()
     #   if line: print(line)
-
+  
 #----------------------------------------------------------------------------------------------------------
 class tPIDWatcher(QRunnable):
   def __init__(self, ddo : cDDO):
     super().__init__()
     self.ddo = ddo
-    self.gameExec = 'x64/dndclient64.exe'
 
   #----------------------------------------------------------------------------------------------------------
   def run(self):
@@ -212,7 +255,7 @@ class tPIDWatcher(QRunnable):
         out = subprocess.check_output([f"ps a -o pid,command | grep {self.ddo.auth.subscription}"], shell=True)
         for line in out.decode().strip().split('\n'):
           line = line.split()
-          if line[1] == self.gameExec:
+          if line[1] == cDDO.gameExec:
             self.ddo.pid.setText(line[0])
             self.ddo.sigGotPID.emit(True)
             return True

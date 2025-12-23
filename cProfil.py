@@ -16,10 +16,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
-#    script by SNy (<SNy@bmx-chemnitz.de>)
-#
 #
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QFileDialog, QCheckBox, QLineEdit, QWidget
@@ -41,13 +37,21 @@ class cProfil(QWidget):
     self.main = main
     self.console = main.console
     self.name = name
-    self.useHighRes = QCheckBox("Use HighRes")
-    self.usexdotool = QCheckBox("Use xdotool")
-    self.useDungeonHelper = QCheckBox("Use DungeonHelper")
+    self.useHighRes = QCheckBox("use HighRes")
+    self.usexdotool = QCheckBox("use xdotool")
+    self.useDungeonHelper = QCheckBox("use DungeonHelper")
+    self.useDebugging = QCheckBox("enable debug")
     self.useHighRes.setChecked(True)
+    self.useDebugging.setChecked(True)
     self.languageCombo = QComboBox()
     self.languageCombo.addItems(["English", "German", "French"])
     self.languageCombo.currentIndexChanged.connect(self.changeLanguage)
+    self.languageCombo.setEnabled(False)
+
+    self.useHighRes.setToolTip(f"Use HighRes game texture")
+    self.usexdotool.setToolTip(f"Used to move windows and for shortcuts/macro programming")
+    self.useDungeonHelper.setToolTip(f"Comprehensive DDO add-on with many features including auto-follow and advanced maps. Must be installed externally")
+    self.useDebugging.setToolTip(f"Enables debugging messages inside of the log file (defaults to {P_DEFAULT_CONFIGDIR}/log). Console remains unchanged")
 
     self.launcherCombo = QComboBox()
     self.launcherCombo.addItems(["Steam Proton", "Wine64", "Wine32"])
@@ -90,7 +94,7 @@ class cProfil(QWidget):
     g = cGridLayout()
     g.appendRow([self.launcherCombo,    lblProtonExec, self.protonExec,  btnSelectProtonExec])
     g.appendRow([self.languageCombo,    lblCompatData, self.compatData,  btnSelectCompatData])
-    g.appendRow([None,                  lblSteamRoot,  self.steamRoot,   btnSelectSteamRoot])
+    g.appendRow([self.useDebugging,     lblSteamRoot,  self.steamRoot,   btnSelectSteamRoot])
     g.appendRow([self.useHighRes,       newRQLabel("Game Path: "),    self.gameDir,     btnSelectGameDir])
     g.appendRow([self.useDungeonHelper, newRQLabel("DungeonHelper exec: "), self.DungeonHelperExec, btnSelectDungeonHelperExec])
     g.appendRow([self.usexdotool,       newRQLabel("xdotool exec: "), self.xdotoolExec, btnSelectxdotoolExec])
@@ -104,6 +108,7 @@ class cProfil(QWidget):
 
     self.usexdotool.toggled.connect(btnSelectxdotoolExec.setEnabled)
     self.usexdotool.toggled.connect(self.xdotoolExec.setEnabled)
+    self.useDebugging.toggled.connect(self.main.console.setDebug)
     self.usexdotool.toggled.connect(self.findxdotool)
     self.usexdotool.setChecked(False)
     self.xdotoolExec.setEnabled(False)
@@ -159,6 +164,7 @@ class cProfil(QWidget):
     values['compatData']   = self.compatData.text()
     values['gameDir']      = self.gameDir.text()
     values['steamRoot']    = self.steamRoot.text()
+    values['useDebugging'] = self.useDebugging.isChecked()
     values['useHighRes']   = self.useHighRes.isChecked()
     values['usexdotool']   = self.usexdotool.isChecked()
     values['xdotoolExec']  = self.xdotoolExec.text()
@@ -168,10 +174,11 @@ class cProfil(QWidget):
     values['lastWorld']     = self.lastWorld
     values['lastAccounts']  = self.lastAccounts
     values['windowsPreferences']  = self.windowsPreferences
+    values['lastActiveShortcutSet']  = self.main.shortcuts.getActiveSets()
 
     filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.name + ".json"
     try:
-      json.dump(values, open(filename,"w"), separators=(', ',': '), indent=2)
+      json.dump(values, open(filename,"w"), cls=muJSONEncoder)
     except Exception as e:
       self.console.error(f"cProfil.save: could not create {filename} to store profile!",e)
     else:
@@ -199,11 +206,13 @@ class cProfil(QWidget):
         if 'compatData'   in values.keys(): self.compatData.setText(values['compatData'])
         if 'gameDir'      in values.keys(): self.gameDir.setText(values['gameDir'])
         if 'steamRoot'    in values.keys(): self.steamRoot.setText(values['steamRoot'])
+        if 'useDebugging' in values.keys(): self.useDebugging.setChecked(values['useDebugging'])
         if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
         if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
         if 'xdotoolExec'  in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
         if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
         if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
+        if 'lastActiveShortcutSet' in values.keys(): self.main.shortcuts.setActiveSets(values['lastActiveShortcutSet'])
 
         if 'lastWorld'    in values.keys(): self.lastWorld = values['lastWorld']
         if 'lastAccounts' in values.keys(): self.lastAccounts = values['lastAccounts']

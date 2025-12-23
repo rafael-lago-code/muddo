@@ -74,8 +74,9 @@ class cWorld(QListWidgetItem):
 
 #----------------------------------------------------------------------------------------------------------
 class cWorldList(QListWidget):
-  defaultWorlds = ["Argonnessen", "Cannith", "Cormyr", "Ghallanda",
-                   "Khyber", "Orien", "Sarlona", "Thelanis", "Wayfinder"]
+  defaultWorlds = ["Cormyr [US]", "Moonsea [EU]", "Shadowdale [US]", "Thrane [US]"]
+#   defaultWorlds += ["Argonnessen [Old]", "Cannith [Old]", "Ghallanda [Old]", "Khyber [Old]",
+#                    "Orien [Old]", "Sarlona [Old]", "Thelanis [Old]", "Wayfinder [Old]"]
   def __init__(self, main):
     super().__init__()
     self.worlds : dict[str, cWorld] = {}
