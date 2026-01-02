@@ -29,7 +29,7 @@ if TYPE_CHECKING:
    from cDDO import cDDO
    from cMainWindow import cMainWindow
 
-P_POST_FOCUS_DELAY = "delay_0.5"
+P_POST_FOCUS_DELAY = "delay_0.01"
 
 #----------------------------------------------------------------------------------------------------------
 class cShortcutsDaemon(aProcessItem):
@@ -64,35 +64,45 @@ class cShortcutsDaemon(aProcessItem):
     self.main.console.debugMessage(f"--------------------------------------------------------")
 
     # first, get rid of "alls" and "selfs":
-    for hk in consolidated.keys():
-      if "all" in consolidated[hk].keys():
+    for trigger in consolidated.keys():
+      if "all" in consolidated[trigger].keys():
         for t in winID:
-          if t in consolidated[hk].keys():
-            consolidated[hk][t] += consolidated[hk]["all"]
+          if t in consolidated[trigger].keys():
+            consolidated[trigger][t] += consolidated[trigger]["all"]
           else:
-            consolidated[hk][t] = consolidated[hk]["all"]
-        del consolidated[hk]["all"]
-    winID["self"] = "%WINID_SELF"
+            consolidated[trigger][t] = consolidated[trigger]["all"]
+        del consolidated[trigger]["all"]
+    winID["self"] = "self"
 
-    for hk in consolidated.keys():
-      parsed[hk] = ""
-      for target in consolidated[hk].keys():
+    for trigger in consolidated.keys():
+      parsed[trigger] = ""
+      for target in consolidated[trigger].keys():
         if target not in winID.keys(): continue
-        if not consolidated[hk][target]: continue
+        if not consolidated[trigger][target]: continue
 
-        parsed[hk] += f" focus_{winID[target]} {P_POST_FOCUS_DELAY} {" ".join(consolidated[hk][target])}"
-      if parsed[hk]:
-        parsed[hk] = f" {parsed[hk]}"
+        if target != "self":
+          parsed[trigger] += f" focus_{winID[target]} {P_POST_FOCUS_DELAY}"
+        parsed[trigger] += f" {" ".join(consolidated[trigger][target])}"
+        for t,id in winID.items():
+          parsed[trigger] = parsed[trigger].replace(f"focus_{t}", f"focus_{id}")
+
+      if parsed[trigger]:
+        parsed[trigger] = f" {parsed[trigger]}"
       else:
-        del parsed[hk]
+        del parsed[trigger]
 
     self.main.console.debugMessage(f"  Shortcuts converted to commands:")
     self.main.console.debugMessage(f"--------------------------------------------------------")
-    for hk in parsed.keys():
-      self.main.console.debugMessage(f"  {hk} : {parsed[hk]}")
+    for trigger in parsed.keys():
+      self.main.console.debugMessage(f"  {trigger} : {parsed[trigger]}")
     self.main.console.debugMessage(f"--------------------------------------------------------")
     return parsed
-    
+
+  #----------------------------------------------------------------------------------------------------------
+  def remove(self, kill=False):
+    XHelper().forceCleanup()
+    super().remove(kill)
+
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
     parsed = self.convert(self.main.shortcuts.consolidateActiveShortcuts())

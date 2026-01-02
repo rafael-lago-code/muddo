@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLayout
+from PyQt6.QtWidgets import QWidget, QScrollArea, QPushButton
 from cWidgets.util import *
 
 class cTab(QWidget):

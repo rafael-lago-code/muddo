@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu
+from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu, QSplitter, QFrame
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6.QtCore import Qt, pyqtSignal
 from cCredentials import cCredentials
@@ -74,9 +74,17 @@ class cMainWindow(QMainWindow):
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, 
                                         self.shortcuts.toggler, self.patch.toggler, self.news.toggler]))
 
+    _splitter = QSplitter(Qt.Orientation.Vertical)
+    _splitter.addWidget(self.processManager)
+    _splitter.addWidget(self.shortcuts)
+    _splitter.addWidget(self.news)
+    _splitter.addWidget(self.patch)
+    _splitter.addWidget(self.console)
+
     w = QWidget()
-    w.setLayout(newVLayout([self.credentials, tabController, self.settings, 
-                self.processManager, self.shortcuts, self.news, self.patch, self.console, lButtonsBar]))
+    # w.setLayout(newVLayout([self.credentials, tabController, self.settings, 
+    #             self.processManager, self.shortcuts, self.news, self.patch, self.console, lButtonsBar]))
+    w.setLayout(newVLayout([self.credentials, tabController, self.settings, _splitter, lButtonsBar]))
     self.setCentralWidget(w)
     self.resize(768,1024)
 

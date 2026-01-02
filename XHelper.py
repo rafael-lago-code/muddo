@@ -16,7 +16,6 @@
 #
 from PyQt6.QtCore import QObject, pyqtSignal
 from Xlib import X, display, Xutil, XK
-from Xlib.protocol import rq
 import time, re, threading
 
 P_DEFAULT_SLEEP = 0.05
@@ -50,6 +49,7 @@ def parseKeysymHeader(filename):
     keysyms[f"{m}r"] = keysyms[f"{m}_r"]
 
   keysyms["altgr"] = keysyms["alt_r"]
+  keysyms["enter"]  = keysyms["return"]
   return keysyms
 
 #----------------------------------------------------------------------------------------------------------
@@ -180,6 +180,14 @@ class XHelper(QObject):
       return None
   
   #----------------------------------------------------------------------------------------------------------
+  def getFocusedWindow(self):
+    try:
+      focus = self.disp.get_input_focus().focus
+      return focus.id if focus else None
+    except:
+      return None
+  
+  #----------------------------------------------------------------------------------------------------------
   def requestWinID(self, pid, timeout = 0.0):
     t = threading.Thread(target=self.waitWinID, args=(pid,timeout), daemon=True)
     t.start()
@@ -238,32 +246,72 @@ class XHelper(QObject):
       seq = self._parseKeystring(keystring)
           
     for item in seq:
-      print(f"{item}")
       # TODO: parse accepted commands properly
       if item['key'].startswith("sleep") or item['key'].startswith("delay"):
         time.sleep(float(item['key'][6:]))
-        continue
+        
       elif item['key'].startswith("focus"):
         self.focusWindow(int(item['key'][6:]))
-        continue
-
-      for mod in item['mods']:
-        if mod not in self.MODIFIERS:
-          raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
-        self.disp.xtest_fake_input(X.KeyPress, self.getKeyCode(mod))
-
-      keycode = self.getKeyCode(item['key'])
-      if keycode:
-        self.disp.xtest_fake_input(X.KeyPress, keycode)
-        self.disp.xtest_fake_input(X.KeyRelease, keycode)
-      else:
-        raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
       
-      for mod in reversed(item['mods']):
-        self.disp.xtest_fake_input(X.KeyRelease, self.getKeyCode(mod))
+      elif item['key'].startswith("click"):
+        self.sendClick(int(item['key'][6:]))
+      
+      else:
+        for mod in item['mods']:
+          if mod not in self.MODIFIERS:
+            raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
+          self.disp.xtest_fake_input(X.KeyPress, self.getKeyCode(mod))
+
+        keycode = self.getKeyCode(item['key'])
+        if keycode:
+          self.disp.xtest_fake_input(X.KeyPress, keycode)
+          self.disp.xtest_fake_input(X.KeyRelease, keycode)
+        else:
+          raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
+        
+        for mod in reversed(item['mods']):
+          self.disp.xtest_fake_input(X.KeyRelease, self.getKeyCode(mod))
       
       self.disp.sync()
-      time.sleep(1.0)
+  
+  #----------------------------------------------------------------------------------------------------------  
+  def sendClick(self, button, winID = None, delay=None):
+    if winID:
+      self.focusWindow(winID)
+
+    try:
+      self.disp.xtest_fake_input(X.ButtonPress, button)
+      if delay: time.sleep(delay)
+      self.disp.xtest_fake_input(X.ButtonRelease, button)
+      self.disp.sync()
+      return True
+    except:
+      return False
+  
+  #----------------------------------------------------------------------------------------------------------  
+  def clickInWindow(self, button, rel_x, rel_y, winID, delay=None):
+    """
+    Click at relative position inside window
+    """
+    try:
+      # Get window absolute position
+      geo = self.getWindowGeometry(winID)  # [x, y, width, height]
+      if not geo:
+        return False
+      
+      # Calculate absolute screen coordinates
+      abs_x = geo[0] + rel_x
+      abs_y = geo[1] + rel_y
+      
+      # Move and click
+      self.disp.xtest_fake_input(X.MotionNotify, x=abs_x, y=abs_y)
+      self.disp.xtest_fake_input(X.ButtonPress, button)
+      if delay: time.sleep(delay)
+      self.disp.xtest_fake_input(X.ButtonRelease, button)
+      self.disp.sync()
+      return True
+    except:
+      return False
   
   #----------------------------------------------------------------------------------------------------------
   def getShortcutsDaemon(self, hotkeys : dict) -> StoppableThread:
@@ -283,6 +331,8 @@ class XHelper(QObject):
       try:
         self.root.grab_key( keycode, modmask, True, X.GrabModeAsync, X.GrabModeAsync )
         grabbed[(modmask, keycode)] = callback
+        self.root.grab_key( keycode, modmask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
+        grabbed[(modmask | X.LockMask, keycode)] = callback
         self.sigDebugPrinted.emit(f"XHelper.getShortcutsDaemon: registered \"{keystring}\"")
       except Exception as e:
         raise(f"XHelper.getShortcutsDaemon: failed to grab \"{keystring}\"\n{e}")

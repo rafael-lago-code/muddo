@@ -19,7 +19,7 @@
 #
 import os
 from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout,\
-                            QVBoxLayout, QLayout
+                            QVBoxLayout, QLayout, QFrame
 from PyQt6.QtGui import QIcon, QPixmap
 from PyQt6 import QtCore
 from http.client import HTTPConnection, HTTPSConnection
@@ -148,6 +148,18 @@ def newHLayout(objects : list) -> QHBoxLayout:
 #------------------------------------------------------------------------------------
 def newVLayout(objects : list) -> QVBoxLayout:
   return stackToLayout(QVBoxLayout(),objects)
+
+#------------------------------------------------------------------------------------
+def newHFrame(objects : list) -> QHBoxLayout:
+  f = QFrame()
+  f.setLayout(stackToLayout(QHBoxLayout(),objects))
+  return f
+
+#------------------------------------------------------------------------------------
+def newVFrame(objects : list) -> QHBoxLayout:
+  f = QFrame()
+  f.setLayout(stackToLayout(QVBoxLayout(),objects))
+  return f
 
 #------------------------------------------------------------------------------------
 def stackToLayout(layout : QLayout, objects : list) -> QLayout:

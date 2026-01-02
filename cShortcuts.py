@@ -18,19 +18,19 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QGridLayout
+from PyQt6.QtWidgets import QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
 from cWidgets.util import *
 from cWidgets.cTab import cTab
 from cWidgets.cButton import cButton, cLauncherButton
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
-import glob
-import os
+import glob, re, os
 from PyQt6.QtWidgets import QCheckBox
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit
 from typing import TYPE_CHECKING
 from cShortcutsDaemon import cShortcutsDaemon
+from XHelper import XHelper
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
@@ -70,6 +70,7 @@ class cShortcutItem(QListWidgetItem):
         icon_item.setIcon(QIcon(row[0]))
       else:
         icon_item.setIcon(QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png'))
+      # table.setCellWidget(pos,0,QPushButton("D"))
       table.setItem(pos, 0, icon_item)
       table.setItem(pos, 1, QTableWidgetItem(str(row[1])))
       table.setItem(pos, 2, QTableWidgetItem(str(row[2])))
@@ -96,7 +97,7 @@ class cShortcutItem(QListWidgetItem):
       self.data = []
 
   #----------------------------------------------------------------------------------------------------------
-  def consolidate(self, consolidated = {}) -> dict:
+  def consolidate(self, consolidated = {}, aliases = {}) -> dict:
     # Shortcuts format:
     #     [<icon>, <name>, <hotkey>, <scripts>]
     # Scripts are of the form: 
@@ -110,8 +111,14 @@ class cShortcutItem(QListWidgetItem):
     #   - anything else: interpreted as key presses
     # Scripts are all started at the same time whenever their shortcut is pressed
     for row in self.data:
-      hotkey  = (row[2].replace(" ", "")).lower()
-      scripts = [e.strip() for e in (row[3]).split(";") if e.strip()]
+      hotkey  = row[2]
+      for k,a in aliases.items():
+        hotkey = hotkey.replace(k,a)
+      hotkey  = (hotkey.replace(" ", "")).lower()
+      scripts = row[3]
+      for k,a in aliases.items():
+        scripts = scripts.replace(k,a)
+      scripts = [e.strip() for e in (scripts).split(";") if e.strip()]
 
       if hotkey in consolidated.keys():
         cs = consolidated[hotkey]
@@ -133,11 +140,17 @@ class cShortcutItem(QListWidgetItem):
             cs[t] += actions
           else:
             cs[t] = actions
-
+    
     # todo: check if "all" is scripting the same action; if yes, then the individual characters don't need to do it by themselves
       consolidated[hotkey] = cs
     return consolidated
   
+#----------------------------------------------------------------------------------------------------------  
+class cMacroLists(QListWidgetItem):
+  def __init__(self, parent : cShortcuts):
+    super().__init__()
+    self.parent = parent
+
 #----------------------------------------------------------------------------------------------------------
 class cShortcuts(cTab):
   def __init__(self, main : cMainWindow):
@@ -157,6 +170,11 @@ class cShortcuts(cTab):
     self.btnAddEntry    = cButton(icon=P_ICON_ADD, tooltip="Add a new shortcut to the currently selected set")
     self.btnRemoveEntry = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected shortcut from the currently selected set")
     self.btnHelp        = cButton(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how shortcuts work here (lol)")
+
+    self.btnAddAlias    = cButton(icon=P_ICON_ADD, tooltip="Add a new alias")
+    self.btnRemoveAlias = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
+    self.btnSaveAlias   = cButton(icon=P_ICON_SAVEALL, tooltip="Save all aliases to file")
+    self.btnReloadAlias = cButton(icon=P_ICON_REFRESH, tooltip="Reload all aliases from file")
     
     self.btnDaemonToggle.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
 
@@ -166,19 +184,37 @@ class cShortcuts(cTab):
     self.btnReloadSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     
     self.shortcutListWidget = QListWidget()
-    self.allShortcutItems = {}
+    self.macroTable = QTableWidget(0, 2)
+    self.macroTable.setHorizontalHeaderLabels(["Alias", "Translation"])
+    self.macroTable.setColumnWidth(40, 40)
+    self.macroTable.horizontalHeader().setStretchLastSection(True)
+    self.macroTable.verticalHeader().setVisible(False)
+    
 
+    self.allShortcutItems = {}
+    self.activeSetLabel = QLabel("Shortcut in selected set:")
     self.table = QTableWidget(0, 4)
-    self.table.setHorizontalHeaderLabels(["Icon", "Name", "Shortcut", "Action"])
+    self.table.setHorizontalHeaderLabels(["Icon", "Name", "Trigger", "Action"])
     self.table.setColumnWidth(0, 40)
     self.table.horizontalHeader().setStretchLastSection(True)
     self.table.verticalHeader().setVisible(False)
 
-    self.setLayout(newVLayout([self.shortcutListWidget, 
-                               newHLayout([" ", self.btnNewSet, self.btnSaveSet, self.btnDeleteSet, self.btnReloadSet,
-                                           " ",  self.btnAddEntry, self.btnRemoveEntry,
-                                           " ",  self.btnHelp, " "]),
-                               self.table]))
+    _topsplitter = QSplitter()
+    _vsplitter = QSplitter(Qt.Orientation.Vertical)
+    _topsplitter.addWidget(newVFrame([ "Shortcut Sets:", 
+                              newHLayout([self.shortcutListWidget,
+                                newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, 
+                                  self.btnSaveSet, self.btnReloadSet, "__stretch__"])])]))
+    
+    _topsplitter.addWidget(newVFrame(["Aliases:", 
+                              newHLayout([self.macroTable, 
+                                  newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias,
+                                              self.btnSaveAlias, self.btnReloadAlias,"__stretch__"])])]))
+    _vsplitter.addWidget(_topsplitter)
+    _vsplitter.addWidget(newVFrame([self.activeSetLabel, 
+                            newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry, 
+                                        self.btnRemoveEntry, "__stretch__", self.btnHelp])])]))
+    self.setLayout(newVLayout([_vsplitter]))
 
     self.btnNewSet.clicked.connect(self.newShortcutSet)
     self.btnDeleteSet.clicked.connect(self.deleteShortcutSet)
@@ -187,7 +223,14 @@ class cShortcuts(cTab):
     self.shortcutListWidget.itemSelectionChanged.connect(self.updateTable)
     self.table.cellChanged.connect(self.syncTable2Data)
 
+    self.btnAddAlias.clicked.connect(self.addAlias)
+    self.btnRemoveAlias.clicked.connect(self.removeAlias)
+    self.btnSaveAlias.clicked.connect(self.saveAlias)
+    self.btnReloadAlias.clicked.connect(self.reloadAlias)
+
     self.btnDaemonToggle.clicked.connect(self.launchDaemon)
+    self.btnDaemonToggle.ctrlClicked.connect(lambda x=True : self.launchDaemon(x))
+    self.btnDaemonToggle.rightClicked.connect(lambda x=True : self.launchDaemon(x))
     self.btnAddEntry.clicked.connect(self.addShortcutEntry)
     self.btnRemoveEntry.clicked.connect(self.removeShortcutEntry)
     self.btnSaveSet.clicked.connect(self.saveSelectedShortcutSet)
@@ -196,6 +239,8 @@ class cShortcuts(cTab):
     self.btnReloadSet.clicked.connect(self.reloadSelectedShortcutSet)
     self.btnReloadSet.ctrlClicked.connect(self.reloadAllShortcutSet)
     self.btnReloadSet.rightClicked.connect(self.reloadAllShortcutSet)
+
+    self.reloadAlias()
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
@@ -231,7 +276,46 @@ class cShortcuts(cTab):
     sset = self.shortcutListWidget.selectedItems()
     if not sset: return
     sset[0].sync(row, column)
-    
+    self.activeSetLabel.setText(f"Shortcuts in \"{sset[0].text()}\":")
+  
+  #----------------------------------------------------------------------------------------------------------
+  def addAlias(self, alias="", action=""):
+    pos = self.macroTable.rowCount()
+    self.macroTable.insertRow(pos)
+    self.macroTable.setItem(pos, 0, QTableWidgetItem(alias))
+    self.macroTable.setItem(pos, 1, QTableWidgetItem(action))
+
+  #----------------------------------------------------------------------------------------------------------
+  def removeAlias(self):
+    crow = self.macroTable.currentRow()
+    if crow:
+      self.macroTable.removeRow(crow)
+
+  #----------------------------------------------------------------------------------------------------------
+  def reloadAlias(self):
+    self.macroTable.clearContents()
+    self.macroTable.setRowCount(0)
+
+    filename = P_DEFAULT_SHORTCUTDIR + os.sep + "aliases.json"
+    with open(filename,"r") as f:
+      data = json.load(f)
+    for k in data.keys():
+      self.addAlias(k,data[k])
+
+  #----------------------------------------------------------------------------------------------------------
+  def saveAlias(self):
+    d = self.getAliases()
+    filename = P_DEFAULT_SHORTCUTDIR + os.sep + "aliases.json"
+    json.dump(d, open(filename,'w'), cls=muJSONEncoder)
+
+  #----------------------------------------------------------------------------------------------------------
+  def getAliases(self):
+    d = {}
+    for row in range(self.macroTable.rowCount()):
+      d[self.macroTable.item(row,0).text()] = self.macroTable.item(row,1).text()
+    return d
+
+
   #----------------------------------------------------------------------------------------------------------
   def newShortcutSet(self):
     i = 1
@@ -329,8 +413,19 @@ class cShortcuts(cTab):
     del sset[0]
 
   #----------------------------------------------------------------------------------------------------------
-  def launchDaemon(self):
+  def launchDaemon(self, purge=False):
     # self.main.processManager.setVisible(True)
+    for key, proc in self.main.processManager.items.items():
+      if key.startswith("scd_"):
+        self.main.console.info("Restarting Shortcuts Daemon...")
+        proc.toggle() # turns off
+        if purge:
+          self.main.console.info("Purging all possible shortcuts...")
+          XHelper().forceCleanup()
+        proc.toggle() # turns on again
+        self.main.console.info("Shortcuts Daemon restarted!")
+        return
+    
     scd = cShortcutsDaemon(self.main)
     self.main.processManager.addItem(scd)
     scd.launch()
@@ -338,9 +433,10 @@ class cShortcuts(cTab):
   #----------------------------------------------------------------------------------------------------------
   def consolidateActiveShortcuts(self) -> dict:
     allActive = self.getActiveSets()
+    aliases = self.getAliases()
     consolidated = {}
     for name in allActive:
-      consolidated = self.allShortcutItems[name].consolidate(consolidated)
+      consolidated = self.allShortcutItems[name].consolidate(consolidated, aliases)
 
     self.main.console.debugMessage(f"--------------------------------------------------------")
     self.main.console.debugMessage(f"  Consolidated shortcuts (all active sets)")
