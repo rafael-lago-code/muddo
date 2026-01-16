@@ -16,7 +16,7 @@
 #
 from PyQt6.QtCore import QObject, pyqtSignal
 from Xlib import X, display, Xutil, XK
-import time, re, threading
+import time, re, threading, json, subprocess
 
 P_DEFAULT_SLEEP = 0.05
 P_DEFAULT_KEYSYM = '/usr/include/X11/keysymdef.h'
@@ -238,7 +238,7 @@ class XHelper(QObject):
     return seq
 
   #----------------------------------------------------------------------------------------------------------  
-  def sendKeystrokes(self, keystring, winID = None) -> None:
+  def execute(self, keystring, winID = None) -> None:
     if winID:
       self.focusWindow(winID)
     
@@ -252,27 +252,50 @@ class XHelper(QObject):
         
       elif item['key'].startswith("focus"):
         self.focusWindow(int(item['key'][6:]))
+
+      elif item['key'].startswith("point"):
+        self.focusWindow(int(item['key'][6:]))
       
       elif item['key'].startswith("click"):
         self.sendClick(int(item['key'][6:]))
       
       else:
-        for mod in item['mods']:
-          if mod not in self.MODIFIERS:
-            raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
-          self.disp.xtest_fake_input(X.KeyPress, self.getKeyCode(mod))
+        self.sendKeystroke(item)
+        # for mod in item['mods']:
+        #   if mod not in self.MODIFIERS:
+        #     raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
+        #   self.disp.xtest_fake_input(X.KeyPress, self.getKeyCode(mod))
 
-        keycode = self.getKeyCode(item['key'])
-        if keycode:
-          self.disp.xtest_fake_input(X.KeyPress, keycode)
-          self.disp.xtest_fake_input(X.KeyRelease, keycode)
-        else:
-          raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
+        # keycode = self.getKeyCode(item['key'])
+        # if keycode:
+        #   self.disp.xtest_fake_input(X.KeyPress, keycode)
+        #   self.disp.xtest_fake_input(X.KeyRelease, keycode)
+        # else:
+        #   raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
         
-        for mod in reversed(item['mods']):
-          self.disp.xtest_fake_input(X.KeyRelease, self.getKeyCode(mod))
+        # for mod in reversed(item['mods']):
+        #   self.disp.xtest_fake_input(X.KeyRelease, self.getKeyCode(mod))
       
       self.disp.sync()
+
+  #----------------------------------------------------------------------------------------------------------  
+  def sendKeystroke(self, item) -> None:
+    for mod in item['mods']:
+      if mod not in self.MODIFIERS:
+        raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
+      self.disp.xtest_fake_input(X.KeyPress, self.getKeyCode(mod))
+
+    keycode = self.getKeyCode(item['key'])
+    if keycode:
+      self.disp.xtest_fake_input(X.KeyPress, keycode)
+      self.disp.xtest_fake_input(X.KeyRelease, keycode)
+    else:
+      raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
+    
+    for mod in reversed(item['mods']):
+      self.disp.xtest_fake_input(X.KeyRelease, self.getKeyCode(mod))
+      
+    self.disp.sync()
   
   #----------------------------------------------------------------------------------------------------------  
   def sendClick(self, button, winID = None, delay=None):
@@ -287,12 +310,24 @@ class XHelper(QObject):
       return True
     except:
       return False
+    
+  #----------------------------------------------------------------------------------------------------------  
+  def sendPointTo(self, rel_x, rel_y, winID):
+    try:
+      geo = self.getWindowGeometry(winID)  # [x, y, width, height]
+      if not geo: return
+      
+      # Calculate absolute screen coordinates
+      abs_x = geo[0] + rel_x
+      abs_y = geo[1] + rel_y
+      
+      self.disp.xtest_fake_input(X.MotionNotify, x=abs_x, y=abs_y)
+      self.disp.sync()
+    except:
+      pass
   
   #----------------------------------------------------------------------------------------------------------  
   def clickInWindow(self, button, rel_x, rel_y, winID, delay=None):
-    """
-    Click at relative position inside window
-    """
     try:
       # Get window absolute position
       geo = self.getWindowGeometry(winID)  # [x, y, width, height]
@@ -399,6 +434,77 @@ class XHelper(QObject):
     except Exception as e:
       raise(f"XHelper.moveWindow({x},{y}) failed\n{e}")
 
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def mutePID(pid):
+    try:
+      cmd = ["pw-cli", "list-objects", "Node", "-f", "json"]
+      output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+      
+      # Parse JSON output
+      nodes = json.loads(output)
+      
+      for node in nodes:
+        # Check if this node belongs to our PID
+        props = node.get('info', {}).get('props', {})
+        app_pid = props.get('application.process.id')
+        
+        if app_pid and str(pid) == str(app_pid):
+          # Found it! Get node ID and mute
+          node_id = node['id']
+          
+          # Mute command
+          subprocess.run([
+              "pw-cli", "set-param", str(node_id), 
+              "Props", "Mute", "true"
+          ], stderr=subprocess.DEVNULL)
+          return True
+    except Exception as e:
+        print(e)
+    return False
+
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def unmutePID(pid):
+    try:
+      cmd = ["pw-cli", "list-objects", "Node", "-f", "json"]
+      output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+      nodes = json.loads(output)
+      
+      for node in nodes:
+        props = node.get('info', {}).get('props', {})
+        app_pid = props.get('application.process.id')
+        
+        if app_pid and str(pid) == str(app_pid):
+          node_id = node['id']
+          subprocess.run([
+              "pw-cli", "set-param", str(node_id),
+              "Props", "Mute", "false"
+          ], stderr=subprocess.DEVNULL)
+          return True
+    except Exception as e:
+        print(e)
+    return False
+  
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def isPIDMuted(pid):
+    try:
+      cmd = ["pw-cli", "list-objects", "Node", "-f", "json"]
+      output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
+      nodes = json.loads(output)
+      
+      for node in nodes:
+        props = node.get('info', {}).get('props', {})
+        app_pid = props.get('application.process.id')
+        
+        if app_pid and str(pid) == str(app_pid):
+          # Check mute state
+          mute_state = props.get('Mute', 'false')
+          return mute_state.lower() == 'true'
+    except Exception as e:
+        print(e)
+    return None  # Couldn't determine
 
 # hotkeys = {
 #   "super+q": lambda: print("Super+Space pressed!"),

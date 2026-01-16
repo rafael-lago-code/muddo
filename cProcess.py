@@ -26,6 +26,7 @@ from collections import OrderedDict
 import subprocess
 from cWidgets.util import *
 from cWidgets.cButton import cButton, cLauncherButton
+from XHelper import XHelper
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
@@ -50,6 +51,7 @@ class cProcessManager(cTab):
     self.btnSaveAll    = cButton(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
     self.btnRestoreAll = cButton(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
     self.btnRemoveAll  = cButton(icon=P_ICON_CLEARALL,  tooltip="Left click: clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
+    self.btnMuteAll    = cButton(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
     self.btnCaptureOrphans = cButton("Capture &Orphans", tooltip="Attempts to find running instances of DDO and capture them"\
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")
@@ -66,12 +68,13 @@ class cProcessManager(cTab):
     self.btnRemoveAll.ctrlClicked.connect(lambda : self.removeAll(True))
     self.btnRemoveAll.rightClicked.connect(lambda : self.removeAll(True))
 
-    buttons = QWidget()
-    buttons.setLayout(newHLayout([self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
-      self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnRemoveAll]))
+    # buttons = QWidget()
+    # buttons.setLayout()
     
     self.content = newVLayout([header])
-    self.setLayout(newVLayout([self.content, buttons]))
+    self.setLayout(newVLayout([self.content, newHLayout([self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
+      self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnRemoveAll, self.btnMuteAll]),
+                    "__stretch__"]))
     
 
   #----------------------------------------------------------------------------------------------------------
@@ -188,6 +191,7 @@ class aProcessItem(QWidget):
     self.btnSave    = cButton(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
     self.btnRestore = cButton(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
     self.btnRemove  = cButton(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
+    self.btnMute    = cButton(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
     self.btnToggle.clicked.connect(self.toggle)
     self.btnToggle.rightClicked.connect(lambda : self.toggle(True))
     self.btnToggle.ctrlClicked.connect(lambda : self.toggle(True))
@@ -196,12 +200,13 @@ class aProcessItem(QWidget):
     self.btnRemove.clicked.connect(self.remove)
     self.btnRemove.ctrlClicked.connect(lambda : self.remove(True))
     self.btnRemove.rightClicked.connect(lambda : self.remove(True))
+    self.btnMute.clicked.connect(self.audioToggle)
 
     self.sigTerminated.connect(lambda : self.setStatus(aProcessItem.P_STATUS_KILLED))
     
     self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
-                              self.btnRemove]))
+                              self.btnRemove, self.btnMute]))
   
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
@@ -218,6 +223,17 @@ class aProcessItem(QWidget):
   #----------------------------------------------------------------------------------------------------------
   def restoreWindow(self):
     pass
+
+  #----------------------------------------------------------------------------------------------------------
+  def audioToggle(self):
+    if XHelper().isPIDMuted(self.pid):
+      self.console.info(f"{C_SILVER}Muting</font> {self.pid}...")
+      XHelper().unmutePID(self.pid)
+      self.btnMute.setIcon(getIcon(P_ICON_UNMUTE))
+    else:
+      self.console.info(f"{C_SILVER}Unmuting</font> {self.pid}...")
+      XHelper().mutePID(self.pid)
+      self.btnMute.setIcon(getIcon(P_ICON_MUTE))
 
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, status):

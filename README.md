@@ -67,7 +67,7 @@ I tried to keep it as flexible as possible, so as a result, it is a bit complica
   - action: 
       - syntax is `<script1>; <script2>; <script3>;`
       - each script is formatted as `<target1>, ..., <targetN>: <action1>, ..., <actionM>`. The comma is optional, and a simple space can be used instead.
-          - [TODO] add "all" target
+          - add "all" target
           - [TODO] add "self" target, which focuses the account which was active when the trigger was pressed
       - each `<target>` is a game account. The daemon will send the actions to the window associated with this account. If the account is not online, or there is a typo in the name, it will be silently ignored.
       - each `<action>` can be:
@@ -87,7 +87,9 @@ I tried to keep it as flexible as possible, so as a result, it is a bit complica
   Aliases are not saved automatically. This is intentional. Press "Save" button on the right side of the Widget to save all modifications to file, or "Reload" to revert changes.
 
   #### Starting the Daemon
-  The daemon will grab all the active sets (i.e. enabled via the checkbox) and parse them all immediatelly when activated. Check `~/.config/muDDO/log` for details about the parsing. Any changes while the daemon is running are ignored, but you can restart it to trigger the new settings (without restarting the game or even having to save the changes)
+  The daemon will grab all the active sets (i.e. enabled via the checkbox) and parse them all immediatelly when activated. Check `~/.config/muDDO/log` for details about the parsing. Any changes while the daemon is running are ignored, but you can restart it to trigger the new settings (without restarting the game or even having to save the changes).
+  
+  Use right-click or ctrl+click to force a purge+restart of the Daemon. It iterates over all possible trigger combinations and "ungrabs" them one by one. It takes a good second to do that.
 
   #### Sets Consolidation:
   When activated, the Daemon will consolidate all active sets. This includes checking which triggers appear in multiple sets. If this happens, it will merge actions from all active sets associated with the same trigger. This is intentional. 

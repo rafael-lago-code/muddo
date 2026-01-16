@@ -27,6 +27,7 @@ import subprocess
 import os, time, glob
 from cWidgets.util import *
 from typing import TYPE_CHECKING
+from cWidgets import cButton
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
    from cWorlds import cWorld

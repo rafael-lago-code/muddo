@@ -26,6 +26,7 @@ from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 import glob, re, os
+from cWidgets.cOrb import cOrb
 from PyQt6.QtWidgets import QCheckBox
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit
 from typing import TYPE_CHECKING
@@ -160,8 +161,8 @@ class cShortcuts(cTab):
     self.toActivate = None
     self.main = main
 
-    self.btnDaemonToggle = cLauncherButton("&Shortcuts\nDaemon", tooltip="Toggle on/off all shortcuts from all active sets")
-    self.btnDaemonToggle.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/ShortcutDaemonIcon64.png')))
+    self.btnDaemonToggle = cOrb("Shortcuts\nDaemon", getIcon(P_MUDDO_DIR+'/images/ShortcutDaemonIcon64.png'),
+                                tooltip="Toggle on/off all shortcuts from all active sets")
 
     self.btnNewSet      = cButton(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
     self.btnSaveSet     = cButton(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click or Right click to save all")
@@ -169,15 +170,13 @@ class cShortcuts(cTab):
     self.btnReloadSet   = cButton(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click or Right click to reload all")
     self.btnAddEntry    = cButton(icon=P_ICON_ADD, tooltip="Add a new shortcut to the currently selected set")
     self.btnRemoveEntry = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected shortcut from the currently selected set")
-    self.btnHelp        = cButton(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how shortcuts work here (lol)")
+    # self.btnHelp        = cButton(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how shortcuts work here (lol)")
 
     self.btnAddAlias    = cButton(icon=P_ICON_ADD, tooltip="Add a new alias")
     self.btnRemoveAlias = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
     self.btnSaveAlias   = cButton(icon=P_ICON_SAVEALL, tooltip="Save all aliases to file")
     self.btnReloadAlias = cButton(icon=P_ICON_REFRESH, tooltip="Reload all aliases from file")
     
-    self.btnDaemonToggle.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
-
     self.btnNewSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnSaveSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnDeleteSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
@@ -213,12 +212,12 @@ class cShortcuts(cTab):
     _vsplitter.addWidget(_topsplitter)
     _vsplitter.addWidget(newVFrame([self.activeSetLabel, 
                             newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry, 
-                                        self.btnRemoveEntry, "__stretch__", self.btnHelp])])]))
+                                        self.btnRemoveEntry, "__stretch__"])])]))
     self.setLayout(newVLayout([_vsplitter]))
 
     self.btnNewSet.clicked.connect(self.newShortcutSet)
     self.btnDeleteSet.clicked.connect(self.deleteShortcutSet)
-    self.btnHelp.clicked.connect(self.showHelpWindow)
+    # self.btnHelp.clicked.connect(self.showHelpWindow)
     self.shortcutListWidget.itemChanged.connect(self.updateShortcutSetFile)
     self.shortcutListWidget.itemSelectionChanged.connect(self.updateTable)
     self.table.cellChanged.connect(self.syncTable2Data)
@@ -256,7 +255,8 @@ class cShortcuts(cTab):
   #----------------------------------------------------------------------------------------------------------
   def updateTable(self):
     sset = self.shortcutListWidget.selectedItems()
-    if not s: return
+    if not sset:
+      return
 
     self.table.clearContents()
     self.table.setRowCount(0)
@@ -359,45 +359,45 @@ class cShortcuts(cTab):
       else:
         sset.setActive(False)
 
-  #----------------------------------------------------------------------------------------------------------
-  def showHelpWindow(self):
-    dlg = QDialog(self)
-    dlg.setWindowTitle("Shortcuts Help")
-    layout = QVBoxLayout(dlg)
-    text = QTextEdit()
-    text.setReadOnly(True)
-    help_text = f"""
-    <h2>How to Use</h2>
-    <br>You'll be working with "sets" of shorcuts. Each set can have its own collection of shortcuts and you can toggle each set on/off (inactive/active). Shortcuts between sets can overlap - this is intentional.
-    <br>
-    <br>1. <b>Create a Set:</b> click the \"New Set\" button ("Document" icon). A new line will appear in the list with a placeholder name, like NewSet1. The list is modifiable, just double click any entry to rename it. The new set will be inactive by default. Click the checkmark box on the left of NewSet1 name to toggle it on/off
-    <br>2. <b>Select NewSet1</b>: click your NewSet1, then the table display will show an empty set of shortcuts
-    <br>3. <b>Add Shortcuts:</b> click "+" button to define a new shortcut. A new, empty row will be added to the table. Edit this new row as needed (currently you have to enter shortcuts as text, e.g. "ctrl+m")
-    <br>4. <b>Launch Shortcuts Daemon:</b> press the "Play" button to enable all shortcuts from all active sets. If it is already running, press "Stop" and then "Play" again to refresh it
+  # #----------------------------------------------------------------------------------------------------------
+  # def showHelpWindow(self):
+  #   dlg = QDialog(self)
+  #   dlg.setWindowTitle("Shortcuts Help")
+  #   layout = QVBoxLayout(dlg)
+  #   text = QTextEdit()
+  #   text.setReadOnly(True)
+  #   help_text = f"""
+  #   <h2>How to Use</h2>
+  #   <br>You'll be working with "sets" of shorcuts. Each set can have its own collection of shortcuts and you can toggle each set on/off (inactive/active). Shortcuts between sets can overlap - this is intentional.
+  #   <br>
+  #   <br>1. <b>Create a Set:</b> click the \"New Set\" button ("Document" icon). A new line will appear in the list with a placeholder name, like NewSet1. The list is modifiable, just double click any entry to rename it. The new set will be inactive by default. Click the checkmark box on the left of NewSet1 name to toggle it on/off
+  #   <br>2. <b>Select NewSet1</b>: click your NewSet1, then the table display will show an empty set of shortcuts
+  #   <br>3. <b>Add Shortcuts:</b> click "+" button to define a new shortcut. A new, empty row will be added to the table. Edit this new row as needed (currently you have to enter shortcuts as text, e.g. "ctrl+m")
+  #   <br>4. <b>Launch Shortcuts Daemon:</b> press the "Play" button to enable all shortcuts from all active sets. If it is already running, press "Stop" and then "Play" again to refresh it
 
-    <h2>Features</h2>
-    <br>● <b>Save set:</b> once you're satisfied with your configuration, select it from the list and press the "Save Set" button
-    <br>● <b>Delete sets</b>: to delete a full set, select it from the list and press the "Trash" icon button. This action cannot be undone!
-    <br>● <b>Active sets</b>: you can have many active sets at the same time, and there is no check if they have overlapping shortcuts. This is intentional. The daemon will execute ALL actions from ALL active sets whenever the shortcut is pressed. Be responsible!
-    <br>● <b>Sets configuration</b>: the "profile" saves the last active sets of shortcuts and reloads then when relaunching the application. It saves automatically if you exit the application normally, or you can manually go to "Settings" click "Save" to save the currently active profile
-    <br>● <b>Edit shortcuts</b>: just modify them directly in the table. The changes only take effect after you restart the shortcuts daemon
-    <br>● <b>Delete shortcuts</b>: to delete a single shortcut, select it from the table and press the "-" button. You can reload previously saved sets to undo this action.
+  #   <h2>Features</h2>
+  #   <br>● <b>Save set:</b> once you're satisfied with your configuration, select it from the list and press the "Save Set" button
+  #   <br>● <b>Delete sets</b>: to delete a full set, select it from the list and press the "Trash" icon button. This action cannot be undone!
+  #   <br>● <b>Active sets</b>: you can have many active sets at the same time, and there is no check if they have overlapping shortcuts. This is intentional. The daemon will execute ALL actions from ALL active sets whenever the shortcut is pressed. Be responsible!
+  #   <br>● <b>Sets configuration</b>: the "profile" saves the last active sets of shortcuts and reloads then when relaunching the application. It saves automatically if you exit the application normally, or you can manually go to "Settings" click "Save" to save the currently active profile
+  #   <br>● <b>Edit shortcuts</b>: just modify them directly in the table. The changes only take effect after you restart the shortcuts daemon
+  #   <br>● <b>Delete shortcuts</b>: to delete a single shortcut, select it from the table and press the "-" button. You can reload previously saved sets to undo this action.
 
-    <h2>Tips</h2>
-    <br>● Changes take effect only after restarting the Daemon!!
-    <br>● It helps to have a "set" per class/character, e.g. a "healer" set. Toggle the set inactive/active if the healer account is online or not.
-    <br>● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all sets.
-    <br>● Use descriptive names for sets and shortcuts for easier management.
-    <br>● All sets are stored as text files in {P_DEFAULT_SHORTCUTDIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
+  #   <h2>Tips</h2>
+  #   <br>● Changes take effect only after restarting the Daemon!!
+  #   <br>● It helps to have a "set" per class/character, e.g. a "healer" set. Toggle the set inactive/active if the healer account is online or not.
+  #   <br>● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all sets.
+  #   <br>● Use descriptive names for sets and shortcuts for easier management.
+  #   <br>● All sets are stored as text files in {P_DEFAULT_SHORTCUTDIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
 
-    <br>If you need further support, look for help.
-    """
-    text.setHtml(help_text)
+  #   <br>If you need further support, look for help.
+  #   """
+  #   text.setHtml(help_text)
 
-    layout.addWidget(text)
-    dlg.setLayout(layout)
-    dlg.resize(400, 300)
-    dlg.exec()
+  #   layout.addWidget(text)
+  #   dlg.setLayout(layout)
+  #   dlg.resize(400, 300)
+  #   dlg.exec()
 
   #----------------------------------------------------------------------------------------------------------
   def deleteShortcutSet(self):

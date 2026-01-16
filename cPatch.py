@@ -55,7 +55,7 @@ class cPatch(cTab):
     self.readFiles = 0
     self.readBytes = 0
     
-    self.setLayout(newVLayout([self.log, newHLayout([self.timestamp, self.btnPatch])]))
+    self.setLayout(newVLayout([self.log, newHLayout([self.timestamp, self.btnPatch]), "__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):

@@ -109,7 +109,7 @@ class cShortcutsDaemon(aProcessItem):
     xh = XHelper()
     xh.sigDebugPrinted.connect(self.main.console.debugMessage)
     for hk, script in parsed.items():
-      parsed[hk] = lambda x=script : xh.sendKeystrokes(x)
+      parsed[hk] = lambda x=script : xh.execute(x)
 
     try:
       self.daemon = xh.getShortcutsDaemon(parsed)

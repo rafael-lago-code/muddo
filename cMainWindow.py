@@ -31,6 +31,7 @@ from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cDDO import cDDO
 from cWidgets.cButton import cButton, cLauncherButton
+from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 
 from PyQt6.QtGui import QKeySequence, QShortcut
@@ -48,11 +49,11 @@ class cMainWindow(QMainWindow):
     self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
     self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
 
-    self.btnLaunch = cLauncherButton(" &Launch", P_ICON_D20, False)
-    self.btnDH = cLauncherButton("Dungeon\nHelper", tooltip="Launches Dungeon Helper (it if is installed); activates on all"\
-                                 " instances of the game for as long as it runs.")
-    self.btnDH.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DungeonHelperIcon32.png')))
-    btnQuit = cLauncherButton(" &Quit", P_ICON_EXIT)
+    # self.btnLaunch = cLauncherButton(" &Launch", P_ICON_D20, False)
+    self.btnLaunch = cOrb("Launch", P_ICON_D20)
+    self.btnDH = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
+                                         tooltip="Launches Dungeon Helper (it if is installed); activates on all instances of the game for as long as it runs.")
+    btnQuit = cOrb("Quit")
     
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
@@ -61,7 +62,7 @@ class cMainWindow(QMainWindow):
     self.settings = cSettings(self)
     self.shortcuts = cShortcuts(self)
     self.processManager = cProcessManager(self)
-    self.processManager.setVisible(False)
+    self.processManager.setVisible(False)    
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
