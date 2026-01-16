@@ -17,16 +17,16 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QWidget, QScrollArea, QPushButton
+from PyQt6.QtWidgets import QWidget, QPushButton
+from cWidgets.cFloating import cFloating
+from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 
-class cTab(QWidget):
+class cToggler(cFloating):
 
-  def __init__(self, title : str):
+  def __init__(self, title : str, icon):
     super().__init__()
-    self.toggler = QPushButton(" "+title)
-    self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
-    self.toggler.setFixedHeight(36)
+    self.toggler = cOrb(title, icon)
     self.toggler.setCheckable(True)
 
     self.toggler.clicked.connect(self.toggle)
@@ -34,18 +34,18 @@ class cTab(QWidget):
     
   def toggle(self):
     if self.toggler.isChecked():
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
+      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
       self.setVisible(True)
     else:
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
+      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_UP))
       self.setVisible(False)
 
   def setVisible(self, value : bool):
     self.toggler.setChecked(value)
-    if value:
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
-    else:
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
+    # if value:
+      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
+    # else:
+      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_UP))
     super().setVisible(value)
 
 

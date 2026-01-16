@@ -17,9 +17,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu, QSplitter, QFrame
-from PyQt6.QtGui import QIcon, QPixmap
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QMainWindow, QWidget, QMenu, QSplitter
+from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from cCredentials import cCredentials
 from cSettings import cSettings
 from cShortcuts import cShortcuts
@@ -30,34 +29,34 @@ from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cDDO import cDDO
-from cWidgets.cButton import cButton, cLauncherButton
 from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 
-from PyQt6.QtGui import QKeySequence, QShortcut
-
 class cMainWindow(QMainWindow):
+  P_POS_X = 100
+  P_POS_Y = 100
+  P_SIZE_W = 768
+  P_SIZE_H = 1024
   sigProfileChanged = pyqtSignal(list)
 
   def __init__(self):
     super().__init__()
     self.setWindowTitle("μDDO")
-    self.setWindowIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/icon.png')))
+    self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))
     self.launchMenu = QMenu() # filled in cSettings
 
     self.lblProfile = QLabel()
     self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
     self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
 
-    # self.btnLaunch = cLauncherButton(" &Launch", P_ICON_D20, False)
     self.btnLaunch = cOrb("Launch", P_ICON_D20)
     self.btnDH = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
                                          tooltip="Launches Dungeon Helper (it if is installed); activates on all instances of the game for as long as it runs.")
-    btnQuit = cOrb("Quit")
+    btnQuit = cOrb("Quit", P_ICON_EXIT)
     
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
-    self.news = cNews()
+    self.news = cNews(self)
     self.patch = cPatch(self)
     self.settings = cSettings(self)
     self.shortcuts = cShortcuts(self)
@@ -75,19 +74,14 @@ class cMainWindow(QMainWindow):
     tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, 
                                         self.shortcuts.toggler, self.patch.toggler, self.news.toggler]))
 
-    _splitter = QSplitter(Qt.Orientation.Vertical)
-    _splitter.addWidget(self.processManager)
-    _splitter.addWidget(self.shortcuts)
-    _splitter.addWidget(self.news)
-    _splitter.addWidget(self.patch)
-    _splitter.addWidget(self.console)
+    self.console.show()
 
     w = QWidget()
     # w.setLayout(newVLayout([self.credentials, tabController, self.settings, 
     #             self.processManager, self.shortcuts, self.news, self.patch, self.console, lButtonsBar]))
-    w.setLayout(newVLayout([self.credentials, tabController, self.settings, _splitter, lButtonsBar]))
+    w.setLayout(newVLayout([self.credentials, tabController, lButtonsBar]))
     self.setCentralWidget(w)
-    self.resize(768,1024)
+    self.loadState()
 
     if not P_CERTFILE:
       self.console.error(f"Failed to intialize certificate, is the file \"{P_CERTFILE}\" accessible? ")
@@ -172,8 +166,28 @@ class cMainWindow(QMainWindow):
     dh.launch()
 
   #----------------------------------------------------------------------------------------------------------
+  def loadState(self):
+    settings = QSettings(P_DEFAULT_CONF)
+    pos = settings.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
+    size = settings.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
+    self.move(pos)
+    self.resize(size)
+  
+  #----------------------------------------------------------------------------------------------------------
+  def saveState(self):
+    settings = QSettings(P_DEFAULT_CONF)
+    settings.setValue(f"μDDO/pos",  self.pos())
+    settings.setValue(f"μDDO/size", self.size())
+  
+  #----------------------------------------------------------------------------------------------------------
   def close(self):
     self.settings.save()
+    self.console.close()
+    self.settings.close()
+    self.shortcuts.close()
+    self.patch.close()
+    self.news.close()
+    self.saveState()
     super().close()
 
 

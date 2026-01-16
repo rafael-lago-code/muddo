@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
-from cWidgets.cTab import cTab
+from cWidgets.cToggler import cToggler
 from collections import OrderedDict
 import subprocess
 from cWidgets.util import *
@@ -31,10 +31,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
-class cProcessManager(cTab):
+class cProcessManager(cToggler):
 
   def __init__(self, main : cMainWindow):
-    super().__init__("Process Manager")
+    self.widgetID = "processManager"
+    super().__init__("Process Manager", P_ICON_PROPERTIES)
     self.main = main
     self.console = main.console
     self.items : OrderedDict[str, aProcessItem] = OrderedDict()

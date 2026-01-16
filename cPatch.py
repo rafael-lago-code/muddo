@@ -24,7 +24,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QLabel, QTextEdit
 from PyQt6.QtCore import QRunnable, pyqtSignal, QThreadPool
-from cWidgets.cTab import cTab
+from cWidgets.cToggler import cToggler
 from cWidgets.cButton import cButton
 import subprocess
 from typing import TYPE_CHECKING
@@ -35,12 +35,13 @@ if TYPE_CHECKING:
 
 P_TIMESTAMP_FILE=".muddo_patch_timestamp"
 
-class cPatch(cTab):
+class cPatch(cToggler):
   sigPatchInfo = pyqtSignal(str)
   sigPatchDone = pyqtSignal(bool)
 
   def __init__(self, main : cMainWindow):
-    super().__init__("Patch")
+    self.widgetID = "patch"
+    super().__init__("Patch", P_ICON_DOWNLOAD)
     self.btnPatch = cButton("Patch Now", P_ICON_DOWNLOAD)
     self.main = main
     self.console = main.console

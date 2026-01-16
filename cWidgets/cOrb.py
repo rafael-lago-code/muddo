@@ -23,6 +23,16 @@ from PyQt6.QtGui import QPainter, QPixmap, QColor, QPainterPath
 from PyQt6.QtCore import Qt, pyqtSignal
 from cWidgets import cEffects
 
+P_STATUS_NORMAL=0
+P_STATUS_HOVERD=1
+P_STATUS_COVERD=2
+P_STATUS_LCLICK=3
+P_STATUS_RCLICK=4
+P_STATUS_CCLICK=5
+P_STATUS_CRLICK=6
+P_STATUS_DISBLD=7
+P_STATUS_CHECKD=8
+
 class cOrb(QPushButton):
     ctrlClicked = pyqtSignal()
     rightClicked = pyqtSignal()
@@ -33,7 +43,7 @@ class cOrb(QPushButton):
         if title: self.setText(title)
         if icon: self.setIcon(getIcon(icon))
         if tooltip: self.setToolTip(tooltip)
-        self._current_state = 'normal'
+        self._current_state = P_STATUS_NORMAL
         self._is_hovered = False
 
         self.setEnabled(enabled)
@@ -44,21 +54,33 @@ class cOrb(QPushButton):
         # Initialize layer dictionaries
         _bg = getPixmap(P_BG_REDORB)
         _fg = getPixmap(P_FG_REDORB)
-        self.bg = {'normal':   _bg,
-                   'hover':    cEffects.tintPixmap(_bg,(200,10,10),1.0),
-                   'pressed':  cEffects.desaturatePixmap(_bg,0.3),
-                   'disabled': QPixmap(),
-                   'checked':  _bg}
-        self.fg = {'normal':   _fg,
-                   'hover':    _fg,
-                   'pressed':  _fg,
-                   'disabled': _fg,
-                   'checked':  _fg}
-        self.iconEffects = {'normal':   cEffects.cNone(),
-                            'hover':    cEffects.cNone(),
-                            'pressed':  cEffects.cNone(),
-                            'disabled': cEffects.cGreyscale(),
-                            'checked':  cEffects.cNone()}
+        self.bg = {P_STATUS_NORMAL: _bg,
+                   P_STATUS_HOVERD: cEffects.tintPixmap(_bg,(200,10,10),1.0),
+                   P_STATUS_COVERD: cEffects.invertPixmap(_bg),
+                   P_STATUS_LCLICK: cEffects.desaturatePixmap(_bg,0.3),
+                   P_STATUS_RCLICK: cEffects.tintPixmap(_bg,(215,120,0),1.0),
+                   P_STATUS_CCLICK: cEffects.tintPixmap(_bg,(215,120,0),1.0),
+                   P_STATUS_CRLICK: cEffects.invertPixmap(_bg),
+                   P_STATUS_DISBLD: cEffects.desaturatePixmap(_bg,1.0),
+                   P_STATUS_CHECKD: _bg}
+        self.fg = {P_STATUS_NORMAL: _fg,
+                   P_STATUS_HOVERD: _fg,
+                   P_STATUS_COVERD: _fg,
+                   P_STATUS_LCLICK: _fg,
+                   P_STATUS_RCLICK: _fg,
+                   P_STATUS_CCLICK: _fg,
+                   P_STATUS_CRLICK: _fg,
+                   P_STATUS_DISBLD: _fg,
+                   P_STATUS_CHECKD: QPixmap()}
+        self.iconEffects = {P_STATUS_NORMAL: cEffects.cNone(),
+                            P_STATUS_HOVERD: cEffects.cNone(),
+                            P_STATUS_COVERD: cEffects.cNone(),
+                            P_STATUS_LCLICK: cEffects.cNone(),
+                            P_STATUS_RCLICK: cEffects.cNone(),
+                            P_STATUS_CCLICK: cEffects.cNone(),
+                            P_STATUS_CRLICK: cEffects.cNone(),
+                            P_STATUS_DISBLD: cEffects.cGreyscale(),
+                            P_STATUS_CHECKD: cEffects.cNone()}
         self.setMouseTracking(True)
         
     def setLayers(self, state, bg=None, fg=None):
@@ -115,43 +137,47 @@ class cOrb(QPushButton):
             painter.drawText(text_rect,  Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom, self.text())
 
         painter.end()
-        self._is_hovered
     
     def enterEvent(self, event):
         if not self.isEnabled(): return
         self._is_hovered = True
-        self._setState('hover')
+        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+          self._setState(P_STATUS_COVERD)
+        else:
+          self._setState(P_STATUS_HOVERD)
         super().enterEvent(event)
     
     def leaveEvent(self, event):
         if not self.isEnabled(): return
         self._is_hovered = False
-        self._setState('normal')
+        self._setState(P_STATUS_NORMAL)
         super().leaveEvent(event)
     
     def mousePressEvent(self, event):
         if not self.isEnabled(): return
-
         if event.button() == Qt.MouseButton.LeftButton:
           if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             self.ctrlClicked.emit()
+            self._setState(P_STATUS_CCLICK)
           else:
             super().mousePressEvent(event)
+            self._setState(P_STATUS_LCLICK)
         elif event.button() == Qt.MouseButton.RightButton:
           if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
             self.ctrlRightClicked.emit()
+            self._setState(P_STATUS_CRLICK)
           else:
             self.rightClicked.emit()
-        self._setState('pressed')
-        super().mousePressEvent(event)
+            self._setState(P_STATUS_RCLICK)
+        
     
     def mouseReleaseEvent(self, event):
         if not self.isEnabled(): return
         if event.button() == Qt.MouseButton.LeftButton:
             if self._is_hovered:
-                self._setState('hover')
+                self._setState(P_STATUS_HOVERD)
             else:
-                self._setState('normal')
+                self._setState(P_STATUS_NORMAL)
         super().mouseReleaseEvent(event)
     
     def _setState(self, state):
@@ -176,9 +202,9 @@ class cOrb(QPushButton):
 #     # Define colors/images for each state (simplified example)
 #     # In reality, you'd load actual images
 #     colors = {
-#         'normal': ('#3498db', '#2980b9', '#1c6ea4'),
-#         'hover': ('#5dade2', '#3498db', '#2e86c1'),
-#         'pressed': ('#21618c', '#1b4f72', '#154360'),
+#         P_STATUS_NORMAL: ('#3498db', '#2980b9', '#1c6ea4'),
+#         P_STATUS_HOVERD: ('#5dade2', '#3498db', '#2e86c1'),
+#         P_STATUS_LCLICK: ('#21618c', '#1b4f72', '#154360'),
 #     }
     
 #     # Set up layers for each state

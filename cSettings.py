@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QGridLayout, QComboBox
 from PyQt6.QtGui import QAction
 from cWidgets.util import *
-from cWidgets.cTab import cTab
+from cWidgets.cToggler import cToggler
 from cWidgets.cButton import cButton
 from cProfil import cProfil
 import os
@@ -32,10 +32,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
-class cSettings(cTab):
+class cSettings(cToggler):
 
   def __init__(self, main : cMainWindow):
-    super().__init__("&Settings")
+    self.widgetID = "settings"
+    super().__init__("&Settings", P_ICON_CONFIGURE)
     self.main = main
     self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
     self.lastProfile = ""
@@ -53,7 +54,7 @@ class cSettings(cTab):
     self.hiddenLayer = QVBoxLayout()
     g.addLayout(self.hiddenLayer, 0, 0, 1, 4)
     g.addLayout(newHLayout([profileLbl, self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  1, 0, 1, 4)
-    self.setLayout(g)
+    self.setLayout(newVLayout([g,"__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):

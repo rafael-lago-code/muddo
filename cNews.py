@@ -23,12 +23,14 @@
 #
 from PyQt6.QtWidgets import QTextEdit, QVBoxLayout
 from cWidgets.util import *
-from cWidgets.cTab import cTab
+from cWidgets.cToggler import cToggler
 
-class cNews(cTab):
+class cNews(cToggler):
 
-  def __init__(self):
-    super().__init__("News")
+  def __init__(self, main):
+    self.widgetID = "news"
+    self.main = main
+    super().__init__("News", P_ICON_NOTES)
     self.context = QTextEdit()
     self.context.setReadOnly(True)
     self.context.setAcceptRichText(True)

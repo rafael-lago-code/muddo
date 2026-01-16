@@ -17,23 +17,23 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QTextEdit
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtWidgets import QTextEdit, QWidget
+from PyQt6.QtCore import pyqtSignal, Qt
 from cWidgets.util import *
+from cWidgets.cToggler import cToggler
 from datetime import datetime
 import sys
 
 # -------------------------------------------------------------------------------------------------------------
-class cConsole(QTextEdit):
+class cConsole(cToggler):
   converter = None
   sigInfo  = pyqtSignal(str)
   sigDebug = pyqtSignal(str)
   sigError = pyqtSignal(str)
 
   def __init__(self, filename : str):
-    super().__init__()
-    self.setReadOnly(True)
-    self.setAcceptRichText(True)
+    self.widgetID = "console"
+    super().__init__("Log", P_ICON_CONSOLE)
     self.isDebugging = True
     self.logFileName = filename
     try:
@@ -48,26 +48,20 @@ class cConsole(QTextEdit):
     except Exception as e:
       print(f"[FATAL ERROR] Could not open log file {filename} for writing. Aborting...")
       sys.exit(-1)
+
+    self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window | 
+                        Qt.WindowType.WindowStaysOnTopHint)
+    self.setWindowTitle("μDDO Console")
+
     self.converter = QTextEdit()
+    self.content = QTextEdit()
+    self.content.setReadOnly(True)
+    self.content.setAcceptRichText(True)
+    self.setLayout(newHLayout([self.content]))
 
     self.sigInfo.connect(self.printMessage)
     self.sigDebug.connect(self.debugMessage)
     self.sigError.connect(self.errorMessage)
-
-    # self.setStyleSheet("""
-    #     * {
-    #         selection-background-color: #4f4f4f; /* light gray */
-    #         selection-color: #ff6c6e;
-    #     }
-    #     QMenu::item:selected {
-    #         background: #4f4f4f;
-    #         color: #ff6c6e;
-    #     }
-    #     QLineEdit, QTextEdit, QPlainTextEdit, QAbstractItemView {
-    #         selection-background-color: #4f4f4f;
-    #         selection-color: #ff6c6e;
-    #     }
-    # """)
 
   def prefixStr(self):
     return f'[ {datetime.now().strftime("%Y/%m/%d %H:%M:%S")} ] '
@@ -102,8 +96,8 @@ class cConsole(QTextEdit):
   #------------------------------------------------------------------------------------
   def printMessage(self, message : str, endLine = True):
     message = C_SILVER+self.prefixStr()+"</font>"+message
-    self.append(message)
-    sbar = self.verticalScrollBar()
+    self.content.append(message)
+    sbar = self.content.verticalScrollBar()
     sbar.setValue(sbar.maximum())
     self.converter.setText(message)
     self.logFile.writelines(self.converter.toPlainText()+"\n")
@@ -114,8 +108,8 @@ class cConsole(QTextEdit):
   def errorMessage(self, message:str, e : Exception = None):
     message = C_RED+self.prefixStr()+"</font>"+message
     if e: message += '<br>'+str(e)
-    self.append(message)
-    sbar = self.verticalScrollBar()
+    self.content.append(message)
+    sbar = self.content.verticalScrollBar()
     sbar.setValue(sbar.maximum())
     self.converter.setText(message)
     self.logFile.writelines(self.converter.toPlainText()+"\n")
@@ -130,6 +124,6 @@ class cConsole(QTextEdit):
 
   #------------------------------------------------------------------------------------
   def close(self) -> bool:
-    self.print(f"Closing log file \"{self.logFileName}\"...")
+    print(f"Closing log file \"{self.logFileName}\"...")
     self.logFile.close()
     return super().close()

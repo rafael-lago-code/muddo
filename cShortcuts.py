@@ -20,7 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
 from cWidgets.util import *
-from cWidgets.cTab import cTab
+from cWidgets.cToggler import cToggler
 from cWidgets.cButton import cButton, cLauncherButton
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel
 from PyQt6.QtGui import QIcon
@@ -153,9 +153,10 @@ class cMacroLists(QListWidgetItem):
     self.parent = parent
 
 #----------------------------------------------------------------------------------------------------------
-class cShortcuts(cTab):
+class cShortcuts(cToggler):
   def __init__(self, main : cMainWindow):
-    super().__init__("&Shortcuts")
+    self.widgetID = "shortcuts"
+    super().__init__("&Shortcuts", P_ICON_GEARLOOP)
     v = QVBoxLayout()
     self.initialized = False
     self.toActivate = None

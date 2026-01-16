@@ -38,6 +38,8 @@ P_DEFAULT_SHORTCUTDIR = P_DEFAULT_CONFIGDIR + "/shortcuts/"
 P_DEFAULT_WORKDIR    = P_DEFAULT_CONFIGDIR
 P_DEFAULT_CONFIGFILE = P_DEFAULT_CONFIGDIR + "/settings.json"
 
+P_DEFAULT_CONF = "muDDO/muddo"
+
 P_DEFAULT_ICON_SIZE=QtCore.QSize(28,28)
 P_DEFAULT_ICON_EXTENSION=".svg"
 P_ICON_NONE      = "none"
@@ -80,6 +82,8 @@ P_ICON_REDX      = "paint-none"
 P_ICON_PROCSTOP  = "process-stop"
 P_ICON_NOTES     = "view-pim-notes"
 P_ICON_DOWNLOAD  = "edit-download"
+P_ICON_CONSOLE   = "console"
+P_ICON_GEARLOOP  = "gear-loop"
 
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"
