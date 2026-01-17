@@ -60,7 +60,7 @@ P_ICON_PLAY      = "media-playback-start"
 P_ICON_PAUSE     = "media-playback-pause"
 P_ICON_STOP      = "media-playback-stop"
 P_ICON_FILTER    = "view-filter"
-P_ICON_EXIT      = "application-exit"
+P_ICON_EXIT      = "dungeon-exit"
 P_ICON_CONFIRM   = "dialog-ok-apply"
 P_ICON_CONFIGURE = "configure"
 P_ICON_PROPERTIES= "document-properties"
@@ -72,6 +72,7 @@ P_ICON_COMPASS   = "compass"
 P_ICON_LOCKOPEN  = "document-decrypt"
 P_ICON_LOCKCLOSE = "document-encrypted"
 P_ICON_EDIT      = "document-edit"
+P_ICON_SCROLL    = "curled-scroll"
 P_ICON_NEWDOC    = "document-new"
 P_ICON_STAR      = "draw-star"
 P_ICON_BROOM     = "edit-clear-all"
@@ -83,7 +84,10 @@ P_ICON_PROCSTOP  = "process-stop"
 P_ICON_NOTES     = "view-pim-notes"
 P_ICON_DOWNLOAD  = "edit-download"
 P_ICON_CONSOLE   = "console"
+P_ICON_LOGIN     = "login"
 P_ICON_GEARLOOP  = "gear-loop"
+P_ICON_GEARHIER  = "gears-hierarchy"
+P_ICON_GEARSTACK = "gears-stack"
 
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"
@@ -100,8 +104,9 @@ P_ICON_CONNECTED_GREEN = "network-connect-green"
 P_ICON_DISCONNECTED_RED  = "network-disconnect-red"
 P_ICON_SKULL = "human-skull-white"
 
-P_BG_REDORB = "redorb_bg"
 P_FG_REDORB = "orb_fg"
+P_BG_REDORB = "redorb_bg"
+P_BG_PRESSED_REDORB = "redorb_pressed"
 
 P_DEFAULT_ICON_PATHS  = [P_MUDDO_DIR+'/images/custom-icons/',
                          P_MUDDO_DIR+'/images/breeze-dark-icons/',
@@ -124,8 +129,10 @@ for icon in dir():
       for d in P_DEFAULT_ICON_PATHS:
         if os.path.exists(d+icon+e):
           _iconScheme[icon] = d+icon+e
+          break
         elif os.path.exists(d+"/actions/"+icon+e):
           _iconScheme[icon] = d+"/actions/"+icon+e
+          break
         else:
           for s in ["64", "32", "16"]:
             if os.path.exists(d+"/actions/"+s+"/"+icon+e):
@@ -200,10 +207,13 @@ def getArrow():
 
 #----------------------------------------------------------------------------------------------------------  
 def getPixmap(a0 : str) -> QPixmap:
-  if isinstance(a0, str)  and a0 in _iconScheme.keys():
-    return QPixmap(_iconScheme[a0])
-  elif isinstance(a0, str) and os.path.exists(a0):
-    return QPixmap(a0)
+  if isinstance(a0, str):
+    if a0 in _iconScheme.keys():
+      return QPixmap(_iconScheme[a0])
+    elif os.path.exists(a0):
+      return QPixmap(a0)
+    else:
+      return QPixmap()
   if isinstance(a0, QIcon):
     return a0.pixmap(a0.actualSize())
   elif isinstance(a0, QPixmap):

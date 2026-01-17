@@ -18,9 +18,9 @@
 #
 #
 from cWidgets.util import *
-from PyQt6.QtWidgets import QPushButton, QSizePolicy
-from PyQt6.QtGui import QPainter, QPixmap, QColor, QPainterPath
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QPushButton, QSizePolicy, QToolTip
+from PyQt6.QtGui import QPainter, QPixmap, QColor, QPainterPath, QFont
+from PyQt6.QtCore import Qt, pyqtSignal, QPoint
 from cWidgets import cEffects
 
 P_STATUS_NORMAL=0
@@ -33,185 +33,232 @@ P_STATUS_CRLICK=6
 P_STATUS_DISBLD=7
 P_STATUS_CHECKD=8
 
+class cOrbTheme_RedMedium():
+  _instance = None
+  orbSize = QtCore.QSize(80,80)
+  iconSize = QtCore.QSize(40,40)
+
+  def __new__(self):
+    if self._instance is None:
+      self._instance = super().__new__(self)
+      BG_RED_PIX = getPixmap(P_BG_REDORB)
+      FG_RED_PIX = getPixmap(P_FG_REDORB)
+      PRESSED_RED = getPixmap(P_BG_PRESSED_REDORB)
+
+      BG_RED_PIX = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
+                                     Qt.TransformationMode.SmoothTransformation)
+      FG_RED_PIX = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
+                                     Qt.TransformationMode.SmoothTransformation)
+      PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
+                                     Qt.TransformationMode.SmoothTransformation)
+
+      self.bgRedLayers = {}
+      self.bgRedLayers[P_STATUS_NORMAL] = BG_RED_PIX
+      self.bgRedLayers[P_STATUS_HOVERD] = cEffects.tintPixmap(BG_RED_PIX,(200,10,10),1.0)
+      self.bgRedLayers[P_STATUS_COVERD] = cEffects.invertPixmap(BG_RED_PIX)
+      self.bgRedLayers[P_STATUS_LCLICK] = cEffects.desaturatePixmap(BG_RED_PIX,0.3)
+      self.bgRedLayers[P_STATUS_RCLICK] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),1.0)
+      self.bgRedLayers[P_STATUS_CCLICK] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),1.0)
+      self.bgRedLayers[P_STATUS_CRLICK] = cEffects.invertPixmap(BG_RED_PIX)
+      self.bgRedLayers[P_STATUS_DISBLD] = cEffects.desaturatePixmap(BG_RED_PIX,1.0)
+      self.bgRedLayers[P_STATUS_CHECKD] = PRESSED_RED
+
+      self.fgRedLayers = {}
+      self.fgRedLayers[P_STATUS_NORMAL] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_HOVERD] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_COVERD] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_LCLICK] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_RCLICK] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_CCLICK] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_CRLICK] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_DISBLD] = FG_RED_PIX
+      self.fgRedLayers[P_STATUS_CHECKD] = QPixmap()
+
+      self.iconEffect = {}
+      self.iconEffect[P_STATUS_NORMAL] = cEffects.cNone()
+      self.iconEffect[P_STATUS_HOVERD] = cEffects.cTint((215,120,0),0.5)
+      self.iconEffect[P_STATUS_COVERD] = cEffects.cNone()
+      self.iconEffect[P_STATUS_LCLICK] = cEffects.cTint((215,120,0),0.5)
+      self.iconEffect[P_STATUS_RCLICK] = cEffects.cNone()
+      self.iconEffect[P_STATUS_CCLICK] = cEffects.cNone()
+      self.iconEffect[P_STATUS_CRLICK] = cEffects.cNone()
+      self.iconEffect[P_STATUS_DISBLD] = cEffects.cGreyscale()
+      self.iconEffect[P_STATUS_CHECKD] = cEffects.cTint((215,120,0),0.5)
+      
+    return self._instance
+  
+class cOrbTheme_RedSmall(cOrbTheme_RedMedium):
+  _instance = None
+  orbSize = QtCore.QSize(32,32)
+  iconSize = QtCore.QSize(20,20)
+
+
 class cOrb(QPushButton):
-    ctrlClicked = pyqtSignal()
-    rightClicked = pyqtSignal()
-    ctrlRightClicked = pyqtSignal()
+  ctrlClicked = pyqtSignal()
+  rightClicked = pyqtSignal()
+  ctrlRightClicked = pyqtSignal()
+  theme = None
 
-    def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if title: self.setText(title)
-        if icon: self.setIcon(getIcon(icon))
-        if tooltip: self.setToolTip(tooltip)
-        self._current_state = P_STATUS_NORMAL
-        self._is_hovered = False
+  @classmethod
+  def initTheme(self):
+    if self.theme is None:
+      self.theme = cOrbTheme_RedMedium()
+    return self.theme
 
-        self.setEnabled(enabled)
-        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        self.setFixedSize(80,80)
-        self.setIconSize(QtCore.QSize(40,40))
-        
-        # Initialize layer dictionaries
-        _bg = getPixmap(P_BG_REDORB)
-        _fg = getPixmap(P_FG_REDORB)
-        self.bg = {P_STATUS_NORMAL: _bg,
-                   P_STATUS_HOVERD: cEffects.tintPixmap(_bg,(200,10,10),1.0),
-                   P_STATUS_COVERD: cEffects.invertPixmap(_bg),
-                   P_STATUS_LCLICK: cEffects.desaturatePixmap(_bg,0.3),
-                   P_STATUS_RCLICK: cEffects.tintPixmap(_bg,(215,120,0),1.0),
-                   P_STATUS_CCLICK: cEffects.tintPixmap(_bg,(215,120,0),1.0),
-                   P_STATUS_CRLICK: cEffects.invertPixmap(_bg),
-                   P_STATUS_DISBLD: cEffects.desaturatePixmap(_bg,1.0),
-                   P_STATUS_CHECKD: _bg}
-        self.fg = {P_STATUS_NORMAL: _fg,
-                   P_STATUS_HOVERD: _fg,
-                   P_STATUS_COVERD: _fg,
-                   P_STATUS_LCLICK: _fg,
-                   P_STATUS_RCLICK: _fg,
-                   P_STATUS_CCLICK: _fg,
-                   P_STATUS_CRLICK: _fg,
-                   P_STATUS_DISBLD: _fg,
-                   P_STATUS_CHECKD: QPixmap()}
-        self.iconEffects = {P_STATUS_NORMAL: cEffects.cNone(),
-                            P_STATUS_HOVERD: cEffects.cNone(),
-                            P_STATUS_COVERD: cEffects.cNone(),
-                            P_STATUS_LCLICK: cEffects.cNone(),
-                            P_STATUS_RCLICK: cEffects.cNone(),
-                            P_STATUS_CCLICK: cEffects.cNone(),
-                            P_STATUS_CRLICK: cEffects.cNone(),
-                            P_STATUS_DISBLD: cEffects.cGreyscale(),
-                            P_STATUS_CHECKD: cEffects.cNone()}
-        self.setMouseTracking(True)
-        
-    def setLayers(self, state, bg=None, fg=None):
-        if bg:
-            self.bg[state] = getPixmap(bg)
-        if fg:
-            self.fg[state] = getPixmap(fg)
+  def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    if title: self.setText(title)
+    if icon: self.setIcon(getIcon(icon))
+    if tooltip: self.setToolTip(tooltip)
+    self._current_state = P_STATUS_NORMAL
+    self._is_hovered = False
 
-    def setEnabled(self, a0):
-        if not a0:
-          self._setState("disabled")
-        return super().setEnabled(a0)
+    self.setEnabled(enabled)
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-        
-        bg = self.bg.get(self._current_state, QPixmap())
-        fg = self.fg.get(self._current_state, QPixmap())
-        ie = self.iconEffects.get(self._current_state, cEffects.cNone())
-        
-        if not bg.isNull():
-            painter.drawPixmap(self.rect(), bg.scaled(
-                self.size(), 
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            ))
-        
-        if not self.icon().isNull():
-            
-            isize = self.iconSize()
-            bsize = self.size()
-            # Centers the icon respecting iconSize()
-            r = QtCore.QRect(int((bsize.width()  - isize.width() )/2.0),
-                             int((bsize.height() - isize.height())/2.0),
-                             isize.width(), isize.height())
-            pmap = self.icon().pixmap(self.iconSize())
-            painter.drawPixmap(r, ie.apply(pmap.scaled(isize,
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation)))
-        
-        if not fg.isNull():
-            painter.drawPixmap(self.rect(), fg.scaled(
-                self.size(),
-                Qt.AspectRatioMode.IgnoreAspectRatio,
-                Qt.TransformationMode.SmoothTransformation
-            ))
-        
-        if self.text():
-            painter.setPen(self.palette().buttonText().color())
-            painter.setFont(self.font())
-            text_rect = self.rect().adjusted(5, 0, -5, 0)
-            # painter.drawText(text_rect,  Qt.AlignmentFlag.AlignCenter , self.text())
-            painter.drawText(text_rect,  Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom, self.text())
+    theme = self.__class__.theme or self.__class__.initTheme()
 
-        painter.end()
-    
-    def enterEvent(self, event):
-        if not self.isEnabled(): return
-        self._is_hovered = True
-        if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-          self._setState(P_STATUS_COVERD)
-        else:
-          self._setState(P_STATUS_HOVERD)
-        super().enterEvent(event)
-    
-    def leaveEvent(self, event):
-        if not self.isEnabled(): return
-        self._is_hovered = False
-        self._setState(P_STATUS_NORMAL)
-        super().leaveEvent(event)
-    
-    def mousePressEvent(self, event):
-        if not self.isEnabled(): return
-        if event.button() == Qt.MouseButton.LeftButton:
-          if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-            self.ctrlClicked.emit()
-            self._setState(P_STATUS_CCLICK)
-          else:
-            super().mousePressEvent(event)
-            self._setState(P_STATUS_LCLICK)
-        elif event.button() == Qt.MouseButton.RightButton:
-          if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
-            self.ctrlRightClicked.emit()
-            self._setState(P_STATUS_CRLICK)
-          else:
-            self.rightClicked.emit()
-            self._setState(P_STATUS_RCLICK)
-        
-    
-    def mouseReleaseEvent(self, event):
-        if not self.isEnabled(): return
-        if event.button() == Qt.MouseButton.LeftButton:
-            if self._is_hovered:
-                self._setState(P_STATUS_HOVERD)
-            else:
-                self._setState(P_STATUS_NORMAL)
-        super().mouseReleaseEvent(event)
-    
-    def _setState(self, state):
-        if state != self._current_state:
-            self._current_state = state
-            self.update()  # Trigger repaint
+    self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.setFixedSize(self.theme.orbSize)
+    self.setIconSize(self.theme.iconSize)
+    self.setMouseTracking(True)
 
-# # Usage Example
-# if __name__ == "__main__":
-#     import sys
-#     from PyQt6.QtWidgets import QApplication, QVBoxLayout, QWidget
+  def setEnabled(self, a0):
+    if a0:
+      self.normalizeState()
+    else:
+      self.setState(P_STATUS_DISBLD)
+    return super().setEnabled(a0)
+
+  def setChecked(self, a0):
+    if a0:
+      self.setState(P_STATUS_CHECKD)
+    else:
+      self.normalizeState()
+    return super().setChecked(a0)
+
+  def paintEvent(self, event):
+    painter = QPainter(self)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+
+    bg = self.theme.bgRedLayers.get(self._current_state, QPixmap())
+    fg = self.theme.fgRedLayers.get(self._current_state, QPixmap())
+
+    if not bg.isNull(): painter.drawPixmap(self.rect(), bg)
+
+    self.paintIcon(painter)
+
+    if not fg.isNull(): painter.drawPixmap(self.rect(), fg)
+
+    self.paintText(painter)
+
+    painter.end()
+  
+  def paintIcon(self, painter : QPainter):
+    if self.icon().isNull(): return
+
+    iconEffect = self.theme.iconEffect.get(self._current_state, cEffects.cNone())
+    isize = self.theme.iconSize
+    osize = self.theme.orbSize
+    # Centers the icon respecting iconSize()
+    r = QtCore.QRect(int((osize.width()  - isize.width()) / 2.0),
+                      int((osize.height() - isize.height()) / 2.0),
+                      isize.width(), isize.height())
+    pmap = self.icon().pixmap(self.iconSize())
+    painter.drawPixmap(r, iconEffect.apply(pmap.scaled(isize, Qt.AspectRatioMode.KeepAspectRatio,
+                                    Qt.TransformationMode.SmoothTransformation)))
+
+  def paintText(self, painter : QPainter):
+    if not self.text(): return
+
+    text = self.text().replace("&","")
+    font = QFont("Linux Libertine Capitals", 12)  # Or use self.font() as base
+    font.setBold(True)
+    font.setItalic(False)
+    painter.setFont(font)
+    aFlags = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom
+
+    textRect = self.rect().adjusted(5, 0, -5, 0)
+    textColour = QColor(255, 255, 255) 
+    shadowColour = QColor(0, 0, 0, 200)  # Semi-black
+    shadowOffset = QPoint(4, 4)
+
+    outlineColour = QColor(50, 50, 50, 75)  # Semi-black
+    painter.setPen(outlineColour)
+    for dx in range(-2,3):
+      for dy in range(-2,3):
+        painter.drawText(QtCore.QRect(textRect.x()+dx, textRect.y()+dy,
+                                      textRect.width(), textRect.height()), aFlags, text)
     
-#     app = QApplication(sys.argv)
-    
-#     window = QWidget()
-#     layout = QVBoxLayout(window)
-    
-#     # Create custom button
-#     button = cOrb("Click Me!")
-#     button.setFixedSize(200, 80)
-    
-#     # Define colors/images for each state (simplified example)
-#     # In reality, you'd load actual images
-#     colors = {
-#         P_STATUS_NORMAL: ('#3498db', '#2980b9', '#1c6ea4'),
-#         P_STATUS_HOVERD: ('#5dade2', '#3498db', '#2e86c1'),
-#         P_STATUS_LCLICK: ('#21618c', '#1b4f72', '#154360'),
-#     }
-    
-#     # Set up layers for each state
-#     for state, (bg_color, middle_color, fg_color) in colors.items():
-#         button.setLayerImages(state, bg_color, middle_color, fg_color)
-    
-#     layout.addWidget(button)
-#     window.show()
-    
-#     sys.exit(app.exec())
+    painter.setPen(shadowColour)
+    painter.drawText(textRect.translated(shadowOffset), aFlags, text)
+    painter.setPen(textColour)      
+    painter.drawText(textRect, aFlags, text)
+
+
+  def enterEvent(self, event):
+    if not self.isEnabled(): return
+    if self.isChecked(): return
+    self._is_hovered = True
+    if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+      self.setState(P_STATUS_COVERD)
+    else:
+      self.setState(P_STATUS_HOVERD)
+      QToolTip.showText( self.mapToGlobal(self.rect().bottomLeft()),
+                         self.toolTip(), self)
+    super().enterEvent(event)
+
+  def leaveEvent(self, event):
+    if not self.isEnabled(): return
+    if self.isChecked(): return
+    self._is_hovered = False
+    self.setState(P_STATUS_NORMAL)
+    super().leaveEvent(event)
+
+  def mousePressEvent(self, event):
+    if not self.isEnabled():
+      return
+    if event.button() == Qt.MouseButton.LeftButton:
+      if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+        self.ctrlClicked.emit()
+        self.setState(P_STATUS_CCLICK)
+      else:
+        super().mousePressEvent(event)
+        self.setState(P_STATUS_LCLICK)
+    elif event.button() == Qt.MouseButton.RightButton:
+      if event.modifiers() == Qt.KeyboardModifier.ControlModifier:
+        self.ctrlRightClicked.emit()
+        self.setState(P_STATUS_CRLICK)
+      else:
+        self.rightClicked.emit()
+        self.setState(P_STATUS_RCLICK)
+
+  def mouseReleaseEvent(self, event):
+    if not self.isEnabled():
+      return
+    if event.button() == Qt.MouseButton.LeftButton:
+      self.normalizeState()
+    super().mouseReleaseEvent(event)
+
+  def normalizeState(self):
+    # Sets state to hover or normal
+    if self._is_hovered:
+      self.setState(P_STATUS_HOVERD)
+    else:
+      self.setState(P_STATUS_NORMAL)
+
+  def setState(self, state):
+    self._current_state = state
+    self.update()  # Trigger repaint
+
+#-------------------------------------------------------------------------------------------------------------
+class cOrbSmall(cOrb):
+  theme = None
+
+  @classmethod
+  def initTheme(self):
+    if self.theme is None:
+      self.theme = cOrbTheme_RedSmall()
+    return self.theme
+  
+  def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
+    super().__init__(title, icon, enabled, tooltip, *args, **kwargs)

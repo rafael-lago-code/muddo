@@ -20,6 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QGridLayout, QComboBox
 from PyQt6.QtGui import QAction
+from cWidgets.cOrb import cOrbSmall
 from cWidgets.util import *
 from cWidgets.cToggler import cToggler
 from cWidgets.cButton import cButton
@@ -36,25 +37,31 @@ class cSettings(cToggler):
 
   def __init__(self, main : cMainWindow):
     self.widgetID = "settings"
-    super().__init__("&Settings", P_ICON_CONFIGURE)
+    super().__init__("&Settings", P_ICON_GEARSTACK)
     self.main = main
     self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
     self.lastProfile = ""
 
     profileLbl = QLabel("Profile: ")
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+    self.profileMain = QComboBox()
+    self.profileMain.setMinimumWidth(200)
     self.profileList = QComboBox()
     self.profileList.setEditable(True)
+    self.profileList.setMinimumWidth(200)
 
-    self.btnSave = cButton(icon=P_ICON_SAVE, tooltip="Save current settings and profile")
-    self.btnRemoveProfile = cButton(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
-    self.btnReload = cButton(icon=P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
+    self.btnSave = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save current settings and profile")
+    self.btnRemoveProfile = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
+    self.btnReload = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
 
-    g = QGridLayout()
+    # g = QGridLayout()
     self.hiddenLayer = QVBoxLayout()
-    g.addLayout(self.hiddenLayer, 0, 0, 1, 4)
-    g.addLayout(newHLayout([profileLbl, self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  1, 0, 1, 4)
-    self.setLayout(newVLayout([g,"__stretch__"]))
+    # g.addLayout(newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload, "__stretch__"]))
+    # g.addLayout(newHLayout(["Profile: ", self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  0, 0, 1, 4)
+    # g.addLayout(self.hiddenLayer, 1, 0, 1, 4)
+    self.setLayout(newVLayout([newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload, "__stretch__"]),
+                               self.hiddenLayer,
+                               "__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
@@ -63,7 +70,8 @@ class cSettings(cToggler):
     self.btnSave.clicked.connect(self.save)
     self.btnRemoveProfile.clicked.connect(self.removeProfile)
     self.btnReload.clicked.connect(self.load)
-    self.profileList.currentIndexChanged.connect(self.changeProfile)
+    self.profileList.currentIndexChanged.connect(lambda : self.changeProfile("settings"))
+    self.profileMain.currentIndexChanged.connect(lambda : self.changeProfile("main"))
 
   #----------------------------------------------------------------------------------------------------------
   def removeProfile(self):
@@ -72,6 +80,7 @@ class cSettings(cToggler):
       idx = self.profileList.findText(self.profileList.lineEdit().text(), QtCore.Qt.MatchFlag.MatchExactly)
       if idx >= 0:
         self.profileList.removeItem(idx)
+        self.profileMain.removeItem(idx)
       os.remove(filename)
     except:
       pass
@@ -79,32 +88,51 @@ class cSettings(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def setProfilesList(self, profiles):
     try:
-      self.profileList.currentIndexChanged.disconnect(self.changeProfile)
+      self.profileList.currentIndexChanged.disconnect()
+      self.profileMain.currentIndexChanged.disconnect()
     except: pass
     self.profileList.clear()
-    self.main.launchMenu.clear()
-    self.main.launchMenu.addSection("Switch profile to...")
+    # self.main.launchMenu.clear()
+    # self.main.launchMenu.addSection("Switch profile to...")
     for p in profiles:
       if p == "": continue
       self.profileList.addItem(p)
-      act = QAction(f"\"{p}\" profile", self.main)
-      self.main.launchMenu.addAction(act)
-      self.connectAction2Profile(act, p)
+      self.profileMain.addItem(p)
+      # act = QAction(f"\"{p}\" profile", self.main)
+      # self.main.launchMenu.addAction(act)
+      # self.connectAction2Profile(act, p)
       if p not in self.profiles.keys():
         self.profiles[p] = cProfil(self.main, p)
         self.hiddenLayer.addWidget(self.profiles[p])
       self.profiles[p].setVisible(False)
       self.profiles[p].load()
-    self.profileList.currentIndexChanged.connect(self.changeProfile)
+    self.profileList.currentIndexChanged.connect(lambda : self.changeProfile("settings"))
+    self.profileMain.currentIndexChanged.connect(lambda : self.changeProfile("main"))
+
+  # #----------------------------------------------------------------------------------------------------------
+  # def connectAction2Profile(self, a : QAction, p : str):
+  #   idx = self.profileList.findText(p)
+  #   a.triggered.connect(lambda x : self.profileList.setCurrentIndex(idx))
 
   #----------------------------------------------------------------------------------------------------------
-  def connectAction2Profile(self, a : QAction, p : str):
-    idx = self.profileList.findText(p)
-    a.triggered.connect(lambda x : self.profileList.setCurrentIndex(idx))
+  def changeProfile(self, source="settings"):
+    try:
+      self.profileList.currentIndexChanged.disconnect()
+      self.profileMain.currentIndexChanged.disconnect()
+    except: pass
 
-  #----------------------------------------------------------------------------------------------------------
-  def changeProfile(self):
-    pname = self.profileList.currentText()
+    if source=="settings":
+      pname = self.profileList.currentText()
+      idx = self.profileList.currentIndex()
+      self.profileMain.setCurrentIndex(idx)
+    else:
+      pname = self.profileMain.currentText()
+      idx = self.profileMain.currentIndex()
+      self.profileList.setCurrentIndex(idx)
+
+    self.profileList.currentIndexChanged.connect(lambda : self.changeProfile("settings"))
+    self.profileMain.currentIndexChanged.connect(lambda : self.changeProfile("main"))
+
     if not pname: return
     if pname in self.profiles.keys():
       if self.lastProfile in self.profiles.keys():
@@ -165,8 +193,11 @@ class cSettings(cToggler):
           self.lastProfile = values['lastProfile']
           self.profileList.setCurrentIndex(-1)
           self.profileList.setCurrentIndex(self.profileList.findText(self.lastProfile))
+          self.profileMain.setCurrentIndex(-1)
+          self.profileMain.setCurrentIndex(self.profileMain.findText(self.lastProfile))
         else:
           self.profileList.setCurrentIndex(0)
+          self.profileMain.setCurrentIndex(0)
         
         if self.profileList.currentText(): self.main.profile().load()
 

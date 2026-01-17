@@ -30,7 +30,7 @@ class cNews(cToggler):
   def __init__(self, main):
     self.widgetID = "news"
     self.main = main
-    super().__init__("News", P_ICON_NOTES)
+    super().__init__("News", P_ICON_SCROLL)
     self.context = QTextEdit()
     self.context.setReadOnly(True)
     self.context.setAcceptRichText(True)

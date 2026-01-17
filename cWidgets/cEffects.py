@@ -62,9 +62,9 @@ class cTint(cNone):
     self.strength = strength
   
   def apply(self, target):
-    if isinstance(target,str):     return desaturatePixmap(getPixmap(target), self.tintColour, self.strength)
-    if isinstance(target,QPixmap): return desaturatePixmap(target, self.tintColour, self.strength)
-    if isinstance(target,QImage):  return desaturateImage(target, self.tintColour, self.strength)
+    if isinstance(target,str):     return tintPixmap(getPixmap(target), self.tintColour, self.strength)
+    if isinstance(target,QPixmap): return tintPixmap(target, self.tintColour, self.strength)
+    if isinstance(target,QImage):  return tintImage(target, self.tintColour, self.strength)
 
 class cInvert(cNone):
   def __init__(self):

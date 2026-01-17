@@ -18,11 +18,12 @@
 #
 #
 from PyQt6.QtWidgets import QWidget
-from PyQt6.QtCore import QSettings, QPoint, QSize, Qt
+from PyQt6.QtCore import QSettings, QPoint, QSize, Qt, QRect
 from cWidgets.util import *
 
 class cFloating(QWidget):
   # Default constants
+  P_RECT = QRect(100,100,300,200)
   P_POS_X = 100
   P_POS_Y = 100
   P_SIZE_W = 300
@@ -31,25 +32,20 @@ class cFloating(QWidget):
   
   def __init__(self):
     super().__init__()
-    
+    self.settings = QSettings(P_DEFAULT_CONF)
     self.setWindowFlags(Qt.WindowType.FramelessWindowHint | 
                         Qt.WindowType.Window | 
                         Qt.WindowType.WindowStaysOnTopHint)
-    
-    self.setGeometry(self.P_POS_X, self.P_POS_Y, self.P_SIZE_W, self.P_SIZE_H)
+    self.setWindowOpacity(0.9)
+    # self.setGeometry(self.P_POS_X, self.P_POS_Y, self.P_SIZE_W, self.P_SIZE_H)
     self.loadState()
   
   def loadState(self):
-    settings = QSettings(P_DEFAULT_CONF)
-    pos = settings.value(f"{self.widgetID}/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
-    size = settings.value(f"{self.widgetID}/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
-    self.move(pos)
-    self.resize(size)
-  
+    rect = self.settings.value(f"{self.widgetID}/geometry", self.P_RECT)
+    self.setGeometry(rect)
+
   def saveState(self):
-    settings = QSettings(P_DEFAULT_CONF)
-    settings.setValue(f"{self.widgetID}/pos",  self.pos())
-    settings.setValue(f"{self.widgetID}/size", self.size())
+    self.settings.setValue(f"{self.widgetID}/geometry",  self.geometry())
   
   def closeEvent(self, event):
     self.saveState()

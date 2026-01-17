@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
 from cWidgets.util import *
 from cWidgets.cToggler import cToggler
-from cWidgets.cButton import cButton, cLauncherButton
+from cWidgets.cOrb import cOrbSmall
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
@@ -30,15 +30,15 @@ from cWidgets.cOrb import cOrb
 from PyQt6.QtWidgets import QCheckBox
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit
 from typing import TYPE_CHECKING
-from cShortcutsDaemon import cShortcutsDaemon
+from cMacrosDaemon import cMacrosDaemon
 from XHelper import XHelper
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 P_DEFAULT_SHORTCUTEXT = ".shortcut"
 
-class cShortcutItem(QListWidgetItem):
-  def __init__(self, parent : cShortcuts, name : str):
+class cMacroItem(QListWidgetItem):
+  def __init__(self, parent : cMacros, name : str):
     super().__init__()
     self.parent = parent
     self.setText(name)
@@ -148,35 +148,35 @@ class cShortcutItem(QListWidgetItem):
   
 #----------------------------------------------------------------------------------------------------------  
 class cMacroLists(QListWidgetItem):
-  def __init__(self, parent : cShortcuts):
+  def __init__(self, parent : cMacros):
     super().__init__()
     self.parent = parent
 
 #----------------------------------------------------------------------------------------------------------
-class cShortcuts(cToggler):
+class cMacros(cToggler):
   def __init__(self, main : cMainWindow):
-    self.widgetID = "shortcuts"
-    super().__init__("&Shortcuts", P_ICON_GEARLOOP)
+    self.widgetID = "macros"
+    super().__init__("Macros", P_ICON_GEARHIER)
     v = QVBoxLayout()
     self.initialized = False
     self.toActivate = None
     self.main = main
 
-    self.btnDaemonToggle = cOrb("Shortcuts\nDaemon", getIcon(P_MUDDO_DIR+'/images/ShortcutDaemonIcon64.png'),
+    self.btnDaemonToggle = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
                                 tooltip="Toggle on/off all shortcuts from all active sets")
 
-    self.btnNewSet      = cButton(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
-    self.btnSaveSet     = cButton(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click or Right click to save all")
-    self.btnDeleteSet   = cButton(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
-    self.btnReloadSet   = cButton(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click or Right click to reload all")
-    self.btnAddEntry    = cButton(icon=P_ICON_ADD, tooltip="Add a new shortcut to the currently selected set")
-    self.btnRemoveEntry = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected shortcut from the currently selected set")
-    # self.btnHelp        = cButton(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how shortcuts work here (lol)")
+    self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
+    self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click or Right click to save all")
+    self.btnDeleteSet   = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
+    self.btnReloadSet   = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click or Right click to reload all")
+    self.btnAddEntry    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new shortcut to the currently selected set")
+    self.btnRemoveEntry = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected shortcut from the currently selected set")
+    # self.btnHelp        = cOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how shortcuts work here (lol)")
 
-    self.btnAddAlias    = cButton(icon=P_ICON_ADD, tooltip="Add a new alias")
-    self.btnRemoveAlias = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
-    self.btnSaveAlias   = cButton(icon=P_ICON_SAVEALL, tooltip="Save all aliases to file")
-    self.btnReloadAlias = cButton(icon=P_ICON_REFRESH, tooltip="Reload all aliases from file")
+    self.btnAddAlias    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
+    self.btnRemoveAlias = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
+    self.btnSaveAlias   = cOrbSmall(icon=P_ICON_SAVEALL, tooltip="Save all aliases to file")
+    self.btnReloadAlias = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload all aliases from file")
     
     self.btnNewSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnSaveSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
@@ -328,7 +328,7 @@ class cShortcuts(cToggler):
   def appendShortcutSet(self, name : str):
     if name in self.allShortcutItems: return
 
-    self.allShortcutItems[name] = cShortcutItem(self,name)
+    self.allShortcutItems[name] = cMacroItem(self,name)
     self.shortcutListWidget.addItem(self.allShortcutItems[name])
     
     filename = P_DEFAULT_SHORTCUTDIR+os.sep+name+P_DEFAULT_SHORTCUTEXT
@@ -341,7 +341,7 @@ class cShortcuts(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def getActiveSets(self):
     allActive = []
-    sset : cShortcutItem
+    sset : cMacroItem
     for sset in self.allShortcutItems.values():
       if sset.checkState() == Qt.CheckState.Checked:
         allActive.append(sset.text())
@@ -353,7 +353,7 @@ class cShortcuts(cToggler):
       self.toActivate = toActivate
       return
 
-    sset : cShortcutItem
+    sset : cMacroItem
     for sset in self.allShortcutItems.values():
       if sset.text() in toActivate:
         sset.setActive(True)
@@ -427,7 +427,7 @@ class cShortcuts(cToggler):
         self.main.console.info("Shortcuts Daemon restarted!")
         return
     
-    scd = cShortcutsDaemon(self.main)
+    scd = cMacrosDaemon(self.main)
     self.main.processManager.addItem(scd)
     scd.launch()
 
@@ -481,7 +481,7 @@ class cShortcuts(cToggler):
     self.updateTable()
 
   #----------------------------------------------------------------------------------------------------------
-  def updateShortcutSetFile(self, sset : cShortcutItem):
+  def updateShortcutSetFile(self, sset : cMacroItem):
     key = next((k for k, v in self.allShortcutItems.items() if v is sset), None)
     if key != sset.text():
       self.main.console.info(f"Renaming shortcut set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")

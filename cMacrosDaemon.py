@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 P_POST_FOCUS_DELAY = "delay_0.01"
 
 #----------------------------------------------------------------------------------------------------------
-class cShortcutsDaemon(aProcessItem):
+class cMacrosDaemon(aProcessItem):
   def __init__(self, main : cMainWindow):
     super().__init__(main)
     self.key = "scd_"+self.profile.name
@@ -40,7 +40,7 @@ class cShortcutsDaemon(aProcessItem):
     
     self.profileID.setText(self.profile.name)
     self.worldname.setText("")
-    self.username.setText("Shortcuts Daemon")
+    self.username.setText("Macros Daemon")
     self.updateTooltip()
     self.btnToggle.setEnabled(True)
     self.btnSave.setEnabled(False)

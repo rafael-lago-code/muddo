@@ -18,6 +18,7 @@
 #
 #
 from PyQt6.QtWidgets import QWidget, QPushButton
+from PyQt6.QtCore import QPoint
 from cWidgets.cFloating import cFloating
 from cWidgets.cOrb import cOrb
 from cWidgets.util import *
@@ -33,19 +34,22 @@ class cToggler(cFloating):
     self.setVisible(False)
     
   def toggle(self):
-    if self.toggler.isChecked():
-      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
-      self.setVisible(True)
+    if self.isVisible():
+      self.saveState()
+      self.hide()
+      self.toggler.setChecked(False)
     else:
-      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_UP))
-      self.setVisible(False)
+      # there is a bug preventing the loading the position of the window, if it
+      # "thinks" that it didn't change, so we need to force some crap here.
+      self.move(QPoint(10,10))
+      self.show()
+      self.loadState()
+      self.toggler.setChecked(True)
+      # self.setVisible(True)      
 
   def setVisible(self, value : bool):
     self.toggler.setChecked(value)
-    # if value:
-      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
-    # else:
-      # self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_UP))
     super().setVisible(value)
+  
 
 

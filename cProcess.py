@@ -25,7 +25,7 @@ from cWidgets.cToggler import cToggler
 from collections import OrderedDict
 import subprocess
 from cWidgets.util import *
-from cWidgets.cButton import cButton, cLauncherButton
+from cWidgets.cOrb import cOrbSmall
 from XHelper import XHelper
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class cProcessManager(cToggler):
 
   def __init__(self, main : cMainWindow):
     self.widgetID = "processManager"
-    super().__init__("Process Manager", P_ICON_PROPERTIES)
+    super().__init__("Process\nManager", P_ICON_PROPERTIES)
     self.main = main
     self.console = main.console
     self.items : OrderedDict[str, aProcessItem] = OrderedDict()
@@ -47,16 +47,15 @@ class cProcessManager(cToggler):
     header.setLayout(newHLayout([newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
                      newHeaderLabel("World"), newHeaderLabel("Profile"), "Username"]))
 
-    self.btnStartAll   = cButton(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
-    self.btnKillAll    = cButton(icon=P_ICON_SKULL_RED, tooltip="Left click: terminates all running processes<br>Ctrl+Left click or Right click: force termination (SIGKILL) all processes")
-    self.btnSaveAll    = cButton(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
-    self.btnRestoreAll = cButton(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
-    self.btnRemoveAll  = cButton(icon=P_ICON_CLEARALL,  tooltip="Left click: clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
-    self.btnMuteAll    = cButton(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
-    self.btnCaptureOrphans = cButton("Capture &Orphans", tooltip="Attempts to find running instances of DDO and capture them"\
+    self.btnStartAll   = cOrbSmall(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
+    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL_RED, tooltip="Left click: terminates all running processes<br>Ctrl+Left click or Right click: force termination (SIGKILL) all processes")
+    self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
+    self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
+    self.btnRemoveAll  = cOrbSmall(icon=P_ICON_CLEARALL,  tooltip="Left click: clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
+    self.btnMuteAll    = cOrbSmall(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
+    self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/chain.png'), tooltip="Attempts to find running instances of DDO and capture them"\
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")
-    self.btnCaptureOrphans.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/chain.png')))
     
     self.btnCaptureOrphans.clicked.connect(self.main.captureOrphan)
     self.btnStartAll.clicked.connect(self.startAll)
@@ -188,11 +187,11 @@ class aProcessItem(QWidget):
     self.worldname = newProcessField("")
     self.username = QLabel()
 
-    self.btnToggle  = cButton(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
-    self.btnSave    = cButton(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
-    self.btnRestore = cButton(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
-    self.btnRemove  = cButton(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
-    self.btnMute    = cButton(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
+    self.btnToggle  = cOrbSmall(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
+    self.btnSave    = cOrbSmall(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
+    self.btnRestore = cOrbSmall(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
+    self.btnRemove  = cOrbSmall(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
+    self.btnMute    = cOrbSmall(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
     self.btnToggle.clicked.connect(self.toggle)
     self.btnToggle.rightClicked.connect(lambda : self.toggle(True))
     self.btnToggle.ctrlClicked.connect(lambda : self.toggle(True))

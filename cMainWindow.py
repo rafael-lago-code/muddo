@@ -17,11 +17,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QMenu, QSplitter
+from PyQt6.QtWidgets import QMainWindow, QWidget, QMenu, QSplitter, QGridLayout
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from cCredentials import cCredentials
 from cSettings import cSettings
-from cShortcuts import cShortcuts
+from cMacros import cMacros
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
@@ -43,11 +43,15 @@ class cMainWindow(QMainWindow):
     super().__init__()
     self.setWindowTitle("μDDO")
     self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))
+    self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+
     self.launchMenu = QMenu() # filled in cSettings
 
     self.lblProfile = QLabel()
     self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
     self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
+    # self.fab = cOrbFactory()
 
     self.btnLaunch = cOrb("Launch", P_ICON_D20)
     self.btnDH = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
@@ -59,7 +63,7 @@ class cMainWindow(QMainWindow):
     self.news = cNews(self)
     self.patch = cPatch(self)
     self.settings = cSettings(self)
-    self.shortcuts = cShortcuts(self)
+    self.shortcuts = cMacros(self)
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)    
 
@@ -67,20 +71,27 @@ class cMainWindow(QMainWindow):
     btnQuit.clicked.connect(self.close)
     self.btnDH.clicked.connect(self.launchDH)
 
-    lButtonsBar = newHLayout([self.btnDH, self.shortcuts.btnDaemonToggle, self.lblProfile, 
-                              self.btnLaunch, btnQuit])
+    g = QGridLayout()
+    g.addWidget(self.credentials.loginSummary,0,0,1,3)
+    g.addWidget(newRQLabel("World: "),1,0,1,1)
+    g.addWidget(newRQLabel("Profile: "),2,0,1,1)
+    g.addWidget(self.credentials.listWorlds,1,1,1,2)
+    g.addWidget(self.settings.profileMain,2,1,1,2)
+    self.summary = QWidget()
+    self.summary.setMaximumWidth(480)
+    self.summary.setLayout(g)
+    lButtonsBar = newHLayout([self.btnDH, self.shortcuts.btnDaemonToggle, self.btnLaunch,
+                              "__stretch__", self.summary, "__stretch__",
+                              self.credentials.toggler, self.processManager.toggler, self.shortcuts.toggler, self.settings.toggler, 
+                              self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
 
-    tabController  = QWidget()
-    tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, 
-                                        self.shortcuts.toggler, self.patch.toggler, self.news.toggler]))
+    # tabController  = QWidget()
+    # tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, 
+                                        # self.shortcuts.toggler, self.patch.toggler, self.news.toggler]))
 
     self.console.show()
 
-    w = QWidget()
-    # w.setLayout(newVLayout([self.credentials, tabController, self.settings, 
-    #             self.processManager, self.shortcuts, self.news, self.patch, self.console, lButtonsBar]))
-    w.setLayout(newVLayout([self.credentials, tabController, lButtonsBar]))
-    self.setCentralWidget(w)
+    self.setCentralWidget(newVFrame([lButtonsBar]))
     self.loadState()
 
     if not P_CERTFILE:
@@ -94,7 +105,7 @@ class cMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     self.sigProfileChanged.connect(lambda : self.btnDH.setVisible(self.profile().useDungeonHelper.isChecked()))
-    self.sigProfileChanged.connect(lambda p: self.lblProfile.setText(f"Profile: {p[1]}{getArrow()}"))
+    # self.sigProfileChanged.connect(lambda p: self.lblProfile.setText(f"Profile: {p[1]}{getArrow()}"))
 
     self.settings.initialize()
     if self.profile() is None:
@@ -182,11 +193,13 @@ class cMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def close(self):
     self.settings.save()
-    self.console.close()
     self.settings.close()
     self.shortcuts.close()
+    self.processManager.close()
     self.patch.close()
     self.news.close()
+    self.credentials.close()
+    self.console.close()
     self.saveState()
     super().close()
 
