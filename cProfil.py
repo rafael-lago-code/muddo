@@ -174,7 +174,7 @@ class cProfil(QWidget):
     values['lastWorld']     = self.lastWorld
     values['lastAccounts']  = self.lastAccounts
     values['windowsPreferences']  = self.windowsPreferences
-    values['lastActiveShortcutSet']  = self.main.shortcuts.getActiveSets()
+    values['lastActiveShortcutSet']  = self.main.macros.getActiveSets()
 
     filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.name + ".json"
     try:
@@ -212,7 +212,7 @@ class cProfil(QWidget):
         if 'xdotoolExec'  in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
         if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
         if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
-        if 'lastActiveShortcutSet' in values.keys(): self.main.shortcuts.setActiveSets(values['lastActiveShortcutSet'])
+        if 'lastActiveShortcutSet' in values.keys(): self.main.macros.setActiveSets(values['lastActiveShortcutSet'])
 
         if 'lastWorld'    in values.keys(): self.lastWorld = values['lastWorld']
         if 'lastAccounts' in values.keys(): self.lastAccounts = values['lastAccounts']

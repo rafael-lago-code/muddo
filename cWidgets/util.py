@@ -28,13 +28,14 @@ import json
 
 C_SILVER = "<font style=\"color:#828282\">"
 C_RED = "<font style=\"color:#ff5555\">"
+C_ORANGE = "<font style=\"color:#ffa744\">"
 C_GREEN = "<font style=\"color:#6aff83\">"
 C_BLUE = "<font style=\"color:#43b7ff\">" 
 
 # P_DEFAULT_WORKDIR    = os.environ['HOME'] + "/.local/share/muDDO"
 P_MUDDO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P_DEFAULT_CONFIGDIR  = os.environ['HOME'] + "/.config/muDDO"
-P_DEFAULT_SHORTCUTDIR = P_DEFAULT_CONFIGDIR + "/shortcuts/"
+P_DEFAULT_MACRODIR   = P_DEFAULT_CONFIGDIR + "/macros/"
 P_DEFAULT_WORKDIR    = P_DEFAULT_CONFIGDIR
 P_DEFAULT_CONFIGFILE = P_DEFAULT_CONFIGDIR + "/settings.json"
 

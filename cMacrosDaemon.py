@@ -18,16 +18,15 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtCore import QRunnable
 from cProcess import aProcessItem
 from XHelper import XHelper
-import subprocess
-import os, time
+from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-   from cDDO import cDDO
    from cMainWindow import cMainWindow
+from PyQt6.QtWidgets import QMenu
+from PyQt6.QtGui import QAction
 
 P_POST_FOCUS_DELAY = "delay_0.01"
 
@@ -35,12 +34,28 @@ P_POST_FOCUS_DELAY = "delay_0.01"
 class cMacrosDaemon(aProcessItem):
   def __init__(self, main : cMainWindow):
     super().__init__(main)
-    self.key = "scd_"+self.profile.name
-    self.daemon = None
+    self.key = "Macros Daemon"
+    self.process = None
+
+    self.orbToggler = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
+                           tooltip="Toggle on/off all shortcuts from all active sets")
+    self.orbToggler.setCheckable(True)
+    self.orbToggler.setMenu(QMenu("Macros Daemon", self.orbToggler))
+    self.actionToggle  = self.orbToggler.menu().addAction("Launch Daemon")
+    self.actionRestart = self.orbToggler.menu().addAction("Restart Daemon")
+    self.actionKill    = self.orbToggler.menu().addAction("Kill Daemon")
+    self.actionConf    = self.orbToggler.menu().addAction("Show/Hide Configure UI")
+
+    self.orbToggler.clicked.connect( lambda : self.toggle() )
+    self.orbToggler.ctrlClicked.connect( lambda : self.restart(purge=True))
+    self.actionToggle.triggered.connect(self.toggle)
+    self.actionRestart.triggered.connect(self.restart)
+    self.actionKill.triggered.connect(lambda : self.kill(force=True))
+    self.actionConf.triggered.connect(lambda : self.main.macros.toggle())
     
-    self.profileID.setText(self.profile.name)
+    self.profileID.setText("")
     self.worldname.setText("")
-    self.username.setText("Macros Daemon")
+    self.username.setText("μDDO")
     self.updateTooltip()
     self.btnToggle.setEnabled(True)
     self.btnSave.setEnabled(False)
@@ -99,44 +114,71 @@ class cMacrosDaemon(aProcessItem):
     return parsed
 
   #----------------------------------------------------------------------------------------------------------
-  def remove(self, kill=False):
-    XHelper().forceCleanup()
-    super().remove(kill)
-
-  #----------------------------------------------------------------------------------------------------------
-  def launch(self):
-    parsed = self.convert(self.main.shortcuts.consolidateActiveShortcuts())
-    xh = XHelper()
-    xh.sigDebugPrinted.connect(self.main.console.debugMessage)
-    for hk, script in parsed.items():
-      parsed[hk] = lambda x=script : xh.execute(x)
-
-    try:
-      self.daemon = xh.getShortcutsDaemon(parsed)
-    except Exception as e:
-      print(e)
-    self.daemon.start()
-    self.setStatus("running")
-    self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
-    self.status = self.P_STATUS_RUNNING
-    self.pid.setText("R")
-
-  #----------------------------------------------------------------------------------------------------------
   def toggle(self):
-    if self.daemon:
-      self.btnToggle.setEnabled(False)
-      self.daemon.stop()
-      # XHelper().forceCleanup()
-      self.daemon = None
-      self.setStatus("killed")
+    if self.status == self.P_STATUS_RUNNING:
+      self.kill()
     else:
       self.launch()
 
-    # exec = tSCDExecutable(self, parsed)
-    # QtCore.QThreadPool.globalInstance().start(exec)
+  #----------------------------------------------------------------------------------------------------------
+  def launch(self):
+    if self.main.processManager.itemExists(self):
+      self.main.console.debug("Attempting to add Macros Daemon to ProcessManager, but it is already there!")
+    else:
+      self.main.processManager.addItem(self)
 
-    # pidw = tDHPIDWatcher(self, dhexec)
-    # QtCore.QThreadPool.globalInstance().start(pidw)
+    # starts daemon; if it is already running, returns
+    if self.process:
+      self.main.console.warning(" Attempting to launch Macros Daemon when one is already running."+
+                                " Try right-click->kill to cleanup state.")
+    else:
+      parsed = self.convert(self.main.macros.consolidateActiveMacros())
+      if not parsed:
+        self.main.console.warning(" Attempting to launch Macros Daemon but no macros found." \
+        " Make you have macro sets selected and that the relevant accounts are online before starting" \
+        " the Macros Daemon")
+        return
+      else:
+        xh = XHelper()
+        xh.sigDebugPrinted.connect(self.main.console.debugMessage)
+        for hk, script in parsed.items():
+          parsed[hk] = lambda x=script : xh.execute(x)
+        self.process = xh.getShortcutsDaemon(parsed)
+    self.process.start()
+    self.setStatus(self.P_STATUS_RUNNING)
+    self.pid.setText("R")
+
+  #----------------------------------------------------------------------------------------------------------
+  def setStatus(self, status):
+    super().setStatus(status)
+    self.btnSave.setEnabled(False)
+    self.btnRestore.setEnabled(False)
+    self.btnMute.setEnabled(False)
+    if status == aProcessItem.P_STATUS_RUNNING:
+      self.orbToggler.setChecked(True)
+      self.actionToggle.setText("Stop")
+    else:
+      self.orbToggler.setChecked(False)
+      self.actionToggle.setText("Launch")
+
+  #----------------------------------------------------------------------------------------------------------
+  def kill(self, force=False, remove=False):
+    if not self.process: return
+    self.process.stop()
+    if force: self.cleanup()
+    self.setStatus(self.P_STATUS_KILLED)
+    self.process = None
+    if remove: self.remove()
+
+  #----------------------------------------------------------------------------------------------------------
+  def restart(self, force=False):
+    self.kill(force)
+    self.launch()
+
+  #----------------------------------------------------------------------------------------------------------
+  def cleanup(self):
+    self.main.console.info("Purging all possible shortcuts combinations...")
+    XHelper().forceCleanup()
 
   #----------------------------------------------------------------------------------------------------------
   def updateTooltip(self):

@@ -32,55 +32,60 @@ P_EFFECT_INVT = 6
 P_EFFECT_OPAC = 7
 
 class cNone():
-  def __init__(self): pass
+  def __init__(self, pre=None):
+    self.pre = pre
   def apply(self, target):
     if isinstance(target,str):     return getPixmap(target)
     if isinstance(target,QPixmap): return target
     if isinstance(target,QImage):  return target
 
 class cGreyscale(cNone):
-  def __init__(self):
-    pass
+  def __init__(self, pre=cNone()):
+    self.pre = pre
   
   def apply(self, target):
+    target = self.pre.apply(target)
     if isinstance(target,str):     return greyscalePixmap(getPixmap(target))
     if isinstance(target,QPixmap): return greyscalePixmap(target)
     if isinstance(target,QImage):  return greyscaleImage(target)
 
 class cDesaturate(cNone):
-  def __init__(self, amount):
+  def __init__(self, amount, pre=cNone()):
+    self.pre = pre
     self.amount = amount
   
   def apply(self, target):
-    if isinstance(target,str):     return desaturatePixmap(getPixmap(target), self.amount)
+    target = self.pre.apply(target)
     if isinstance(target,QPixmap): return desaturatePixmap(target, self.amount)
     if isinstance(target,QImage):  return desaturateImage(target, self.amount)
 
 class cTint(cNone):
-  def __init__(self, tintColour : QColor, strength : float):
+  def __init__(self, tintColour : QColor, strength : float, pre=cNone()):
+    self.pre = pre
     self.tintColour = tintColour
     self.strength = strength
   
   def apply(self, target):
-    if isinstance(target,str):     return tintPixmap(getPixmap(target), self.tintColour, self.strength)
+    target = self.pre.apply(target)
     if isinstance(target,QPixmap): return tintPixmap(target, self.tintColour, self.strength)
     if isinstance(target,QImage):  return tintImage(target, self.tintColour, self.strength)
 
 class cInvert(cNone):
-  def __init__(self):
-    pass
+  def __init__(self, pre=cNone()):
+    self.pre = pre
   
   def apply(self, target):
-    if isinstance(target,str):     return invertPixmap(getPixmap(target))
+    target = self.pre.apply(target)
     if isinstance(target,QPixmap): return invertPixmap(target)
     if isinstance(target,QImage):  return invertImage(target)
 
 class cOpacity(cNone):
-  def __init__(self, amount):
+  def __init__(self, amount, pre = cNone):
     self.amount = amount
+    self.pre = pre
   
   def apply(self, target):
-    if isinstance(target,str):     return opacityPixmap(getPixmap(target), self.amount)
+    target = self.pre.apply(target)
     if isinstance(target,QPixmap): return opacityPixmap(target, self.amount)
     if isinstance(target,QImage):  return opacityImage(target, self.amount)
 

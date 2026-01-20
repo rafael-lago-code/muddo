@@ -35,17 +35,24 @@ class cToggler(cFloating):
     
   def toggle(self):
     if self.isVisible():
-      self.saveState()
       self.hide()
-      self.toggler.setChecked(False)
     else:
-      # there is a bug preventing the loading the position of the window, if it
-      # "thinks" that it didn't change, so we need to force some crap here.
-      self.move(QPoint(10,10))
       self.show()
-      self.loadState()
-      self.toggler.setChecked(True)
-      # self.setVisible(True)      
+  
+  def show(self):
+    # there is a bug preventing the loading the position of the window, if it
+    # "thinks" that it didn't change, so we need to force some crap here.
+    if self.isVisible(): return
+    self.move(QPoint(10,10))
+    super().show()
+    self.loadState()
+    self.toggler.setChecked(True)
+
+  def hide(self):
+    if not self.isVisible(): return
+    self.saveState()
+    super().hide()
+    self.toggler.setChecked(False)
 
   def setVisible(self, value : bool):
     self.toggler.setChecked(value)

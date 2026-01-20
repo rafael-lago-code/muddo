@@ -48,22 +48,23 @@ class cMainWindow(QMainWindow):
 
     self.launchMenu = QMenu() # filled in cSettings
 
-    self.lblProfile = QLabel()
-    self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
-    # self.fab = cOrbFactory()
+    # self.lblProfile = QLabel()
+    # self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    # self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
 
     self.btnLaunch = cOrb("Launch", P_ICON_D20)
     self.btnDH = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
                                          tooltip="Launches Dungeon Helper (it if is installed); activates on all instances of the game for as long as it runs.")
     btnQuit = cOrb("Quit", P_ICON_EXIT)
+    self.btnTest = cOrb("TestMe", P_ICON_D20)
+    self.btnTest.setCheckable(True)
     
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
     self.news = cNews(self)
     self.patch = cPatch(self)
     self.settings = cSettings(self)
-    self.shortcuts = cMacros(self)
+    self.macros = cMacros(self)
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)    
 
@@ -80,9 +81,9 @@ class cMainWindow(QMainWindow):
     self.summary = QWidget()
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)
-    lButtonsBar = newHLayout([self.btnDH, self.shortcuts.btnDaemonToggle, self.btnLaunch,
-                              "__stretch__", self.summary, "__stretch__",
-                              self.credentials.toggler, self.processManager.toggler, self.shortcuts.toggler, self.settings.toggler, 
+    lButtonsBar = newHLayout([self.btnDH, self.macros.daemon.orbToggler, self.btnLaunch,
+                              "__stretch__", self.summary, "__stretch__", self.btnTest,
+                              self.credentials.toggler, self.processManager.toggler, self.macros.toggler, self.settings.toggler, 
                               self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
 
     # tabController  = QWidget()
@@ -111,7 +112,7 @@ class cMainWindow(QMainWindow):
     if self.profile() is None:
       self.console.abort("No valid profile loaded!")
     self.credentials.initialize()
-    self.shortcuts.initialize()
+    self.macros.initialize()
     self.news.initialize()
     self.patch.initialize()
     self.credentials.sigFetchedQueueInfo.connect(self.captureOrphan)
@@ -194,7 +195,7 @@ class cMainWindow(QMainWindow):
   def close(self):
     self.settings.save()
     self.settings.close()
-    self.shortcuts.close()
+    self.macros.close()
     self.processManager.close()
     self.patch.close()
     self.news.close()

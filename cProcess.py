@@ -125,6 +125,13 @@ class cProcessManager(cToggler):
     for u in self.items.keys(): self.items[u].restoreWindow()
 
   #----------------------------------------------------------------------------------------------------------
+  def itemExists(self, p : aProcessItem):
+    for key, proc in self.items.items():
+      if key == p.key: return True
+      if proc == p: return True
+    return False
+
+  #----------------------------------------------------------------------------------------------------------
   def addItem(self, p : aProcessItem):
     self.btnKillAll.setEnabled(True)
     self.btnSaveAll.setEnabled(True)
@@ -226,14 +233,7 @@ class aProcessItem(QWidget):
 
   #----------------------------------------------------------------------------------------------------------
   def audioToggle(self):
-    if XHelper().isPIDMuted(self.pid):
-      self.console.info(f"{C_SILVER}Muting</font> {self.pid}...")
-      XHelper().unmutePID(self.pid)
-      self.btnMute.setIcon(getIcon(P_ICON_UNMUTE))
-    else:
-      self.console.info(f"{C_SILVER}Unmuting</font> {self.pid}...")
-      XHelper().mutePID(self.pid)
-      self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+    pass
 
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, status):
@@ -244,6 +244,7 @@ class aProcessItem(QWidget):
       self.btnToggle.setEnabled(True)
       self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
       self.btnRemove.setEnabled(True)
+      self.btnMute.setEnabled(True)
     elif status == "killed" or status == aProcessItem.P_STATUS_KILLED:
       self.pid.setText("")
       self.winID.setText("")
@@ -251,14 +252,16 @@ class aProcessItem(QWidget):
       self.btnRestore.setEnabled(False)
       self.btnToggle.setEnabled(True)
       self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
-      self.status = self.P_STATUS_UNKNOWN
+      self.btnMute.setEnabled(False)
+      self.status = aProcessItem.P_STATUS_UNKNOWN
     elif status == "error" or status == aProcessItem.P_STATUS_ERROR:
       self.username.setText(f"C_RED{self.username.text()}[E]</font>")
       self.btnSave.setEnabled(False)
       self.btnRestore.setEnabled(False)
       self.btnToggle.setEnabled(False)
       self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
-      self.status = self.P_STATUS_UNKNOWN
+      self.btnMute.setEnabled(False)
+      self.status = aProcessItem.P_STATUS_UNKNOWN
 
 
   # #----------------------------------------------------------------------------------------------------------

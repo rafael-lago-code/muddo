@@ -144,7 +144,7 @@ class cSettings(cToggler):
       self.lastProfile = pname
       self.main.sigProfileChanged.emit([self.lastProfile, pname])
     else:
-      self.main.console.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{p}\",\
+      self.main.console.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{pname}\",\
                           but it was not found! Doing nothing instead...")
 
   #----------------------------------------------------------------------------------------------------------
@@ -181,7 +181,7 @@ class cSettings(cToggler):
         if 'settingsVisible' in values.keys(): self.main.settings.setVisible(values['settingsVisible'])
         if 'newsVisible'  in values.keys(): self.main.news.setVisible(values['newsVisible'])
         if 'patchVisible' in values.keys(): self.main.patch.setVisible(values['patchVisible'])
-        if 'shortcutsVisible' in values.keys(): self.main.shortcuts.setVisible(values['shortcutsVisible'])
+        if 'shortcutsVisible' in values.keys(): self.main.macros.setVisible(values['shortcutsVisible'])
         if 'multiAccount' in values.keys(): 
           self.main.credentials.multiAccount.setChecked(values['multiAccount'])
           self.main.credentials.updateMultiAccount()
@@ -214,7 +214,7 @@ class cSettings(cToggler):
     values['settingsVisible'] = self.main.settings.isVisible()
     values['newsVisible']  = self.main.news.isVisible()
     values['patchVisible'] = self.main.patch.isVisible()
-    values['shortcutsVisible'] = self.main.shortcuts.isVisible()
+    values['shortcutsVisible'] = self.main.macros.isVisible()
     values['multiAccount'] = self.main.credentials.multiAccount.isChecked()
     values['lastProfile']  = self.profileList.currentText()
     if self.profileList.currentText(): self.main.profile().save()

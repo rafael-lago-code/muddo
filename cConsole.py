@@ -30,6 +30,7 @@ class cConsole(cToggler):
   sigInfo  = pyqtSignal(str)
   sigDebug = pyqtSignal(str)
   sigError = pyqtSignal(str)
+  sigWarning = pyqtSignal(str)
 
   def __init__(self, filename : str):
     self.widgetID = "console"
@@ -62,6 +63,7 @@ class cConsole(cToggler):
     self.sigInfo.connect(self.printMessage)
     self.sigDebug.connect(self.debugMessage)
     self.sigError.connect(self.errorMessage)
+    self.sigError.connect(self.warningMessage)
 
   def prefixStr(self):
     return f'[ {datetime.now().strftime("%Y/%m/%d %H:%M:%S")} ] '
@@ -80,6 +82,13 @@ class cConsole(cToggler):
       self.sigError.emit(message + "<br>  ===> "+str(e))
     else:
       self.sigError.emit(message)
+  
+  #------------------------------------------------------------------------------------
+  def warning(self, message:str, e:Exception = ""):
+    if e:
+      self.sigWarning.emit(message + "<br>  ===> "+str(e))
+    else:
+      self.sigWarning.emit(message)
 
   #------------------------------------------------------------------------------------
   def abort(self, message:str, e:Exception = ""):
@@ -106,7 +115,19 @@ class cConsole(cToggler):
 
   #------------------------------------------------------------------------------------
   def errorMessage(self, message:str, e : Exception = None):
-    message = C_RED+self.prefixStr()+"</font>"+message
+    message = C_RED+self.prefixStr()+"</font> 🛑 "+message
+    if e: message += '<br>'+str(e)
+    self.content.append(message)
+    sbar = self.content.verticalScrollBar()
+    sbar.setValue(sbar.maximum())
+    self.converter.setText(message)
+    self.logFile.writelines(self.converter.toPlainText()+"\n")
+    self.logFile.flush()
+    self.update()
+
+  #------------------------------------------------------------------------------------
+  def warningMessage(self, message:str, e : Exception = None):
+    message = C_RED+self.prefixStr()+"</font> ⚠ "+message
     if e: message += '<br>'+str(e)
     self.content.append(message)
     sbar = self.content.verticalScrollBar()

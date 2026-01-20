@@ -21,13 +21,11 @@ from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
 from tAuthenticator import tAuthenticator
-# from tWinManager import tWinManager
 from XHelper import XHelper
 import subprocess
 import os, time, glob
 from cWidgets.util import *
 from typing import TYPE_CHECKING
-from cWidgets import cButton
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
    from cWorlds import cWorld
@@ -95,6 +93,17 @@ class cDDO(aProcessItem):
     xh = XHelper()
     xh.sigGotWinID.connect(validateWinID)
     xh.requestWinID(self.pid.text(), 10.0)
+
+  #----------------------------------------------------------------------------------------------------------
+  def audioToggle(self):
+    if XHelper().isPIDMuted(self.pid):
+      self.console.info(f"{C_SILVER}Muting</font> {self.pid}...")
+      XHelper().unmutePID(self.pid)
+      self.btnMute.setIcon(getIcon(P_ICON_UNMUTE))
+    else:
+      self.console.info(f"{C_SILVER}Unmuting</font> {self.pid}...")
+      XHelper().mutePID(self.pid)
+      self.btnMute.setIcon(getIcon(P_ICON_MUTE))
   
   #----------------------------------------------------------------------------------------------------------
   def updateTooltip(self):
