@@ -238,43 +238,37 @@ class XHelper(QObject):
     return seq
 
   #----------------------------------------------------------------------------------------------------------  
-  def execute(self, keystring, winID = None) -> None:
+  def execute(self, script, winID = None) -> None:
     if winID:
       self.focusWindow(winID)
     
-    if not isinstance(keystring, list):
-      seq = self._parseKeystring(keystring)
+    # I'm confused by this parseKeyString and why I wrote it this way (the original argmuent was keystring, 
+    # not script). Nevertheless, I don't think I'll need it with Milvian
+    # if isinstance(keystring, list):
+    #   seq = keystring
+    # else:
+    #   seq = self._parseKeystring(keystring)
           
-    for item in seq:
+    for item in script:
+      print(f"executing {item}")
       # TODO: parse accepted commands properly
-      if item['key'].startswith("sleep") or item['key'].startswith("delay"):
-        time.sleep(float(item['key'][6:]))
+      if callable(item):
+        print(f"calling callable {item}")
+        item()
+        time.sleep(0.1)
+      elif item.startswith("sleep") or item.startswith("delay"):
+        time.sleep(float(item[6:]))
         
-      elif item['key'].startswith("focus"):
-        self.focusWindow(int(item['key'][6:]))
+      elif item.startswith("focus"):
+        self.focusWindow(int(item[6:]))
 
-      elif item['key'].startswith("point"):
-        self.focusWindow(int(item['key'][6:]))
+      elif item.startswith("point"):
+        self.focusWindow(int(item[6:]))
       
-      elif item['key'].startswith("click"):
-        self.sendClick(int(item['key'][6:]))
-      
+      elif item.startswith("click"):
+        self.sendClick(int(item[6:]))
       else:
-        self.sendKeystroke(item)
-        # for mod in item['mods']:
-        #   if mod not in self.MODIFIERS:
-        #     raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
-        #   self.disp.xtest_fake_input(X.KeyPress, self.getKeyCode(mod))
-
-        # keycode = self.getKeyCode(item['key'])
-        # if keycode:
-        #   self.disp.xtest_fake_input(X.KeyPress, keycode)
-        #   self.disp.xtest_fake_input(X.KeyRelease, keycode)
-        # else:
-        #   raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
-        
-        # for mod in reversed(item['mods']):
-        #   self.disp.xtest_fake_input(X.KeyRelease, self.getKeyCode(mod))
+        self.sendKeystroke(self.__parseKeystring(item))
       
       self.disp.sync()
 
@@ -382,24 +376,24 @@ class XHelper(QObject):
       self.sigDebugPrinted.emit(f"XHelper.getShortcutsDaemon: daemon started running")
       self.root.change_attributes(event_mask=X.KeyPressMask)
       
-      try:
-        while not daemonStopSignal.is_set():
-          if self.disp.pending_events():
-            event = self.disp.next_event()
-            if event.type == X.KeyPress:
-              modmask = event.state
-              keycode = event.detail
-              
-              callback = grabbed.get((modmask, keycode))
-              if callback: callback()  # Direct call, no extra thread
-          else:
-            time.sleep(0.01)
-      except Exception as e:
-        print(f" ERROR in shortcutsDaemon: \n{e}\n")
-      finally:
-        for (modmask, keycode), _ in grabbed.items():
-          self.root.ungrab_key(keycode, modmask)
-        self.disp.sync()
+      # try:
+      while not daemonStopSignal.is_set():
+        if self.disp.pending_events():
+          event = self.disp.next_event()
+          if event.type == X.KeyPress:
+            modmask = event.state
+            keycode = event.detail
+            
+            callback = grabbed.get((modmask, keycode))
+            if callback: callback()  # Direct call, no extra thread
+        else:
+          time.sleep(0.01)
+      # except Exception as e:
+      #   print(f" ERROR in XHelper: \n{e}\n")
+      # finally:
+      for (modmask, keycode), _ in grabbed.items():
+        self.root.ungrab_key(keycode, modmask)
+      self.disp.sync()
 
     return StoppableThread(stopper = daemonStopSignal, target=daemonLoop, daemon=True)
 

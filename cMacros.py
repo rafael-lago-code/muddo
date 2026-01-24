@@ -129,7 +129,7 @@ class cMacroItem(QListWidgetItem):
         else:
           targets = (s.pop(0)).split(',')
           targets = [t.strip().lower() for t in targets]
-        actions = s[0].split(',')
+        actions = s[0].split()
         actions = [a.strip() for a in actions]
         
         for t in targets:

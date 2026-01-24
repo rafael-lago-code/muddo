@@ -3,8 +3,13 @@ import sys
 import mmap
 import time
 import os
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from cMilvian import cMilvian
 
-DEFAULT_SHMPATH = '/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/'
+
+P_DEFAULT_SHMPATH = '/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/'
+P_MILVIAN_DEBUG=True
 
 #---------------------------------------------------------------------------------------------------------------
 class cMilvian():
@@ -65,7 +70,7 @@ class cMilvian():
       response = self.waitResponse()
       response = response.split()
       if response[0]=="Character:":
-        self.charName = response[1]
+        self.charName = response[1].lower()
       else:
         print(f"Error, could not retrieve charName. Maybe {pathSHM} is defunct?")
     else:
@@ -107,6 +112,7 @@ class cMilvian():
       
   #---------------------------------------------------------------------------------------------------------------
   def sendInputAction(self, cmd: str):
+    if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] {self.charName} - sendInputAction({cmd})")
     payload = ( self.tokenPrefix['inputaction'] +  # prefix byte = 1
                 self.inputActions[cmd]       # the uint32
     )
@@ -141,7 +147,7 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   @staticmethod
-  def getFromDir(path, getUnknown=False, purgeUnknown=False):
+  def getFromDir(path=P_DEFAULT_SHMPATH, getUnknown=False, purgeUnknown=False) -> list:
     files = [f for f in os.listdir(path) if f.startswith("tmpAccount")]
     filesO = [os.path.join(path, f) for f in files if f.endswith("O")]
 
