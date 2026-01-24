@@ -63,7 +63,7 @@ class cConsole(cToggler):
     self.sigInfo.connect(self.printMessage)
     self.sigDebug.connect(self.debugMessage)
     self.sigError.connect(self.errorMessage)
-    self.sigError.connect(self.warningMessage)
+    self.sigWarning.connect(self.warningMessage)
 
   def prefixStr(self):
     return f'[ {datetime.now().strftime("%Y/%m/%d %H:%M:%S")} ] '

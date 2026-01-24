@@ -46,6 +46,7 @@ class cPatch(cToggler):
     self.main = main
     self.console = main.console
     self.timestamp = QLabel("Last patch: <?>")
+    self.toggler.setToolTip("Last patch: <?>")
     self.log = QTextEdit()
     self.log.setVisible(False)
     self.log.setReadOnly(True)
@@ -77,6 +78,7 @@ class cPatch(cToggler):
     else:
       tstamp = "Last update: never"
     self.timestamp.setText(f"Last update: {tstamp}")
+    self.toggler.setToolTip(f"Last update: {tstamp}")
   
   #----------------------------------------------------------------------------------------------------------
   def patch(self):

@@ -118,7 +118,7 @@ class cOrb(QPushButton):
   theme = None
     
   @classmethod
-  def initTheme(self):
+  def getTheme(self):
     if self.theme is None:
       self.theme = cOrbTheme_RedMedium()
     return self.theme
@@ -131,15 +131,15 @@ class cOrb(QPushButton):
     if tooltip: self.setToolTip(tooltip)
     self._current_state = P_STATUS_NORMAL
     self._isHovered = False
-    self._ctrlPressed = False
     self.setEnabled(enabled)
     self.textRendered = None
     self.iconRendered = None
+    self.menu = QMenu(title, self)
     
     ctrlTrigger = QShortcut(QKeySequence(Qt.Key.Key_Control), self)
     ctrlTrigger.activated.connect(lambda : self._setCtrlPressed(True))
 
-    theme = self.__class__.theme or self.__class__.initTheme()
+    theme = self.__class__.getTheme()
 
     self.setFont(theme.font)
     QApplication.instance().installEventFilter(self)
@@ -150,16 +150,25 @@ class cOrb(QPushButton):
     self.setMouseTracking(True)
     self.rightReleased.connect(self.showMenu)
   
+  #----------------------------------------------------------------------------------------------------------
+  def setIcon(self, a0):
+    self.iconRendered = None
+    super().setIcon(a0)
+  
+  #----------------------------------------------------------------------------------------------------------
+  def setText(self, a0):
+    self.textRendered = None
+    super().setText(a0)
 
   #----------------------------------------------------------------------------------------------------------
   def setMenu(self, menu : QMenu):
-    super().setMenu(menu)
+    self.menu = menu
     menu.aboutToHide.connect(self.normalizeState)
 
   #----------------------------------------------------------------------------------------------------------
   def showMenu(self, e : QEvent):
-    if self.menu():
-      self.menu().exec(self.mapToGlobal(e.pos()))
+    if len(self.menu.actions())>0:
+      self.menu.exec(self.mapToGlobal(e.pos()))
       self.setState(P_STATUS_RCLICK)      
  
   #----------------------------------------------------------------------------------------------------------
@@ -331,7 +340,7 @@ class cOrbSmall(cOrb):
   theme = None
 
   @classmethod
-  def initTheme(self):
+  def getTheme(self):
     if self.theme is None:
       self.theme = cOrbTheme_RedSmall()
     return self.theme

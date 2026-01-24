@@ -37,17 +37,18 @@ class cMacrosDaemon(aProcessItem):
     self.key = "Macros Daemon"
     self.process = None
 
-    self.orbToggler = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
-                           tooltip="Toggle on/off all shortcuts from all active sets")
-    self.orbToggler.setCheckable(True)
-    self.orbToggler.setMenu(QMenu("Macros Daemon", self.orbToggler))
-    self.actionToggle  = self.orbToggler.menu().addAction("Launch Daemon")
-    self.actionRestart = self.orbToggler.menu().addAction("Restart Daemon")
-    self.actionKill    = self.orbToggler.menu().addAction("Kill Daemon")
-    self.actionConf    = self.orbToggler.menu().addAction("Show/Hide Configure UI")
+    self.orb = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
+                           tooltip="Toggle on/off all shortcuts from all active sets" \
+                           "<br><b><i>Right-click for more options</i></b>")
+    self.orb.setCheckable(True)
+    # self.orbToggler.setMenu(QMenu("Macros Daemon", self.orbToggler))
+    self.actionToggle  = self.orb.menu.addAction("Launch Daemon")
+    self.actionRestart = self.orb.menu.addAction("Restart Daemon")
+    self.actionKill    = self.orb.menu.addAction("Kill Daemon")
+    self.actionConf    = self.orb.menu.addAction("Show/Hide setting UI")
 
-    self.orbToggler.clicked.connect( lambda : self.toggle() )
-    self.orbToggler.ctrlClicked.connect( lambda : self.restart(purge=True))
+    self.orb.clicked.connect(self.toggle)
+    self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
     self.actionToggle.triggered.connect(self.toggle)
     self.actionRestart.triggered.connect(self.restart)
     self.actionKill.triggered.connect(lambda : self.kill(force=True))
@@ -60,7 +61,7 @@ class cMacrosDaemon(aProcessItem):
     self.btnToggle.setEnabled(True)
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
-    self.btnRemove.setEnabled(True)
+    self.btnClear.setEnabled(True)
 
     self.sigGotPID.connect(self.updateTooltip)
 
@@ -122,12 +123,6 @@ class cMacrosDaemon(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
-    if self.main.processManager.itemExists(self):
-      self.main.console.debug("Attempting to add Macros Daemon to ProcessManager, but it is already there!")
-    else:
-      self.main.processManager.addItem(self)
-
-    # starts daemon; if it is already running, returns
     if self.process:
       self.main.console.warning(" Attempting to launch Macros Daemon when one is already running."+
                                 " Try right-click->kill to cleanup state.")
@@ -144,8 +139,10 @@ class cMacrosDaemon(aProcessItem):
         for hk, script in parsed.items():
           parsed[hk] = lambda x=script : xh.execute(x)
         self.process = xh.getShortcutsDaemon(parsed)
-    self.process.start()
+    if not self.main.processManager.itemExists(self):
+      self.main.processManager.addItem(self)
     self.setStatus(self.P_STATUS_RUNNING)
+    self.process.start()
     self.pid.setText("R")
 
   #----------------------------------------------------------------------------------------------------------
@@ -155,10 +152,10 @@ class cMacrosDaemon(aProcessItem):
     self.btnRestore.setEnabled(False)
     self.btnMute.setEnabled(False)
     if status == aProcessItem.P_STATUS_RUNNING:
-      self.orbToggler.setChecked(True)
+      self.orb.setChecked(True)
       self.actionToggle.setText("Stop")
     else:
-      self.orbToggler.setChecked(False)
+      self.orb.setChecked(False)
       self.actionToggle.setText("Launch")
 
   #----------------------------------------------------------------------------------------------------------
@@ -168,7 +165,7 @@ class cMacrosDaemon(aProcessItem):
     if force: self.cleanup()
     self.setStatus(self.P_STATUS_KILLED)
     self.process = None
-    if remove: self.remove()
+    # if remove: self.clear()
 
   #----------------------------------------------------------------------------------------------------------
   def restart(self, force=False):

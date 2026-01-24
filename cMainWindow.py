@@ -46,15 +46,10 @@ class cMainWindow(QMainWindow):
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
     self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
-    self.launchMenu = QMenu() # filled in cSettings
-
-    # self.lblProfile = QLabel()
-    # self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    # self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
-
-    self.btnLaunch = cOrb("Launch", P_ICON_D20)
-    self.btnDH = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
-                                         tooltip="Launches Dungeon Helper (it if is installed); activates on all instances of the game for as long as it runs.")
+    self.btnLaunch = cOrb("Launch", P_ICON_D20, tooltip="Launches Dungeons & Dragons Online for all selected" \
+                          " accounts in the selected world. <br><b><i>Right-click for more options</i></b>")
+    # self.btnDH = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
+    #                                      tooltip="Launches Dungeon Helper (it if is installed); activates on all instances of the game for as long as it runs.")
     btnQuit = cOrb("Quit", P_ICON_EXIT)
     self.btnTest = cOrb("TestMe", P_ICON_D20)
     self.btnTest.setCheckable(True)
@@ -67,10 +62,11 @@ class cMainWindow(QMainWindow):
     self.macros = cMacros(self)
     self.processManager = cProcessManager(self)
     self.processManager.setVisible(False)    
+    self.dh = cDungeonHelper(self)
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
-    self.btnDH.clicked.connect(self.launchDH)
+    # self.btnDH.clicked.connect(self.launchDH)
 
     g = QGridLayout()
     g.addWidget(self.credentials.loginSummary,0,0,1,3)
@@ -81,14 +77,22 @@ class cMainWindow(QMainWindow):
     self.summary = QWidget()
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)
-    lButtonsBar = newHLayout([self.btnDH, self.macros.daemon.orbToggler, self.btnLaunch,
+    lButtonsBar = newHLayout([self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
                               "__stretch__", self.summary, "__stretch__", self.btnTest,
                               self.credentials.toggler, self.processManager.toggler, self.macros.toggler, self.settings.toggler, 
                               self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
 
-    # tabController  = QWidget()
-    # tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, 
-                                        # self.shortcuts.toggler, self.patch.toggler, self.news.toggler]))
+    aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
+    aKillAll = self.btnLaunch.menu.addAction("Kill all")
+    aRestoreAll = self.btnLaunch.menu.addAction("Restore all windows positions")
+    aSaveAll = self.btnLaunch.menu.addAction("Save all windows positions")
+    aConf = self.btnLaunch.menu.addAction("Show/Hide setting UI")
+    aLaunchAll.triggered.connect(self.processManager.startAll)
+    aKillAll.triggered.connect(self.processManager.killAll)
+    aRestoreAll.triggered.connect(self.processManager.restoreWindowAll)
+    aSaveAll.triggered.connect(self.processManager.saveWindowAll)
+    aConf.triggered.connect(self.credentials.toggle)
+    aConf.triggered.connect(self.processManager.toggle)
 
     self.console.show()
 
@@ -105,8 +109,7 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    self.sigProfileChanged.connect(lambda : self.btnDH.setVisible(self.profile().useDungeonHelper.isChecked()))
-    # self.sigProfileChanged.connect(lambda p: self.lblProfile.setText(f"Profile: {p[1]}{getArrow()}"))
+    self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     self.settings.initialize()
     if self.profile() is None:
@@ -170,12 +173,13 @@ class cMainWindow(QMainWindow):
       proc.launch()
     self.console.info("Finished queueing...")
   
-  #----------------------------------------------------------------------------------------------------------
-  def launchDH(self):
-    self.processManager.setVisible(True)
-    dh = cDungeonHelper(self)
-    self.processManager.addItem(dh)
-    dh.launch()
+  # #----------------------------------------------------------------------------------------------------------
+  # def launchDH(self):
+  #   if not self.DHProcess:
+  #     self.DHProcess = cDungeonHelper(self)
+  #     self.processManager.addItem(self.DHProcess)
+  #   self.processManager.setVisible(True)
+  #   self.DHProcess.launch()
 
   #----------------------------------------------------------------------------------------------------------
   def loadState(self):

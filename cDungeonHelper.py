@@ -22,6 +22,7 @@ from PyQt6.QtCore import QRunnable
 from cProcess import aProcessItem
 import subprocess
 import os, time
+from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -31,40 +32,103 @@ if TYPE_CHECKING:
 class cDungeonHelper(aProcessItem):
   def __init__(self, main : cMainWindow):
     super().__init__(main)
-    self.key = "dh_"+self.profile.name
-    
-    self.profileID.setText(self.profile.name)
+    self.key = "dh"    
+    self.profileID.setText("")
     self.worldname.setText("")
     self.username.setText("Dungeon Helper")
     self.updateTooltip()
     self.btnToggle.setEnabled(True)
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
-    self.btnRemove.setEnabled(True)
+    self.btnClear.setEnabled(False)
 
-    self.sigGotPID.connect(self.updateTooltip)
+    self.orb = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
+                    tooltip="Launches Dungeon Helper (it if is installed); activates on all instances" \
+                     " of the game for as long as it runs.<br><b><i>Right-click for more options</i></b>")
+    self.orb.setCheckable(True)
+    self.actionToggle  = self.orb.menu.addAction("Launch DungeonHelper")
+    self.actionRestart = self.orb.menu.addAction("Restart DungeonHelper")
+    self.actionKill    = self.orb.menu.addAction("Kill DungeonHelper")
+    self.actionConf    = self.orb.menu.addAction("Show/Hide setting UI")
+
+    self.orb.clicked.connect(self.toggle)
+    self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
+    self.actionToggle.triggered.connect(self.toggle)
+    self.actionRestart.triggered.connect(self.restart)
+    self.actionKill.triggered.connect(lambda : self.kill(force=True))
+    self.actionConf.triggered.connect(lambda : self.main.settings.toggle())
+
+    self.sigGotPID.connect(self.updateTooltip)    
+  
+  #----------------------------------------------------------------------------------------------------------
+  # def launchDH(self):
+  #   if not self.DHProcess:
+  #     self.DHProcess = cDungeonHelper(self)
+  #     self.processManager.addItem(self.DHProcess)
+  #   self.processManager.setVisible(True)
+  #   self.DHProcess.launch()
+
+  #----------------------------------------------------------------------------------------------------------
+  def initialize(self):
+    self.main.profile().useDungeonHelper.stateChanged.connect(lambda x: self.setEnabled(self.main.profile().useDungeonHelper.isChecked()))
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
-    if not self.profile.useDungeonHelper.isChecked(): return
+    if not self.main.profile().useDungeonHelper.isChecked(): return
     if self.status != self.P_STATUS_RUNNING:
       self.console.info(f"Launching DungeonHelper.exe...")
-      self.status = self.P_STATUS_RUNNING
 
-      dhexec = self.profile.DungeonHelperExec.text()
-      cmd  = f"STEAM_ROOT=\"{self.profile.steamRoot.text()}\" PROTON_LOG=1 "
-      cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile.compatData.text()}\" "
-      cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.profile.compatData.text()}\" "
-      cmd += f"\"{self.profile.protonExec.text()}\" run "
+      dhexec = self.main.profile().DungeonHelperExec.text()
+      cmd  = f"STEAM_ROOT=\"{self.main.profile().steamRoot.text()}\" PROTON_LOG=1 "
+      cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile().compatData.text()}\" "
+      cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.profile().compatData.text()}\" "
+      cmd += f"\"{self.profile().protonExec.text()}\" run "
       cmd += f"\"{pathLinux2Windows(dhexec)}\""
 
       exec = tDungeonHelperExecutable(self, cmd)
       QtCore.QThreadPool.globalInstance().start(exec)
-      self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
-      self.status = self.P_STATUS_RUNNING
+      self.profileID.setText(self.main.profile().name)
       self.pid.setText("L")
       pidw = tDHPIDWatcher(self, dhexec)
       QtCore.QThreadPool.globalInstance().start(pidw)
+
+      if not self.main.processManager.itemExists(self):
+        self.main.processManager.addItem(self)
+      self.setStatus(self.P_STATUS_RUNNING)
+    else:
+      self.main.console.warning(" Attempting to launch Dungeon Helper it is already running."+
+                                " Try right-click->kill to cleanup state.")
+
+  #----------------------------------------------------------------------------------------------------------
+  def toggle(self):
+    if self.status == self.P_STATUS_RUNNING:
+      self.kill()
+    else:
+      self.launch()
+
+  #----------------------------------------------------------------------------------------------------------
+  def kill(self, force=False):
+    super().kill(force)
+    self.setStatus(self.P_STATUS_KILLED)
+    self.clear()
+
+  #----------------------------------------------------------------------------------------------------------
+  def setStatus(self, status):
+    super().setStatus(status)
+    self.btnSave.setEnabled(False)
+    self.btnRestore.setEnabled(False)
+    self.btnMute.setEnabled(False)
+    if status == aProcessItem.P_STATUS_RUNNING:
+      self.orb.setChecked(True)
+      # self.actionToggle.setText("Stop")
+    else:
+      self.orb.setChecked(False)
+      # self.actionToggle.setText("Launch")
+
+  #----------------------------------------------------------------------------------------------------------
+  def restart(self, force=False):
+    self.kill(force)
+    self.launch()
 
   #----------------------------------------------------------------------------------------------------------
   def updateTooltip(self):
