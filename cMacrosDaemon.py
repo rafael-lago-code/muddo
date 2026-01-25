@@ -37,6 +37,7 @@ class cMacrosDaemon(aProcessItem):
     super().__init__(main)
     self.key = "Macros Daemon"
     self.process = None
+    self.milvianProc = None
 
     self.orb = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
                            tooltip="Toggle on/off all shortcuts from all active sets" \
@@ -58,13 +59,13 @@ class cMacrosDaemon(aProcessItem):
     self.profileID.setText("")
     self.worldname.setText("")
     self.username.setText("μDDO")
-    self.updateTooltip()
+    # self.updateTooltip()
     self.btnToggle.setEnabled(True)
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnClear.setEnabled(True)
 
-    self.sigGotPID.connect(self.updateTooltip)
+    # self.sigGotPID.connect(self.updateTooltip)
 
   # #----------------------------------------------------------------------------------------------------------
   # Legacy XHelper backend
@@ -119,12 +120,12 @@ class cMacrosDaemon(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def convert(self, consolidated : dict) -> dict:
     parsed = {}
-    chars = cMilvian.getFromDir(purgeUnknown=True)
+    if not self.milvianProc: self.milvianProc = cMilvian.getFromDir(purgeUnknown=True)
 
     # first, get rid of "alls" and "selfs":
     for trigger in consolidated.keys():
       if "all" in consolidated[trigger].keys():
-        for c in chars.keys():
+        for c in self.milvianProc.keys():
           if c in consolidated[trigger].keys():
             consolidated[trigger][c] += consolidated[trigger]["all"]
           else:
@@ -135,16 +136,22 @@ class cMacrosDaemon(aProcessItem):
     for trigger in consolidated.keys():
       parsed[trigger] = []
       for target in consolidated[trigger].keys():
-        if target not in chars.keys(): continue
+        if target not in self.milvianProc.keys(): continue
         if not consolidated[trigger][target]: continue
-        for k in consolidated[trigger][target]:
-          if k.startswith("sleep") or k.startswith("focus") or k.startswith("point") or k.startswith("click"):
-            parsed[trigger].append(k)
-          else:
-            item = lambda t=target,x=k: chars[t].sendInputAction(x)
-            item.char = target
-            item.cmd = k
-            parsed[trigger].append(item)
+        action = consolidated[trigger][target]
+        if not isinstance(action, list): action = list(action)
+        item = lambda t=target,a=action: self.milvianProc[t].sendList(a)
+        item.char = target
+        item.cmd = action
+        parsed[trigger].append(item)
+        # for k in consolidated[trigger][target]:
+        #   if k.startswith("sleep") or k.startswith("focus") or k.startswith("point") or k.startswith("click"):
+        #     parsed[trigger].append(k)
+        #   else:
+        #     item = lambda t=target,x=k: self.milvianProc[t].sendInputAction(x)
+        #     item.char = target
+        #     item.cmd = k
+        #     parsed[trigger].append(item)
 
       if not parsed[trigger]:
         del parsed[trigger]
@@ -213,6 +220,9 @@ class cMacrosDaemon(aProcessItem):
     if force: self.cleanup()
     self.setStatus(self.P_STATUS_KILLED)
     self.process = None
+    for k in self.milvianProc.keys():
+      del self.milvianProc[k]
+    self.milvianProc: None
     # if remove: self.clear()
 
   #----------------------------------------------------------------------------------------------------------
@@ -225,11 +235,4 @@ class cMacrosDaemon(aProcessItem):
     self.main.console.info("Purging all possible shortcuts combinations...")
     XHelper().forceCleanup()
 
-  #----------------------------------------------------------------------------------------------------------
-  def updateTooltip(self):
-    if self.pid.text().isdecimal():
-      text = "<b>Running</b>"
-    else:
-      text = "<i>Not running</i>"
-    self.setToolTip(text)
   

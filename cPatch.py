@@ -42,6 +42,7 @@ class cPatch(cToggler):
   def __init__(self, main : cMainWindow):
     self.widgetID = "patch"
     super().__init__("Patch", P_ICON_DOWNLOAD)
+    self.toggler.setToolTip("Patch Client<br><b><i>Last update: NA</i></b>")
     self.btnPatch = cButton("Patch Now", P_ICON_DOWNLOAD)
     self.main = main
     self.console = main.console
@@ -78,7 +79,7 @@ class cPatch(cToggler):
     else:
       tstamp = "Last update: never"
     self.timestamp.setText(f"Last update: {tstamp}")
-    self.toggler.setToolTip(f"Last update: {tstamp}")
+    self.toggler.setToolTip(f"Patch Client<br><b><i>Last update: {tstamp}</i></b>")
   
   #----------------------------------------------------------------------------------------------------------
   def patch(self):

@@ -140,6 +140,8 @@ class cDDO(aProcessItem):
       return
     xh = XHelper()
     xh.moveWindow(int(self.winID.text()), pos1, pos2)
+    xh.remapWindow(int(self.winID.text()))
+    xh.setBorderless(int(self.winID.text()))
   
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):

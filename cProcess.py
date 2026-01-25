@@ -36,6 +36,7 @@ class cProcessManager(cToggler):
   def __init__(self, main : cMainWindow):
     self.widgetID = "processManager"
     super().__init__("Process\nManager", P_ICON_PROPERTIES)
+    self.toggler.setToolTip("Toggle Process Manager and allows control of individual launched processes")
     self.main = main
     self.console = main.console
     self.items : OrderedDict[str, aProcessItem] = OrderedDict()

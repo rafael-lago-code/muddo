@@ -48,12 +48,8 @@ class cMainWindow(QMainWindow):
 
     self.btnLaunch = cOrb("Launch", P_ICON_D20, tooltip="Launches Dungeons & Dragons Online for all selected" \
                           " accounts in the selected world. <br><b><i>Right-click for more options</i></b>")
-    # self.btnDH = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
-    #                                      tooltip="Launches Dungeon Helper (it if is installed); activates on all instances of the game for as long as it runs.")
     btnQuit = cOrb("Quit", P_ICON_EXIT)
-    self.btnTest = cOrb("TestMe", P_ICON_D20)
-    self.btnTest.setCheckable(True)
-    
+        
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
     self.news = cNews(self)
@@ -78,7 +74,7 @@ class cMainWindow(QMainWindow):
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)
     lButtonsBar = newHLayout([self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
-                              "__stretch__", self.summary, "__stretch__", self.btnTest,
+                              "__stretch__", self.summary, "__stretch__", 
                               self.credentials.toggler, self.processManager.toggler, self.macros.toggler, self.settings.toggler, 
                               self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
 

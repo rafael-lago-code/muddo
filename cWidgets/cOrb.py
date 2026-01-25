@@ -266,15 +266,15 @@ class cOrb(QPushButton):
       self.setState(P_STATUS_COVERD)
     else:
       self.setState(P_STATUS_HOVERD)
-      QToolTip.showText( self.mapToGlobal(self.rect().bottomLeft()),
-                         self.toolTip(), self)
+      if self.toolTip():
+        QToolTip.showText( self.mapToGlobal(self.rect().bottomLeft()),
+                          self.toolTip(), self)
     super().enterEvent(event)
   
   #-------------------------------------------------------------------------------------------------------------
   def mouseMoveEvent(self, a0):
     if self.underMouse():
       if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier:
-
         self.setState(P_STATUS_COVERD)
       else:
         self.setState(P_STATUS_HOVERD)

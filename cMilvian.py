@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
-import sys
-import mmap
-import time
-import os
+import sys, mmap, time, os
+import struct
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMilvian import cMilvian
@@ -15,9 +13,11 @@ P_MILVIAN_DEBUG=True
 class cMilvian():
   tokenPrefix = {
     'misc':          int.to_bytes(0, byteorder='little', signed=False),
-    'inputaction':   int.to_bytes(1, byteorder='little', signed=False),
-    'querycharname': int.to_bytes(2, byteorder='little', signed=False),
-    'charname':      int.to_bytes(2, byteorder='little', signed=False),
+    'list':          int.to_bytes(1, byteorder='little', signed=False),
+    'sleep':         int.to_bytes(2, byteorder='little', signed=False),
+    'inputaction':   int.to_bytes(3, byteorder='little', signed=False),
+    'querycharname': int.to_bytes(4, byteorder='little', signed=False),
+    'charname':      int.to_bytes(4, byteorder='little', signed=False),
   }
   inputActions = None
 
@@ -54,6 +54,7 @@ class cMilvian():
     if not self.inputActions: self.getInputActions()
     return cmd in self.inputActions.keys()
 
+  #---------------------------------------------------------------------------------------------------------------
   def __init__(self, pathSHM : str):
     # pathSHM can be pathSHMI or pathSHMO, doesn't matter
     self.charName = None
@@ -67,10 +68,13 @@ class cMilvian():
     if os.path.exists(self.pathSHMI) and os.path.exists(self.pathSHMO):
       self.sendRequest(self.tokenPrefix['charname'])
       time.sleep(0.05)
-      response = self.waitResponse()
-      response = response.split()
-      if response[0]=="Character:":
-        self.charName = response[1].lower()
+      response = self.waitResponse(timeout=1.0)
+      if response:
+        response = response.split()
+        if response[0]=="Character:":
+          self.charName = response[1].lower()
+        else:
+          print(f"Error, could not retrieve charName. Maybe {pathSHM} is defunct?")
       else:
         print(f"Error, could not retrieve charName. Maybe {pathSHM} is defunct?")
     else:
@@ -78,8 +82,12 @@ class cMilvian():
       
 
   #---------------------------------------------------------------------------------------------------------------
-  def waitResponse(self) -> str:
+  def waitResponse(self, timeout=None) -> str:
+    timer = 0.0
     while True:
+      if timeout and timer>timeout:
+        if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] timeout ({timeout}) in waitResponse! charName={self.charName}, pathO={self.pathSHMO}")
+        return None
       with open(self.pathSHMO, 'r+b') as fdSHMO:
         shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
         shmO.seek(0)
@@ -87,18 +95,21 @@ class cMilvian():
         if len(msgLenBBB)<4:
           shmO.close()
           time.sleep(0.05)
+          timer += 0.05
           continue
 
         msgLen = int.from_bytes(msgLenBBB, byteorder='little', signed=False)
         if msgLen == 0:
           shmO.close()
           time.sleep(0.05)
+          timer += 0.05
           continue
 
         payload = shmO.read(msgLen)
         if len(payload) < msgLen:
           shmO.close()
           time.sleep(0.05)
+          timer += 0.05
           continue
 
         response = payload.decode("utf-8")
@@ -111,24 +122,80 @@ class cMilvian():
         return response
       
   #---------------------------------------------------------------------------------------------------------------
-  def sendInputAction(self, cmd: str):
-    if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] {self.charName} - sendInputAction({cmd})")
+  def packInputAction(self, cmd: str) -> bytes:
+    if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] {self.charName} - packInputAction({cmd})")
     payload = ( self.tokenPrefix['inputaction'] +  # prefix byte = 1
-                self.inputActions[cmd]       # the uint32
+                self.inputActions[cmd]             # the uint32
     )
-    self.sendRequest(payload)
+    return payload
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def packSleep(self, nsec: float) -> bytes:
+    # I know this looks silly, but I will re-use this later on
+    if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] {self.charName} - packSleep({nsec})")
+    payload = ( self.tokenPrefix['sleep'] +         # prefix byte = 1
+                struct.pack("<f",float(nsec))       # the float
+    )
+    return payload
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def packSingleToken(self, token: str) -> bytes:
+    if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] {self.charName} - packSingleToken({token})")
+    payload = ( self.tokenPrefix[token] )
+    return payload
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def packList(self, data: list) -> bytes:
+    # payload format:
+    #  list_token | len(data) | item_1_len | item_1_token | item_1_data | item_2_len |...
+    payload = self.tokenPrefix["list"]
+    payload += len(data).to_bytes(4, byteorder='little', signed=False)
+    for item in data:
+      itemData = self.packString(item)
+      payload += len(itemData).to_bytes(4, byteorder='little', signed=False)
+      payload += itemData
+    return payload
 
   #---------------------------------------------------------------------------------------------------------------
-  def sendRequest(self, token: str):
-    if not isinstance(token, bytes): token = token.encode('utf-8')
+  def packString(self, item : str) -> bytes:
+    item = item.strip().lower()
+    if item in cMilvian.inputActions.keys():
+      itemData = self.packInputAction(item)
+    elif item.startswith('sleep_'):
+      itemData = self.packSleep(float(item[6:]))
+    else:
+      itemData = self.packSingleToken(item)
+    return itemData
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def sendList(self, data: list):
+    if len(data)==1:
+      self.sendRequest(self.packString(data[0]))
+    self.sendRequest(self.packList(data))
+      
+  #---------------------------------------------------------------------------------------------------------------
+  def sendInputAction(self, cmd: str):
+    self.sendRequest(self.packInputAction(cmd))
 
-    msgLen = len(token)
+  #---------------------------------------------------------------------------------------------------------------
+  def sendSleep(self, nsec: float):
+    self.sendRequest(self.packSleep(nsec))
+
+  #---------------------------------------------------------------------------------------------------------------
+  def sendSingleToken(self, token: str):
+    self.sendRequest(self.packSingleToken(token))
+
+  #---------------------------------------------------------------------------------------------------------------
+  def sendRequest(self, payload: bytes):
+    if not isinstance(payload, bytes): payload = payload.encode('utf-8')
+
+    msgLen = len(payload)
     msgLen = msgLen.to_bytes(4, byteorder='little', signed=False)
 
     with open(self.pathSHMI, 'r+b') as fdSHMI:
       shmI = mmap.mmap(fdSHMI.fileno(), 0, access=mmap.ACCESS_WRITE)
       shmI.seek(4)
-      shmI.write(token)
+      shmI.write(payload)
       shmI.seek(0)
       shmI.write(msgLen)
       shmI.flush()
@@ -165,3 +232,5 @@ class cMilvian():
         os.remove(f)
         os.remove(f[:-1]+"I")
     return characters
+
+# sleep_1.0, b5k3, interact , sleep_1.0

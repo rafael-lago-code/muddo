@@ -106,15 +106,15 @@ class StoppableThread(threading.Thread):
 
 #----------------------------------------------------------------------------------------------------------
 class XHelper(QObject):
-  sigInfoPrinted = pyqtSignal(str)
-  sigErrorPrinted = pyqtSignal(str,Exception)
-  sigDebugPrinted = pyqtSignal(str)
+  # sigInfoPrinted = pyqtSignal(str)
+  # sigErrorPrinted = pyqtSignal(str,Exception)
+  # sigDebugPrinted = pyqtSignal(str)
   sigGotWinID = pyqtSignal((int,list))
   KEYSYM = parseKeysymHeader(P_DEFAULT_KEYSYM) 
   MODIFIERS, MODIFIER_MASKS = buildModifiers()
 
   #----------------------------------------------------------------------------------------------------------
-  def __init__(self):
+  def __init__(self, main=None):
     super().__init__()
     self.disp = display.Display()
     self.root : display.Window = self.disp.screen().root
@@ -124,6 +124,17 @@ class XHelper(QObject):
     self.netWMName = self.disp.intern_atom('_NET_WM_NAME')
     self.WMName = self.disp.intern_atom('WM_NAME')
     self.utf8String = self.disp.intern_atom('UTF8_STRING')
+
+    if main:
+      self.printInfo = self.main.console.info
+      self.printError = self.main.console.error
+      self.printDebug = self.main.console.debug
+      self.printWarning = self.main.console.warning
+    else:
+      self.printInfo    = lambda x : print(x)
+      self.printError   = lambda x : print(x)
+      self.printDebug   = lambda x : print(x)
+      self.printWarning = lambda x : print(x)
 
   #----------------------------------------------------------------------------------------------------------
   def getKeySym(self, key : str) -> int:
@@ -151,7 +162,7 @@ class XHelper(QObject):
         time.sleep(P_DEFAULT_SLEEP)
         continue
       else:
-        self.sigInfoPrinted.emit(f" Error in XHelper.getWinID: no window found {f'(timeout={timeout})' if timeout>0.0 else ''}")
+        self.printInfo(f" Error in XHelper.getWinID: no window found {f'(timeout={timeout})' if timeout>0.0 else ''}")
         return None
       
   #----------------------------------------------------------------------------------------------------------
@@ -161,7 +172,7 @@ class XHelper(QObject):
     clientList = self.root.get_full_property(self.netClientList, X.AnyPropertyType)
 
     if not clientList:
-      self.sigInfoPrinted.emit(" Error in XHelper.tryWinID: no windows founds at all!")
+      self.printInfo(" Error in XHelper.tryWinID: no windows founds at all!")
       return None
 
     for winID in clientList.value:
@@ -192,6 +203,95 @@ class XHelper(QObject):
     t = threading.Thread(target=self.waitWinID, args=(pid,timeout), daemon=True)
     t.start()
 
+  #----------------------------------------------------------------------------------------------------------
+  def remapWindow(self, winID):
+    win = self.disp.create_resource_object('window', winID)
+    win.unmap()
+    self.disp.flush()
+    time.sleep(0.05)
+    win.map()
+
+    self.disp.flush()
+
+  #----------------------------------------------------------------------------------------------------------
+  def setBorderless(self, winID):
+    self.setWindowHint(winID,flags=2,decoration=0)
+
+  #----------------------------------------------------------------------------------------------------------
+  def setBorderyes(self, winID):
+    self.setWindowHint(winID,flags=2,decoration=126)
+
+  #----------------------------------------------------------------------------------------------------------
+  def setWindowHint(self, winID, flags=2, functions=0, decoration=0, input_mode=0):
+    # flag values:
+    #----------------------------
+    # FUNCTIONS_FLAG   = 1 << 0  # 1 in decimal - Apply functions setting
+    # DECORATIONS_FLAG = 1 << 1  # 2 in decimal - Apply decorations setting
+    # INPUT_MODE_FLAG  = 1 << 2  # 4 in decimal - Apply input mode setting
+    #
+    # function values:
+    #----------------------------
+    # ALL_FUNCTIONS     = 0xFFFFFFFF  # Allow everything
+    # NO_FUNCTIONS      = 0x00000000  # Allow nothing
+    # FUNC_RESIZE       = 1 << 0  # 1 - Allow resizing
+    # FUNC_MOVE         = 1 << 1  # 2 - Allow moving  
+    # FUNC_MINIMIZE     = 1 << 2  # 4 - Show minimize button
+    # FUNC_MAXIMIZE     = 1 << 3  # 8 - Show maximize button
+    # FUNC_CLOSE        = 1 << 4  # 16 - Show close button
+    #
+    # decoration values:
+    #----------------------------
+    # ALL_DECORATIONS   = 0xFFFFFFFF  # Show everything
+    # NO_DECORATIONS    = 0x00000000  # Show nothing (borderless!)
+    # DECOR_BORDER      = 1 << 0  # 1 - Show window border
+    # DECOR_TITLE       = 1 << 1  # 2 - Show title bar
+    # DECOR_MENU        = 1 << 2  # 4 - Show window menu button
+    # DECOR_MINIMIZE    = 1 << 3  # 8 - Show minimize button decoration
+    # DECOR_MAXIMIZE    = 1 << 4  # 16 - Show maximize button decoration
+    # DECOR_RESIZEH     = 1 << 5  # 32 - Show resize handles
+    #
+    # input_mode values:
+    #----------------------------
+    # INPUT_MODELESS      = 0  # Normal modeless window
+    # INPUT_PRIMARY_APP   = 1  # Primary application modal
+    # INPUT_SYSTEM_MODAL  = 2  # System modal (blocks everything)
+    # INPUT_FULL_APP_MODAL = 3 # Full application modal
+
+    window = self.disp.create_resource_object('window', winID)
+    motif_wm_hints = self.disp.intern_atom('_MOTIF_WM_HINTS')
+
+    hints_data = [ flags, functions, decoration, input_mode, 0 ]
+    window.change_property(motif_wm_hints,
+                           motif_wm_hints,
+                           32,
+                           hints_data,
+                           mode=X.PropModeReplace)
+
+    self.disp.flush()
+  
+  #----------------------------------------------------------------------------------------------------------
+  def getWindowHint(self, winID) -> dict:
+    window = self.disp.create_resource_object('window', winID)
+    motif_wm_hints = self.disp.intern_atom('_MOTIF_WM_HINTS')
+
+    prop = window.get_full_property(motif_wm_hints, X.AnyPropertyType)
+    
+    if prop and prop.value:
+      values = prop.value
+      if len(values) >= 5:
+          return {
+              'flags': values[0],
+              'functions': values[1],
+              'decorations': values[2],
+              'input_mode': values[3],
+              'status': values[4]
+          }
+      else:
+        print(f"Warning: MOTIF hints has {len(values)} values (expected 5)")
+        return {'raw': values}
+    else:
+      self.printError(f"ERROR in XHelper: window {winID} has no MOTIF WM hints property")
+      return None
       
   #----------------------------------------------------------------------------------------------------------
   def focusWindow(self, winID) -> None:
@@ -362,18 +462,18 @@ class XHelper(QObject):
         grabbed[(modmask, keycode)] = callback
         self.root.grab_key( keycode, modmask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
         grabbed[(modmask | X.LockMask, keycode)] = callback
-        self.sigDebugPrinted.emit(f"XHelper.getShortcutsDaemon: registered \"{keystring}\"")
+        self.printDebug(f"XHelper.getShortcutsDaemon: registered \"{keystring}\"")
       except Exception as e:
         raise(f"XHelper.getShortcutsDaemon: failed to grab \"{keystring}\"\n{e}")
     
     if not grabbed:
-      self.sigDebugPrinted.emit(f"XHelper.getShortcutsDaemon: not hotkeys passed!")
+      self.printDebug(f"XHelper.getShortcutsDaemon: not hotkeys passed!")
       return
     
     daemonStopSignal = threading.Event()
     
     def daemonLoop():
-      self.sigDebugPrinted.emit(f"XHelper.getShortcutsDaemon: daemon started running")
+      self.printDebug(f"XHelper.getShortcutsDaemon: daemon started running")
       self.root.change_attributes(event_mask=X.KeyPressMask)
       
       # try:
@@ -500,37 +600,3 @@ class XHelper(QObject):
         print(e)
     return None  # Couldn't determine
 
-# hotkeys = {
-#   "super+q": lambda: print("Super+Space pressed!"),
-#   "alt+a": lambda: print("alt+A pressed!"),
-#   "mod1+a": lambda: print("1 pressed!"),
-#   "mod2+a": lambda: print("2 pressed!"),
-#   "mod3+a": lambda: print("3 pressed!"),
-#   "mod4+a": lambda: print("4 pressed!"),
-#   "mod5+a": lambda: print("5 pressed!"),
-#   "alt+f3": lambda: print("Alt+F3 pressed!")
-# }
-
-# xhelper = XHelper()
-# daemon = xhelper.getShortcutsDaemon(hotkeys)
-
-# daemon.start()
-# time.sleep(5)
-# daemon.stop()
-
-# pid = 11589
-# xhelp = XHelper()
-# winid = xhelp.getWinID(pid)  # Your PID
-# print(f"{pid} = {winid}")
-# for w in winid:
-#   print(xhelp.getWindowTitle(w))
-# xhelp.focusWindow(winid[0])
-# print(xhelp.getWindowGeometry(winid[0]))
-# xhelp.moveWindow(winid[0], 0, 23)
-
-# print(xhelp._parseKeystring("shift + q v  shift+a"))
-# xhelp.sendKeystrokes("kp_1 sleep:1.3 shift+a sleep:1.3 shift+w ", winid[0])
-
-
-# # if window_id:
-# #     focuser.send_shift_q(window_id)

@@ -38,6 +38,7 @@ class cSettings(cToggler):
   def __init__(self, main : cMainWindow):
     self.widgetID = "settings"
     super().__init__("&Settings", P_ICON_GEARSTACK)
+    self.toggler.setToolTip("Toggle Settings UI")
     self.main = main
     self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
     self.lastProfile = ""

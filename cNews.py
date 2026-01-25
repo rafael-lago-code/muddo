@@ -31,6 +31,7 @@ class cNews(cToggler):
     self.widgetID = "news"
     self.main = main
     super().__init__("News", P_ICON_SCROLL)
+    self.toggler.setToolTip("Toggle News UI<br><b><i>NOT IMPLEMENTED</i></b>")
     self.context = QTextEdit()
     self.context.setReadOnly(True)
     self.context.setAcceptRichText(True)
