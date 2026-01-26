@@ -48,7 +48,7 @@ I removed the support to LotRO simply because I could not test it. The added com
 
 ## About Windows and/or MacOS Support
 
-I couldn't care less about other platforms (i.e. reciprocity). You are welcome to do the porting/testing/maintaining for other platforms, but please notice that you'll be bound to the GPL-3 license.
+I couldn't care less about Windows and/or MacOS (a.k.a. reciprocity 😉). You are welcome to do the porting/testing/maintaining for other platforms, but please notice that you'll be bound to the GPL-3 license.
 
 ## Links:
 - https://www.ddo.com
