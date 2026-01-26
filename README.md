@@ -17,6 +17,7 @@ Currently implemented features:
 
 ## TODO
   - replace ps calls by cTop module
+  - make Milvian check the path from Dungeon Helper instead of a hard-coded path 
   - save border/borderless state (currently forces borderless)
   - fix several minor bugs with aProcessItem and their mismatching state with cOrb
   - allow detection of orphaned Dungeon Helper processes
@@ -48,7 +49,7 @@ I removed the support to LotRO simply because I could not test it. The added com
 
 ## About Windows and/or MacOS Support
 
-I couldn't care less about other platforms (i.e. reciprocity). You are welcome to do the porting/testing/maintaining for other platforms, but please notice that you'll be bound to the GPL-3 license.
+I couldn't care less about Windows and/or MacOS (i.e. reciprocity). You are welcome to do the porting/testing/maintaining for other platforms, but please notice that you'll be bound to the GPL-3 license.
 
 ## Links:
 - https://www.ddo.com
