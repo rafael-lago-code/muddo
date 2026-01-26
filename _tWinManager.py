@@ -28,12 +28,12 @@ class tWinManager(QRunnable):
     super().__init__()
     self.ddo = ddo
     self.cmd = cmd
-    self.bin = ddo.profile.xdotoolExec.text()
+    self.bin = ddo.frozenProfile.xdotoolExec.text()
     self.msg = ""
   
   #----------------------------------------------------------------------------------------------------------
   def run(self):
-    if not self.ddo.profile.usexdotool.isChecked(): return
+    if not self.ddo.frozenProfile.usexdotool.isChecked(): return
     if self.cmd == "getWinID":
       self.getWinID()
     elif self.cmd == "restoreWindow":
@@ -49,8 +49,8 @@ class tWinManager(QRunnable):
         out = subprocess.check_output([f"{self.bin} getwindowgeometry {self.ddo.winID.text()}"], shell=True)
         out = out.decode().strip().split('\n')
         pos = out[1].split()[1].split(',')
-        self.ddo.profile.windowsPreferences[self.ddo.username.text()] = (int(pos[0]), int(pos[1]))
-        self.ddo.profile.save()
+        self.ddo.frozenProfile.windowsPreferences[self.ddo.username.text()] = (int(pos[0]), int(pos[1]))
+        self.ddo.frozenProfile.save()
       except Exception as e:
         self.getWinID()
       else:
@@ -62,8 +62,8 @@ class tWinManager(QRunnable):
   #    Tries to restore window preferences. It always checks the WinID again because these change 
   #    every now and then, which is weird. It will loop a few times until it gets a valid winID.
   def restoreWindow(self):
-    if self.ddo.username.text() in self.ddo.profile.windowsPreferences.keys():
-      pos1, pos2 = self.ddo.profile.windowsPreferences[self.ddo.username.text()]
+    if self.ddo.username.text() in self.ddo.frozenProfile.windowsPreferences.keys():
+      pos1, pos2 = self.ddo.frozenProfile.windowsPreferences[self.ddo.username.text()]
       for i in range(5):
         try:
           out = subprocess.check_output([f"{self.bin} windowmove --sync {self.ddo.winID.text()} {pos1} {pos2}"], shell=True)

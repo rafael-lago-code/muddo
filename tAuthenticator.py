@@ -168,8 +168,9 @@ class tAuthenticator():
 
   #----------------------------------------------------------------------------------------------------------
   def wait(self):
-    (number, serving) = self.queue()
+    (number, serving) = (1,0)
     while number > serving:
+      (number, serving) = self.queue()
       if number is None or serving is None:
         self.console.error(f"Something went wrong while queueing for account \"{C_SILVER}\
                            {self.ddo.username.text()}</font>\"")

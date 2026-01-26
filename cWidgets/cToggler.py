@@ -17,35 +17,46 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QWidget, QScrollArea, QPushButton
+from PyQt6.QtWidgets import QWidget, QPushButton
+from PyQt6.QtCore import QPoint
+from cWidgets.cFloating import cFloating
+from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 
-class cTab(QWidget):
+class cToggler(cFloating):
 
-  def __init__(self, title : str):
+  def __init__(self, title : str, icon):
     super().__init__()
-    self.toggler = QPushButton(" "+title)
-    self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
-    self.toggler.setFixedHeight(36)
+    self.toggler = cOrb(title, icon)
     self.toggler.setCheckable(True)
 
     self.toggler.clicked.connect(self.toggle)
     self.setVisible(False)
     
   def toggle(self):
-    if self.toggler.isChecked():
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
-      self.setVisible(True)
+    if self.isVisible():
+      self.hide()
     else:
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
-      self.setVisible(False)
+      self.show()
+  
+  def show(self):
+    # there is a bug preventing the loading the position of the window, if it
+    # "thinks" that it didn't change, so we need to force some crap here.
+    if self.isVisible(): return
+    self.move(QPoint(10,10))
+    super().show()
+    self.loadState()
+    self.toggler.setChecked(True)
+
+  def hide(self):
+    if not self.isVisible(): return
+    self.saveState()
+    super().hide()
+    self.toggler.setChecked(False)
 
   def setVisible(self, value : bool):
     self.toggler.setChecked(value)
-    if value:
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_DOWN))
-    else:
-      self.toggler.setIcon(getIcon(P_ICON_TRIANGLE_RIGHT))
     super().setVisible(value)
+  
 
 

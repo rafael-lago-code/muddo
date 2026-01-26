@@ -24,7 +24,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QLabel, QTextEdit
 from PyQt6.QtCore import QRunnable, pyqtSignal, QThreadPool
-from cWidgets.cTab import cTab
+from cWidgets.cToggler import cToggler
 from cWidgets.cButton import cButton
 import subprocess
 from typing import TYPE_CHECKING
@@ -35,16 +35,19 @@ if TYPE_CHECKING:
 
 P_TIMESTAMP_FILE=".muddo_patch_timestamp"
 
-class cPatch(cTab):
+class cPatch(cToggler):
   sigPatchInfo = pyqtSignal(str)
   sigPatchDone = pyqtSignal(bool)
 
   def __init__(self, main : cMainWindow):
-    super().__init__("Patch")
+    self.widgetID = "patch"
+    super().__init__("Patch", P_ICON_DOWNLOAD)
+    self.toggler.setToolTip("Patch Client<br><b><i>Last update: NA</i></b>")
     self.btnPatch = cButton("Patch Now", P_ICON_DOWNLOAD)
     self.main = main
     self.console = main.console
     self.timestamp = QLabel("Last patch: <?>")
+    self.toggler.setToolTip("Last patch: <?>")
     self.log = QTextEdit()
     self.log.setVisible(False)
     self.log.setReadOnly(True)
@@ -55,7 +58,7 @@ class cPatch(cTab):
     self.readFiles = 0
     self.readBytes = 0
     
-    self.setLayout(newVLayout([self.log, newHLayout([self.timestamp, self.btnPatch])]))
+    self.setLayout(newVLayout([self.log, newHLayout([self.timestamp, self.btnPatch]), "__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
@@ -76,6 +79,7 @@ class cPatch(cTab):
     else:
       tstamp = "Last update: never"
     self.timestamp.setText(f"Last update: {tstamp}")
+    self.toggler.setToolTip(f"Patch Client<br><b><i>Last update: {tstamp}</i></b>")
   
   #----------------------------------------------------------------------------------------------------------
   def patch(self):

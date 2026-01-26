@@ -21,19 +21,22 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
-from cWidgets.cTab import cTab
+from cWidgets.cToggler import cToggler
 from collections import OrderedDict
 import subprocess
 from cWidgets.util import *
-from cWidgets.cButton import cButton, cLauncherButton
+from cWidgets.cOrb import cOrbSmall
+from XHelper import XHelper
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
-class cProcessManager(cTab):
+class cProcessManager(cToggler):
 
   def __init__(self, main : cMainWindow):
-    super().__init__("Process Manager")
+    self.widgetID = "processManager"
+    super().__init__("Process\nManager", P_ICON_PROPERTIES)
+    self.toggler.setToolTip("Toggle Process Manager and allows control of individual launched processes")
     self.main = main
     self.console = main.console
     self.items : OrderedDict[str, aProcessItem] = OrderedDict()
@@ -45,15 +48,15 @@ class cProcessManager(cTab):
     header.setLayout(newHLayout([newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
                      newHeaderLabel("World"), newHeaderLabel("Profile"), "Username"]))
 
-    self.btnStartAll   = cButton(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
-    self.btnKillAll    = cButton(icon=P_ICON_SKULL_RED, tooltip="Left click: terminates all running processes<br>Ctrl+Left click or Right click: force termination (SIGKILL) all processes")
-    self.btnSaveAll    = cButton(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
-    self.btnRestoreAll = cButton(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
-    self.btnRemoveAll  = cButton(icon=P_ICON_CLEARALL,  tooltip="Left click: clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
-    self.btnCaptureOrphans = cButton("Capture &Orphans", tooltip="Attempts to find running instances of DDO and capture them"\
+    self.btnStartAll   = cOrbSmall(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
+    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL_RED, tooltip="Left click: terminates all running processes<br>Ctrl+Left click or Right click: force termination (SIGKILL) all processes")
+    self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
+    self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
+    self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEARALL,  tooltip="Clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
+    self.btnMuteAll    = cOrbSmall(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
+    self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/chain.png'), tooltip="Attempts to find running instances of DDO and capture them"\
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")
-    self.btnCaptureOrphans.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/chain.png')))
     
     self.btnCaptureOrphans.clicked.connect(self.main.captureOrphan)
     self.btnStartAll.clicked.connect(self.startAll)
@@ -62,20 +65,20 @@ class cProcessManager(cTab):
     self.btnKillAll.rightClicked.connect(lambda : self.killAll(force=True))
     self.btnSaveAll.clicked.connect(self.saveWindowAll)
     self.btnRestoreAll.clicked.connect(self.restoreWindowAll)
-    self.btnRemoveAll.clicked.connect(self.removeAll)
-    self.btnRemoveAll.ctrlClicked.connect(lambda : self.removeAll(True))
-    self.btnRemoveAll.rightClicked.connect(lambda : self.removeAll(True))
+    self.btnCleanAll.clicked.connect(self.cleanAll)
+    self.btnCleanAll.ctrlClicked.connect(lambda : self.cleanAll(True))
+    self.btnCleanAll.rightClicked.connect(lambda : self.cleanAll(True))
 
-    buttons = QWidget()
-    buttons.setLayout(newHLayout([self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
-      self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnRemoveAll]))
+    # buttons = QWidget()
+    # buttons.setLayout()
     
     self.content = newVLayout([header])
-    self.setLayout(newVLayout([self.content, buttons]))
-    
+    self.setLayout(newVLayout([self.content, newHLayout([self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
+      self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnCleanAll, self.btnMuteAll]),
+                    "__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
-  def removeItem(self, item : aProcessItem, kill=False):
+  def cleanItem(self, item : aProcessItem, kill=False):
     if kill and item.status == item.P_STATUS_RUNNING:
       try:
         item.kill()
@@ -90,15 +93,16 @@ class cProcessManager(cTab):
     except Exception as e:
       self.console.error(f"cProcessManager.cleanItem: unknown error removing item \"{item.key}\"", e)
 
-    item.deleteLater()
     self.main.processManager.resetColour()
+    item.hide()
+    # item.deleteLater()
 
 
   #----------------------------------------------------------------------------------------------------------
-  def removeAll(self, kill=False):
+  def cleanAll(self, kill=False):
     allItems  = set(self.items.values())
     for i in allItems: 
-      self.removeItem(i,kill)
+      self.cleanItem(i,kill)
 
   #----------------------------------------------------------------------------------------------------------
   def startAll(self):
@@ -122,14 +126,22 @@ class cProcessManager(cTab):
     for u in self.items.keys(): self.items[u].restoreWindow()
 
   #----------------------------------------------------------------------------------------------------------
+  def itemExists(self, p : aProcessItem):
+    for key, proc in self.items.items():
+      if key == p.key: return True
+      if proc == p: return True
+    return False
+
+  #----------------------------------------------------------------------------------------------------------
   def addItem(self, p : aProcessItem):
     self.btnKillAll.setEnabled(True)
     self.btnSaveAll.setEnabled(True)
     self.btnRestoreAll.setEnabled(True)
-    self.btnRemoveAll.setEnabled(True)
+    self.btnCleanAll.setEnabled(True)
     self.items[p.key] = p
     self.setColour(p)
     self.content.addWidget(p)
+    p.show()
 
   #----------------------------------------------------------------------------------------------------------
   def isPIDManaged(self, pid : str) -> bool:
@@ -175,7 +187,7 @@ class aProcessItem(QWidget):
     self.main = main
     self.console = main.console
     self.status = self.P_STATUS_UNKNOWN
-    self.profile = main.profile() # yes, we freeze the profile here!
+    self.profile = main.profile # pointer to the function
     self.key = ""
     
     self.pid = newProcessField("", 50)
@@ -184,32 +196,34 @@ class aProcessItem(QWidget):
     self.worldname = newProcessField("")
     self.username = QLabel()
 
-    self.btnToggle  = cButton(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
-    self.btnSave    = cButton(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
-    self.btnRestore = cButton(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
-    self.btnRemove  = cButton(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
+    self.btnToggle  = cOrbSmall(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
+    self.btnSave    = cOrbSmall(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
+    self.btnRestore = cOrbSmall(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
+    self.btnClear  = cOrbSmall(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
+    self.btnMute    = cOrbSmall(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
     self.btnToggle.clicked.connect(self.toggle)
     self.btnToggle.rightClicked.connect(lambda : self.toggle(True))
     self.btnToggle.ctrlClicked.connect(lambda : self.toggle(True))
     self.btnSave.clicked.connect(self.saveWindow)
     self.btnRestore.clicked.connect(self.restoreWindow)
-    self.btnRemove.clicked.connect(self.remove)
-    self.btnRemove.ctrlClicked.connect(lambda : self.remove(True))
-    self.btnRemove.rightClicked.connect(lambda : self.remove(True))
+    self.btnClear.clicked.connect(self.clear)
+    self.btnClear.ctrlClicked.connect(lambda : self.clear(True))
+    self.btnClear.rightClicked.connect(lambda : self.clear(True))
+    self.btnMute.clicked.connect(self.audioToggle)
 
     self.sigTerminated.connect(lambda : self.setStatus(aProcessItem.P_STATUS_KILLED))
     
     self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
-                              self.btnRemove]))
+                              self.btnClear, self.btnMute]))
   
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
     pass
 
   #----------------------------------------------------------------------------------------------------------
-  def remove(self, kill=False):
-    self.main.processManager.removeItem(self, kill)
+  def clear(self, kill=False):
+    self.main.processManager.cleanItem(self, kill)
   
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
@@ -220,6 +234,10 @@ class aProcessItem(QWidget):
     pass
 
   #----------------------------------------------------------------------------------------------------------
+  def audioToggle(self):
+    pass
+
+  #----------------------------------------------------------------------------------------------------------
   def setStatus(self, status):
     if status == "running" or status == aProcessItem.P_STATUS_RUNNING: 
       self.status = aProcessItem.P_STATUS_RUNNING
@@ -227,7 +245,8 @@ class aProcessItem(QWidget):
       self.btnRestore.setEnabled(True)
       self.btnToggle.setEnabled(True)
       self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
-      self.btnRemove.setEnabled(True)
+      self.btnClear.setEnabled(True)
+      self.btnMute.setEnabled(True)
     elif status == "killed" or status == aProcessItem.P_STATUS_KILLED:
       self.pid.setText("")
       self.winID.setText("")
@@ -235,15 +254,16 @@ class aProcessItem(QWidget):
       self.btnRestore.setEnabled(False)
       self.btnToggle.setEnabled(True)
       self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
-      self.status = self.P_STATUS_UNKNOWN
+      self.btnMute.setEnabled(False)
+      self.status = aProcessItem.P_STATUS_UNKNOWN
     elif status == "error" or status == aProcessItem.P_STATUS_ERROR:
       self.username.setText(f"C_RED{self.username.text()}[E]</font>")
       self.btnSave.setEnabled(False)
       self.btnRestore.setEnabled(False)
       self.btnToggle.setEnabled(False)
       self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
-      self.status = self.P_STATUS_UNKNOWN
-
+      self.btnMute.setEnabled(False)
+      self.status = aProcessItem.P_STATUS_UNKNOWN
 
   # #----------------------------------------------------------------------------------------------------------
   # def clean(self):

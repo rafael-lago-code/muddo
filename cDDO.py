@@ -21,7 +21,6 @@ from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
 from tAuthenticator import tAuthenticator
-# from tWinManager import tWinManager
 from XHelper import XHelper
 import subprocess
 import os, time, glob
@@ -45,8 +44,12 @@ class cDDO(aProcessItem):
     self.auth : tAuthenticator = None
     self.world = world
     self.key = username
+    # cDDO freezes profile and uses that one until the process is cleaned
+    # The reason is that changing profiles during runtime cannot change the already
+    # running instances
+    self.frozenProfile = main.profile()
     
-    self.profileID.setText(self.profile.name)
+    self.profileID.setText(self.frozenProfile.name)
     self.worldname.setText(world.name)
     self.username.setText(username)
     self.btnSave.setEnabled(False)
@@ -94,6 +97,17 @@ class cDDO(aProcessItem):
     xh = XHelper()
     xh.sigGotWinID.connect(validateWinID)
     xh.requestWinID(self.pid.text(), 10.0)
+
+  #----------------------------------------------------------------------------------------------------------
+  def audioToggle(self):
+    if XHelper().isPIDMuted(self.pid):
+      self.console.info(f"{C_SILVER}Muting</font> {self.pid}...")
+      XHelper().unmutePID(self.pid)
+      self.btnMute.setIcon(getIcon(P_ICON_UNMUTE))
+    else:
+      self.console.info(f"{C_SILVER}Unmuting</font> {self.pid}...")
+      XHelper().mutePID(self.pid)
+      self.btnMute.setIcon(getIcon(P_ICON_MUTE))
   
   #----------------------------------------------------------------------------------------------------------
   def updateTooltip(self):
@@ -114,18 +128,20 @@ class cDDO(aProcessItem):
     if self.status != self.P_STATUS_RUNNING: return
     xh = XHelper()
     geo = xh.getWindowGeometry(int(self.winID.text()))
-    self.profile.windowsPreferences[self.username.text()] = (int(geo[0]), int(geo[1]))
-    self.profile.save()
+    self.frozenProfile.windowsPreferences[self.username.text()] = (int(geo[0]), int(geo[1]))
+    self.frozenProfile.save()
 
   #----------------------------------------------------------------------------------------------------------
   def restoreWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
-    if self.username.text() in self.profile.windowsPreferences.keys():
-      pos1, pos2 = self.profile.windowsPreferences[self.username.text()]
+    if self.username.text() in self.frozenProfile.windowsPreferences.keys():
+      pos1, pos2 = self.frozenProfile.windowsPreferences[self.username.text()]
     else: 
       return
     xh = XHelper()
     xh.moveWindow(int(self.winID.text()), pos1, pos2)
+    xh.remapWindow(int(self.winID.text()))
+    xh.setBorderless(int(self.winID.text()))
   
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):
@@ -137,7 +153,7 @@ class cDDO(aProcessItem):
     arg = arg.replace("{LANG}", "English")
     arg = arg.replace("{GLSTICKETLIFETIME}", self.auth.credentials.serverInfo.gameClientGLSTicketLifetime)
     arg = arg.replace("{SUBSCRIPTION}", self.auth.subscription)
-    if not self.profile.useHighRes.isEnabled():
+    if not self.frozenProfile.useHighRes.isEnabled():
       arg += " --HighResOutOfDate"
     return arg
   
@@ -191,32 +207,32 @@ class tGameExecutable(QRunnable):
   #----------------------------------------------------------------------------------------------------------
   def run(self):
     self.ddo.auth = tAuthenticator(self.ddo)
-    self.ddo.status = self.ddo.P_STATUS_AUTHENTICATING
+    self.ddo.setStatus(self.ddo.P_STATUS_AUTHENTICATING)
     self.ddo.sigAuthenticating.emit(self.ddo.username.text())
     self.console.info(f"Authenticating \"{C_SILVER}{self.ddo.username.text()}</font>\"...")
 
     if not self.ddo.auth.authenticate():
-      self.ddo.status = self.ddo.P_STATUS_ERROR
+      self.ddo.setStatus(self.ddo.P_STATUS_ERROR)
       return
     
     self.ddo.sigAuthenticated.emit(self.ddo.username.text())
-    self.ddo.status = self.ddo.P_STATUS_QUEUEING
+    self.ddo.setStatus(self.ddo.P_STATUS_QUEUEING)
     self.ddo.sigQueued.emit(self.ddo.username.text())
     self.console.info(f"Queueing \"{C_SILVER}{self.ddo.username.text()}</font>\"...")
     if not self.ddo.auth.wait():
-      self.ddo.status = self.ddo.P_STATUS_ERROR
+      self.ddo.setStatus(self.ddo.P_STATUS_ERROR)
       return
     
     self.ddo.sigQueueDone.emit(self.ddo.username.text())
 
     arg = self.ddo.parseArguments()
-    gameDir = self.ddo.profile.gameDir.text()
+    gameDir = self.ddo.frozenProfile.gameDir.text()
 
     cmd  = f"cd \"{gameDir}\" ; "
-    cmd += f"STEAM_ROOT=\"{self.ddo.profile.steamRoot.text()}\" PROTON_LOG=1 "
-    cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.ddo.profile.compatData.text()}\" "
-    cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.ddo.profile.compatData.text()}\" "
-    cmd += f"\"{self.ddo.profile.protonExec.text()}\" run "
+    cmd += f"STEAM_ROOT=\"{self.ddo.frozenProfile.steamRoot.text()}\" PROTON_LOG=1 "
+    cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.ddo.frozenProfile.compatData.text()}\" "
+    cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.ddo.frozenProfile.compatData.text()}\" "
+    cmd += f"\"{self.ddo.frozenProfile.protonExec.text()}\" run "
     cmd += f"{cDDO.gameExec} "
     cmd += f"{arg}"
 
@@ -227,7 +243,7 @@ class tGameExecutable(QRunnable):
     # logname = P_DEFAULT_CONFIGDIR+os.sep+self.auth.world.name+"_"+self.auth.username
     # if os.path.exists(logname+".out"): os.rename(logname+".out",logname+".out.old")
     # if os.path.exists(logname+".err"): os.rename(logname+".err",logname+".err.old")
-    self.ddo.status = self.ddo.P_STATUS_RUNNING
+    self.ddo.setStatus(self.ddo.P_STATUS_RUNNING)
     self.ddo.sigRunning.emit(True)
     self.console.info(f"Launching \"{C_SILVER}{self.ddo.username.text()}</font>\"...")
     os.system(cmd)

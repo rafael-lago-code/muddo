@@ -20,7 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QFileDialog, QCheckBox, QLineEdit, QWidget
 from cWidgets.util import *
-from cWidgets.cButton import cButton
+from cWidgets.cOrb import cOrbSmall
 from cWidgets.cGridLayout import cGridLayout
 import os
 import subprocess
@@ -69,14 +69,14 @@ class cProfil(QWidget):
     self.xdotoolExec = QLineEdit()
     self.DungeonHelperExec = QLineEdit()
 
-    btnSelectProtonExec  = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select Steam Proton executable")
-    btnSelectCompatData  = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select STEAM_COMPAT_DATA")
-    btnSelectWineExec    = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select Wine executable") 
-    btnSelectWinePrefix  = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select WINEPREFIX")
-    btnSelectSteamRoot   = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select STEAM_ROOT")
-    btnSelectGameDir     = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select Dungeons \& Dragons Online game path")
-    btnSelectxdotoolExec = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select xdotool executable")
-    btnSelectDungeonHelperExec = cButton(icon=P_ICON_OPENFOLDER, tooltip="Manually select DungeonHelper executable")
+    btnSelectProtonExec  = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select Steam Proton executable")
+    btnSelectCompatData  = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select STEAM_COMPAT_DATA")
+    btnSelectWineExec    = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select Wine executable") 
+    btnSelectWinePrefix  = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select WINEPREFIX")
+    btnSelectSteamRoot   = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select STEAM_ROOT")
+    btnSelectGameDir     = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select Dungeons \& Dragons Online game path")
+    btnSelectxdotoolExec = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select xdotool executable")
+    btnSelectDungeonHelperExec = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select DungeonHelper executable")
 
     lblWineExec   = newRQLabel("Wine Executable: ")
     lblWinePrefix = newRQLabel("WINEPREFIX: ")
@@ -117,7 +117,8 @@ class cProfil(QWidget):
     self.useDungeonHelper.toggled.connect(btnSelectDungeonHelperExec.setEnabled)
     self.useDungeonHelper.toggled.connect(self.DungeonHelperExec.setEnabled)
     self.useDungeonHelper.toggled.connect(self.findDungeonHelper)
-    self.useDungeonHelper.toggled.connect(self.main.btnDH.setVisible)
+    # self.useDungeonHelper.stateChanged.connect(lambda x : self.main.dh.orb.setEnabled(self.useDungeonHelper.isChecked()))
+    self.useDungeonHelper.toggled.connect(self.main.dh.orb.setEnabled)
     self.useDungeonHelper.setChecked(False)
     self.DungeonHelperExec.setEnabled(False)
     btnSelectDungeonHelperExec.setEnabled(False)
@@ -174,7 +175,7 @@ class cProfil(QWidget):
     values['lastWorld']     = self.lastWorld
     values['lastAccounts']  = self.lastAccounts
     values['windowsPreferences']  = self.windowsPreferences
-    values['lastActiveShortcutSet']  = self.main.shortcuts.getActiveSets()
+    values['lastActiveShortcutSet']  = self.main.macros.getActiveSets()
 
     filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.name + ".json"
     try:
@@ -212,7 +213,7 @@ class cProfil(QWidget):
         if 'xdotoolExec'  in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
         if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
         if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
-        if 'lastActiveShortcutSet' in values.keys(): self.main.shortcuts.setActiveSets(values['lastActiveShortcutSet'])
+        if 'lastActiveShortcutSet' in values.keys(): self.main.macros.setActiveSets(values['lastActiveShortcutSet'])
 
         if 'lastWorld'    in values.keys(): self.lastWorld = values['lastWorld']
         if 'lastAccounts' in values.keys(): self.lastAccounts = values['lastAccounts']

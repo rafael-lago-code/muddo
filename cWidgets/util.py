@@ -20,7 +20,7 @@
 import os
 from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout,\
                             QVBoxLayout, QLayout, QFrame
-from PyQt6.QtGui import QIcon, QPixmap
+from PyQt6.QtGui import QIcon, QPixmap, QImage
 from PyQt6 import QtCore
 from http.client import HTTPConnection, HTTPSConnection
 import ssl
@@ -28,14 +28,18 @@ import json
 
 C_SILVER = "<font style=\"color:#828282\">"
 C_RED = "<font style=\"color:#ff5555\">"
+C_ORANGE = "<font style=\"color:#ffa744\">"
 C_GREEN = "<font style=\"color:#6aff83\">"
 C_BLUE = "<font style=\"color:#43b7ff\">" 
 
 # P_DEFAULT_WORKDIR    = os.environ['HOME'] + "/.local/share/muDDO"
+P_MUDDO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P_DEFAULT_CONFIGDIR  = os.environ['HOME'] + "/.config/muDDO"
-P_DEFAULT_SHORTCUTDIR = P_DEFAULT_CONFIGDIR + "/shortcuts/"
+P_DEFAULT_MACRODIR   = P_DEFAULT_CONFIGDIR + "/macros/"
 P_DEFAULT_WORKDIR    = P_DEFAULT_CONFIGDIR
 P_DEFAULT_CONFIGFILE = P_DEFAULT_CONFIGDIR + "/settings.json"
+
+P_DEFAULT_CONF = "muDDO/muddo"
 
 P_DEFAULT_ICON_SIZE=QtCore.QSize(28,28)
 P_DEFAULT_ICON_EXTENSION=".svg"
@@ -51,11 +55,13 @@ P_ICON_ADD       = "list-add"
 P_ICON_REMOVE    = "list-remove"
 P_ICON_REFRESH   = "view-refresh"
 P_ICON_QUESTION  = "dontknow"
+P_ICON_MUTE      = "audio-volume-muted"
+P_ICON_UNMUTE    = "audio-on"
 P_ICON_PLAY      = "media-playback-start"
 P_ICON_PAUSE     = "media-playback-pause"
 P_ICON_STOP      = "media-playback-stop"
 P_ICON_FILTER    = "view-filter"
-P_ICON_EXIT      = "application-exit"
+P_ICON_EXIT      = "dungeon-exit"
 P_ICON_CONFIRM   = "dialog-ok-apply"
 P_ICON_CONFIGURE = "configure"
 P_ICON_PROPERTIES= "document-properties"
@@ -67,6 +73,7 @@ P_ICON_COMPASS   = "compass"
 P_ICON_LOCKOPEN  = "document-decrypt"
 P_ICON_LOCKCLOSE = "document-encrypted"
 P_ICON_EDIT      = "document-edit"
+P_ICON_SCROLL    = "curled-scroll"
 P_ICON_NEWDOC    = "document-new"
 P_ICON_STAR      = "draw-star"
 P_ICON_BROOM     = "edit-clear-all"
@@ -77,13 +84,18 @@ P_ICON_REDX      = "paint-none"
 P_ICON_PROCSTOP  = "process-stop"
 P_ICON_NOTES     = "view-pim-notes"
 P_ICON_DOWNLOAD  = "edit-download"
+P_ICON_CONSOLE   = "console"
+P_ICON_LOGIN     = "login"
+P_ICON_GEARLOOP  = "gear-loop"
+P_ICON_GEARHIER  = "gears-hierarchy"
+P_ICON_GEARSTACK = "gears-stack"
 
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"
 P_ICON_TRIANGLE_LEFT  = "draw-triangle1"
 P_ICON_TRIANGLE_RIGHT = "draw-triangle2"
 
-P_ICON_D20   = "dice-d20-red"
+P_ICON_D20   = "dice-d20-white"
 P_ICON_GEAR  = "gear-white"
 P_ICON_SKULL = "human-skull-white"
 P_ICON_SKULL_RED = "human-skull-red"
@@ -93,8 +105,13 @@ P_ICON_CONNECTED_GREEN = "network-connect-green"
 P_ICON_DISCONNECTED_RED  = "network-disconnect-red"
 P_ICON_SKULL = "human-skull-white"
 
-P_DEFAULT_ICON_PATHS  = [os.path.dirname(os.path.abspath(__file__))+'/../images/custom-icons/',
-                         os.path.dirname(os.path.abspath(__file__))+'/../images/breeze-dark-icons/',
+P_FG_REDORB = "orb_fg"
+P_BG_REDORB = "redorb_bg"
+P_BG_PRESSED_REDORB = "redorb_pressed"
+
+P_DEFAULT_ICON_PATHS  = [P_MUDDO_DIR+'/images/custom-icons/',
+                         P_MUDDO_DIR+'/images/breeze-dark-icons/',
+                         P_MUDDO_DIR+'/images/',
                          '/usr/share/icons/breeze-dark',
                          '/usr/share/icons/breeze',
                          '/usr/share/icons/Adwaita',
@@ -107,16 +124,25 @@ P_CERTCTX = None
 #@TODO write this properly to search/detect the correct icon scheme...
 _iconScheme = {}
 for icon in dir():
-  if icon.startswith("P_ICON"):
+  if icon.startswith("P_ICON") or icon.startswith("P_BG") or icon.startswith("P_FG"):
     icon = vars()[icon]
-    for d in P_DEFAULT_ICON_PATHS:
-      for s in ["64", "32", "16"]:
-        if os.path.exists(d+"/actions/"+s+"/"+icon+P_DEFAULT_ICON_EXTENSION):
-          _iconScheme[icon] = d+"/actions/"+s+"/"+icon+P_DEFAULT_ICON_EXTENSION
+    for e in [P_DEFAULT_ICON_EXTENSION, ".png"]:
+      for d in P_DEFAULT_ICON_PATHS:
+        if os.path.exists(d+icon+e):
+          _iconScheme[icon] = d+icon+e
           break
-      else:
-        continue
-      break
+        elif os.path.exists(d+"/actions/"+icon+e):
+          _iconScheme[icon] = d+"/actions/"+icon+e
+          break
+        else:
+          for s in ["64", "32", "16"]:
+            if os.path.exists(d+"/actions/"+s+"/"+icon+e):
+              _iconScheme[icon] = d+"/actions/"+s+"/"+icon+e
+              break
+          else:
+            continue
+          break
+
 
 #----------------------------------------------------------------------------------------------------------
 P_CERTFILE = os.path.dirname(__file__)+"/../certificates/ca_cert2025.pem"
@@ -181,12 +207,31 @@ def getArrow():
   return f"&nbsp;&nbsp;&nbsp;<span style='font-size:{fs+4}pt'>▾</span>"
 
 #----------------------------------------------------------------------------------------------------------  
-def getPixmap(name:str) -> QIcon:
-  return QPixmap(_iconScheme[name])
+def getPixmap(a0 : str) -> QPixmap:
+  if isinstance(a0, str):
+    if a0 in _iconScheme.keys():
+      return QPixmap(_iconScheme[a0])
+    elif os.path.exists(a0):
+      return QPixmap(a0)
+    else:
+      return QPixmap()
+  if isinstance(a0, QIcon):
+    return a0.pixmap(a0.actualSize())
+  elif isinstance(a0, QPixmap):
+     return a0
+  else:
+    return QPixmap()
 
 #----------------------------------------------------------------------------------------------------------  
-def getIcon(name:str) -> QIcon:
-  return QIcon(getPixmap(name))
+def getIcon(a0) -> QIcon:
+  if isinstance(a0, QIcon):
+    return a0
+  elif isinstance(a0, QPixmap):
+     return QIcon(a0)
+  elif isinstance(a0, str):
+     return QIcon(getPixmap(a0))
+  else:
+    return QIcon()
 
 #----------------------------------------------------------------------------------------------------------  
 def getConnection(urlIn):

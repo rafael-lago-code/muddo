@@ -18,26 +18,23 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
+from PyQt6.QtWidgets import QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
 from cWidgets.util import *
-from cWidgets.cTab import cTab
-from cWidgets.cButton import cButton, cLauncherButton
+from cWidgets.cToggler import cToggler
+from cWidgets.cOrb import cOrbSmall
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 import glob, re, os
-from PyQt6.QtWidgets import QCheckBox
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QTextEdit
 from typing import TYPE_CHECKING
-from cShortcutsDaemon import cShortcutsDaemon
-from XHelper import XHelper
+from cMacrosDaemon import cMacrosDaemon
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
-P_DEFAULT_SHORTCUTEXT = ".shortcut"
+P_DEFAULT_MACROEXT = ".macro"
 
-class cShortcutItem(QListWidgetItem):
-  def __init__(self, parent : cShortcuts, name : str):
+class cMacroItem(QListWidgetItem):
+  def __init__(self, parent : cMacros, name : str):
     super().__init__()
     self.parent = parent
     self.setText(name)
@@ -78,7 +75,7 @@ class cShortcutItem(QListWidgetItem):
 
   #----------------------------------------------------------------------------------------------------------
   def save(self):
-    filename = P_DEFAULT_SHORTCUTDIR + os.sep + self.text() + P_DEFAULT_SHORTCUTEXT
+    filename = P_DEFAULT_MACRODIR + os.sep + self.text() + P_DEFAULT_MACROEXT
     json.dump(self.data, open(filename,'w'), cls=muJSONEncoder)
 
   #----------------------------------------------------------------------------------------------------------
@@ -88,24 +85,24 @@ class cShortcutItem(QListWidgetItem):
 
   #----------------------------------------------------------------------------------------------------------
   def load(self):
-    filename = P_DEFAULT_SHORTCUTDIR + os.sep + self.text() + P_DEFAULT_SHORTCUTEXT
+    filename = P_DEFAULT_MACRODIR + os.sep + self.text() + P_DEFAULT_MACROEXT
     try:
       with open(filename,"r") as f:
         self.data = json.load(f)
     except Exception as e:
-      self.parent.main.console.error(f"{C_RED}WARNING:</font> error loading shortcut set from \"{filename}\"",e)
+      self.parent.main.console.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
       self.data = []
 
   #----------------------------------------------------------------------------------------------------------
   def consolidate(self, consolidated = {}, aliases = {}) -> dict:
-    # Shortcuts format:
+    # Macros format:
     #     [<icon>, <name>, <hotkey>, <scripts>]
     # Scripts are of the form: 
     #     <script1>; <script2>; <script3>; 
     # Each script should be formatted as:
     #     <target1>, <target2>, <target3>: <action1>, <action2>, <action3>
     # If <target> is missing, "self" is assumed (useful for macros)
-    # A special target "all" is provided for firing the shortcut to all running DDO processes
+    # A special target "all" is provided for firing the macro to all running DDO processes
     # Actions:
     #   - sleep X: wait for X seconds
     #   - anything else: interpreted as key presses
@@ -132,7 +129,7 @@ class cShortcutItem(QListWidgetItem):
         else:
           targets = (s.pop(0)).split(',')
           targets = [t.strip().lower() for t in targets]
-        actions = s[0].split(',')
+        actions = s[0].split()
         actions = [a.strip() for a in actions]
         
         for t in targets:
@@ -147,43 +144,42 @@ class cShortcutItem(QListWidgetItem):
   
 #----------------------------------------------------------------------------------------------------------  
 class cMacroLists(QListWidgetItem):
-  def __init__(self, parent : cShortcuts):
+  def __init__(self, parent : cMacros):
     super().__init__()
     self.parent = parent
 
 #----------------------------------------------------------------------------------------------------------
-class cShortcuts(cTab):
+class cMacros(cToggler):
   def __init__(self, main : cMainWindow):
-    super().__init__("&Shortcuts")
+    self.widgetID = "macros"
+    super().__init__("Macros", P_ICON_GEARHIER)
+    self.toggler.setToolTip("Toggle Macros UI<br><b><i>Requires Milvian plugin installed and running in Dungeon Helper!</i></b>")
     v = QVBoxLayout()
     self.initialized = False
     self.toActivate = None
     self.main = main
 
-    self.btnDaemonToggle = cLauncherButton("&Shortcuts\nDaemon", tooltip="Toggle on/off all shortcuts from all active sets")
-    self.btnDaemonToggle.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/ShortcutDaemonIcon64.png')))
-
-    self.btnNewSet      = cButton(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
-    self.btnSaveSet     = cButton(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click or Right click to save all")
-    self.btnDeleteSet   = cButton(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
-    self.btnReloadSet   = cButton(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click or Right click to reload all")
-    self.btnAddEntry    = cButton(icon=P_ICON_ADD, tooltip="Add a new shortcut to the currently selected set")
-    self.btnRemoveEntry = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected shortcut from the currently selected set")
-    self.btnHelp        = cButton(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how shortcuts work here (lol)")
-
-    self.btnAddAlias    = cButton(icon=P_ICON_ADD, tooltip="Add a new alias")
-    self.btnRemoveAlias = cButton(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
-    self.btnSaveAlias   = cButton(icon=P_ICON_SAVEALL, tooltip="Save all aliases to file")
-    self.btnReloadAlias = cButton(icon=P_ICON_REFRESH, tooltip="Reload all aliases from file")
+    self.daemon = cMacrosDaemon(self.main)
     
-    self.btnDaemonToggle.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
+    self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of macros")
+    self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click or Right click to save all")
+    self.btnDeleteSet   = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
+    self.btnReloadSet   = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click or Right click to reload all")
+    self.btnAddEntry    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new macro to the currently selected set")
+    self.btnRemoveEntry = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected macro from the currently selected set")
+    # self.btnHelp        = cOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how macros work here (lol)")
 
+    self.btnAddAlias    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
+    self.btnRemoveAlias = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
+    self.btnSaveAlias   = cOrbSmall(icon=P_ICON_SAVEALL, tooltip="Save all aliases to file")
+    self.btnReloadAlias = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload all aliases from file")
+    
     self.btnNewSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnSaveSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnDeleteSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnReloadSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     
-    self.shortcutListWidget = QListWidget()
+    self.macroListWidget = QListWidget()
     self.macroTable = QTableWidget(0, 2)
     self.macroTable.setHorizontalHeaderLabels(["Alias", "Translation"])
     self.macroTable.setColumnWidth(40, 40)
@@ -191,8 +187,8 @@ class cShortcuts(cTab):
     self.macroTable.verticalHeader().setVisible(False)
     
 
-    self.allShortcutItems = {}
-    self.activeSetLabel = QLabel("Shortcut in selected set:")
+    self.allMacroItems = {}
+    self.activeSetLabel = QLabel("Macros in selected set:")
     self.table = QTableWidget(0, 4)
     self.table.setHorizontalHeaderLabels(["Icon", "Name", "Trigger", "Action"])
     self.table.setColumnWidth(0, 40)
@@ -201,8 +197,8 @@ class cShortcuts(cTab):
 
     _topsplitter = QSplitter()
     _vsplitter = QSplitter(Qt.Orientation.Vertical)
-    _topsplitter.addWidget(newVFrame([ "Shortcut Sets:", 
-                              newHLayout([self.shortcutListWidget,
+    _topsplitter.addWidget(newVFrame([ "Macro Sets:", 
+                              newHLayout([self.macroListWidget,
                                 newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, 
                                   self.btnSaveSet, self.btnReloadSet, "__stretch__"])])]))
     
@@ -213,14 +209,14 @@ class cShortcuts(cTab):
     _vsplitter.addWidget(_topsplitter)
     _vsplitter.addWidget(newVFrame([self.activeSetLabel, 
                             newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry, 
-                                        self.btnRemoveEntry, "__stretch__", self.btnHelp])])]))
+                                        self.btnRemoveEntry, "__stretch__"])])]))
     self.setLayout(newVLayout([_vsplitter]))
 
-    self.btnNewSet.clicked.connect(self.newShortcutSet)
-    self.btnDeleteSet.clicked.connect(self.deleteShortcutSet)
-    self.btnHelp.clicked.connect(self.showHelpWindow)
-    self.shortcutListWidget.itemChanged.connect(self.updateShortcutSetFile)
-    self.shortcutListWidget.itemSelectionChanged.connect(self.updateTable)
+    self.btnNewSet.clicked.connect(self.newMacroSet)
+    self.btnDeleteSet.clicked.connect(self.deleteMacroSet)
+    # self.btnHelp.clicked.connect(self.showHelpWindow)
+    self.macroListWidget.itemChanged.connect(self.updateMacroSetFile)
+    self.macroListWidget.itemSelectionChanged.connect(self.updateTable)
     self.table.cellChanged.connect(self.syncTable2Data)
 
     self.btnAddAlias.clicked.connect(self.addAlias)
@@ -228,26 +224,23 @@ class cShortcuts(cTab):
     self.btnSaveAlias.clicked.connect(self.saveAlias)
     self.btnReloadAlias.clicked.connect(self.reloadAlias)
 
-    self.btnDaemonToggle.clicked.connect(self.launchDaemon)
-    self.btnDaemonToggle.ctrlClicked.connect(lambda x=True : self.launchDaemon(x))
-    self.btnDaemonToggle.rightClicked.connect(lambda x=True : self.launchDaemon(x))
-    self.btnAddEntry.clicked.connect(self.addShortcutEntry)
-    self.btnRemoveEntry.clicked.connect(self.removeShortcutEntry)
-    self.btnSaveSet.clicked.connect(self.saveSelectedShortcutSet)
-    self.btnSaveSet.ctrlClicked.connect(self.saveAllShortcutSet)
-    self.btnSaveSet.rightClicked.connect(self.saveAllShortcutSet)
-    self.btnReloadSet.clicked.connect(self.reloadSelectedShortcutSet)
-    self.btnReloadSet.ctrlClicked.connect(self.reloadAllShortcutSet)
-    self.btnReloadSet.rightClicked.connect(self.reloadAllShortcutSet)
+    self.btnAddEntry.clicked.connect(self.addMacroEntry)
+    self.btnRemoveEntry.clicked.connect(self.removeMacroEntry)
+    self.btnSaveSet.clicked.connect(self.saveSelectedMacroSet)
+    self.btnSaveSet.ctrlClicked.connect(self.saveAllMacroSet)
+    self.btnSaveSet.rightClicked.connect(self.saveAllMacroSet)
+    self.btnReloadSet.clicked.connect(self.reloadSelectedMacroSet)
+    self.btnReloadSet.ctrlClicked.connect(self.reloadAllMacroSet)
+    self.btnReloadSet.rightClicked.connect(self.reloadAllMacroSet)
 
     self.reloadAlias()
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    allFiles = glob.glob(os.path.join(P_DEFAULT_SHORTCUTDIR, "*.shortcut"))
+    allFiles = glob.glob(os.path.join(P_DEFAULT_MACRODIR, "*"+P_DEFAULT_MACROEXT))
     for n in allFiles:
       name = os.path.splitext(os.path.basename(n))[0]
-      self.appendShortcutSet(name)
+      self.appendMacroSet(name)
     self.initialized = True
     if self.toActivate: 
       self.setActiveSets(self.toActivate)
@@ -255,15 +248,16 @@ class cShortcuts(cTab):
   
   #----------------------------------------------------------------------------------------------------------
   def updateTable(self):
-    sset = self.shortcutListWidget.selectedItems()
-    if not s: return
+    sset = self.macroListWidget.selectedItems()
+    if not sset:
+      return
 
     self.table.clearContents()
     self.table.setRowCount(0)
     sset[0].display()
 
   #----------------------------------------------------------------------------------------------------------
-  def addShortcutEntry(self):
+  def addMacroEntry(self):
     pos = self.table.rowCount()
     self.table.insertRow(pos)
     self.table.setItem(pos, 0, QTableWidgetItem(""))
@@ -273,10 +267,10 @@ class cShortcuts(cTab):
 
   #----------------------------------------------------------------------------------------------------------
   def syncTable2Data(self, row, column):
-    sset = self.shortcutListWidget.selectedItems()
+    sset = self.macroListWidget.selectedItems()
     if not sset: return
     sset[0].sync(row, column)
-    self.activeSetLabel.setText(f"Shortcuts in \"{sset[0].text()}\":")
+    self.activeSetLabel.setText(f"Macros in \"{sset[0].text()}\":")
   
   #----------------------------------------------------------------------------------------------------------
   def addAlias(self, alias="", action=""):
@@ -296,7 +290,7 @@ class cShortcuts(cTab):
     self.macroTable.clearContents()
     self.macroTable.setRowCount(0)
 
-    filename = P_DEFAULT_SHORTCUTDIR + os.sep + "aliases.json"
+    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
     with open(filename,"r") as f:
       data = json.load(f)
     for k in data.keys():
@@ -305,7 +299,7 @@ class cShortcuts(cTab):
   #----------------------------------------------------------------------------------------------------------
   def saveAlias(self):
     d = self.getAliases()
-    filename = P_DEFAULT_SHORTCUTDIR + os.sep + "aliases.json"
+    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
     json.dump(d, open(filename,'w'), cls=muJSONEncoder)
 
   #----------------------------------------------------------------------------------------------------------
@@ -317,31 +311,31 @@ class cShortcuts(cTab):
 
 
   #----------------------------------------------------------------------------------------------------------
-  def newShortcutSet(self):
+  def newMacroSet(self):
     i = 1
-    while f"NewSet{i}" in self.allShortcutItems:
+    while f"NewSet{i}" in self.allMacroItems:
       i += 1
-    self.appendShortcutSet(f"NewSet{i}")
+    self.appendMacroSet(f"NewSet{i}")
 
   #----------------------------------------------------------------------------------------------------------
-  def appendShortcutSet(self, name : str):
-    if name in self.allShortcutItems: return
+  def appendMacroSet(self, name : str):
+    if name in self.allMacroItems: return
 
-    self.allShortcutItems[name] = cShortcutItem(self,name)
-    self.shortcutListWidget.addItem(self.allShortcutItems[name])
+    self.allMacroItems[name] = cMacroItem(self,name)
+    self.macroListWidget.addItem(self.allMacroItems[name])
     
-    filename = P_DEFAULT_SHORTCUTDIR+os.sep+name+P_DEFAULT_SHORTCUTEXT
+    filename = P_DEFAULT_MACRODIR+os.sep+name+P_DEFAULT_MACROEXT
     if os.path.exists(filename):
-      self.allShortcutItems[name].load()
+      self.allMacroItems[name].load()
     else:
-      self.main.console.info(f"New shortcut set being created in \"{C_SILVER}{P_DEFAULT_SHORTCUTDIR}</font>\"...")
-      self.allShortcutItems[name].save()
+      self.main.console.info(f"New macro set being created in \"{C_SILVER}{P_DEFAULT_MACRODIR}</font>\"...")
+      self.allMacroItems[name].save()
 
   #----------------------------------------------------------------------------------------------------------
   def getActiveSets(self):
     allActive = []
-    sset : cShortcutItem
-    for sset in self.allShortcutItems.values():
+    sset : cMacroItem
+    for sset in self.allMacroItems.values():
       if sset.checkState() == Qt.CheckState.Checked:
         allActive.append(sset.text())
     return allActive
@@ -352,94 +346,77 @@ class cShortcuts(cTab):
       self.toActivate = toActivate
       return
 
-    sset : cShortcutItem
-    for sset in self.allShortcutItems.values():
+    sset : cMacroItem
+    for sset in self.allMacroItems.values():
       if sset.text() in toActivate:
         sset.setActive(True)
       else:
         sset.setActive(False)
 
+  # #----------------------------------------------------------------------------------------------------------
+  # def showHelpWindow(self):
+  #   dlg = QDialog(self)
+  #   dlg.setWindowTitle("Shortcuts Help")
+  #   layout = QVBoxLayout(dlg)
+  #   text = QTextEdit()
+  #   text.setReadOnly(True)
+  #   help_text = f"""
+  #   <h2>How to Use</h2>
+  #   <br>You'll be working with "sets" of shorcuts. Each set can have its own collection of shortcuts and you can toggle each set on/off (inactive/active). Shortcuts between sets can overlap - this is intentional.
+  #   <br>
+  #   <br>1. <b>Create a Set:</b> click the \"New Set\" button ("Document" icon). A new line will appear in the list with a placeholder name, like NewSet1. The list is modifiable, just double click any entry to rename it. The new set will be inactive by default. Click the checkmark box on the left of NewSet1 name to toggle it on/off
+  #   <br>2. <b>Select NewSet1</b>: click your NewSet1, then the table display will show an empty set of shortcuts
+  #   <br>3. <b>Add Shortcuts:</b> click "+" button to define a new shortcut. A new, empty row will be added to the table. Edit this new row as needed (currently you have to enter shortcuts as text, e.g. "ctrl+m")
+  #   <br>4. <b>Launch Shortcuts Daemon:</b> press the "Play" button to enable all shortcuts from all active sets. If it is already running, press "Stop" and then "Play" again to refresh it
+
+  #   <h2>Features</h2>
+  #   <br>● <b>Save set:</b> once you're satisfied with your configuration, select it from the list and press the "Save Set" button
+  #   <br>● <b>Delete sets</b>: to delete a full set, select it from the list and press the "Trash" icon button. This action cannot be undone!
+  #   <br>● <b>Active sets</b>: you can have many active sets at the same time, and there is no check if they have overlapping shortcuts. This is intentional. The daemon will execute ALL actions from ALL active sets whenever the shortcut is pressed. Be responsible!
+  #   <br>● <b>Sets configuration</b>: the "profile" saves the last active sets of shortcuts and reloads then when relaunching the application. It saves automatically if you exit the application normally, or you can manually go to "Settings" click "Save" to save the currently active profile
+  #   <br>● <b>Edit shortcuts</b>: just modify them directly in the table. The changes only take effect after you restart the shortcuts daemon
+  #   <br>● <b>Delete shortcuts</b>: to delete a single shortcut, select it from the table and press the "-" button. You can reload previously saved sets to undo this action.
+
+  #   <h2>Tips</h2>
+  #   <br>● Changes take effect only after restarting the Daemon!!
+  #   <br>● It helps to have a "set" per class/character, e.g. a "healer" set. Toggle the set inactive/active if the healer account is online or not.
+  #   <br>● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all sets.
+  #   <br>● Use descriptive names for sets and shortcuts for easier management.
+  #   <br>● All sets are stored as text files in {P_DEFAULT_SHORTCUTDIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
+
+  #   <br>If you need further support, look for help.
+  #   """
+  #   text.setHtml(help_text)
+
+  #   layout.addWidget(text)
+  #   dlg.setLayout(layout)
+  #   dlg.resize(400, 300)
+  #   dlg.exec()
+
   #----------------------------------------------------------------------------------------------------------
-  def showHelpWindow(self):
-    dlg = QDialog(self)
-    dlg.setWindowTitle("Shortcuts Help")
-    layout = QVBoxLayout(dlg)
-    text = QTextEdit()
-    text.setReadOnly(True)
-    help_text = f"""
-    <h2>How to Use</h2>
-    <br>You'll be working with "sets" of shorcuts. Each set can have its own collection of shortcuts and you can toggle each set on/off (inactive/active). Shortcuts between sets can overlap - this is intentional.
-    <br>
-    <br>1. <b>Create a Set:</b> click the \"New Set\" button ("Document" icon). A new line will appear in the list with a placeholder name, like NewSet1. The list is modifiable, just double click any entry to rename it. The new set will be inactive by default. Click the checkmark box on the left of NewSet1 name to toggle it on/off
-    <br>2. <b>Select NewSet1</b>: click your NewSet1, then the table display will show an empty set of shortcuts
-    <br>3. <b>Add Shortcuts:</b> click "+" button to define a new shortcut. A new, empty row will be added to the table. Edit this new row as needed (currently you have to enter shortcuts as text, e.g. "ctrl+m")
-    <br>4. <b>Launch Shortcuts Daemon:</b> press the "Play" button to enable all shortcuts from all active sets. If it is already running, press "Stop" and then "Play" again to refresh it
-
-    <h2>Features</h2>
-    <br>● <b>Save set:</b> once you're satisfied with your configuration, select it from the list and press the "Save Set" button
-    <br>● <b>Delete sets</b>: to delete a full set, select it from the list and press the "Trash" icon button. This action cannot be undone!
-    <br>● <b>Active sets</b>: you can have many active sets at the same time, and there is no check if they have overlapping shortcuts. This is intentional. The daemon will execute ALL actions from ALL active sets whenever the shortcut is pressed. Be responsible!
-    <br>● <b>Sets configuration</b>: the "profile" saves the last active sets of shortcuts and reloads then when relaunching the application. It saves automatically if you exit the application normally, or you can manually go to "Settings" click "Save" to save the currently active profile
-    <br>● <b>Edit shortcuts</b>: just modify them directly in the table. The changes only take effect after you restart the shortcuts daemon
-    <br>● <b>Delete shortcuts</b>: to delete a single shortcut, select it from the table and press the "-" button. You can reload previously saved sets to undo this action.
-
-    <h2>Tips</h2>
-    <br>● Changes take effect only after restarting the Daemon!!
-    <br>● It helps to have a "set" per class/character, e.g. a "healer" set. Toggle the set inactive/active if the healer account is online or not.
-    <br>● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all sets.
-    <br>● Use descriptive names for sets and shortcuts for easier management.
-    <br>● All sets are stored as text files in {P_DEFAULT_SHORTCUTDIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
-
-    <br>If you need further support, look for help.
-    """
-    text.setHtml(help_text)
-
-    layout.addWidget(text)
-    dlg.setLayout(layout)
-    dlg.resize(400, 300)
-    dlg.exec()
-
-  #----------------------------------------------------------------------------------------------------------
-  def deleteShortcutSet(self):
-    sset = self.shortcutListWidget.selectedItems()
+  def deleteMacroSet(self):
+    sset = self.macroListWidget.selectedItems()
     if not sset: return
-    self.main.console.info(f"Removing shortcut set \"{C_SILVER}{sset[0].text()}</font>\"...")
-    del self.allShortcutItems[sset[0].text()]
+    self.main.console.info(f"Removing macro set \"{C_SILVER}{sset[0].text()}</font>\"...")
+    del self.allMacroItems[sset[0].text()]
     try:
-      os.remove(P_DEFAULT_SHORTCUTDIR+os.sep+sset[0].text()+P_DEFAULT_SHORTCUTEXT)
+      os.remove(P_DEFAULT_MACRODIR+os.sep+sset[0].text()+P_DEFAULT_MACROEXT)
     except:
       pass
-    self.shortcutListWidget.takeItem(self.shortcutListWidget.row(sset[0]))
+    self.macroListWidget.takeItem(self.macroListWidget.row(sset[0]))
     del sset[0]
 
-  #----------------------------------------------------------------------------------------------------------
-  def launchDaemon(self, purge=False):
-    # self.main.processManager.setVisible(True)
-    for key, proc in self.main.processManager.items.items():
-      if key.startswith("scd_"):
-        self.main.console.info("Restarting Shortcuts Daemon...")
-        proc.toggle() # turns off
-        if purge:
-          self.main.console.info("Purging all possible shortcuts...")
-          XHelper().forceCleanup()
-        proc.toggle() # turns on again
-        self.main.console.info("Shortcuts Daemon restarted!")
-        return
-    
-    scd = cShortcutsDaemon(self.main)
-    self.main.processManager.addItem(scd)
-    scd.launch()
 
   #----------------------------------------------------------------------------------------------------------
-  def consolidateActiveShortcuts(self) -> dict:
+  def consolidateActiveMacros(self) -> dict:
     allActive = self.getActiveSets()
     aliases = self.getAliases()
     consolidated = {}
     for name in allActive:
-      consolidated = self.allShortcutItems[name].consolidate(consolidated, aliases)
+      consolidated = self.allMacroItems[name].consolidate(consolidated, aliases)
 
     self.main.console.debugMessage(f"--------------------------------------------------------")
-    self.main.console.debugMessage(f"  Consolidated shortcuts (all active sets)")
+    self.main.console.debugMessage(f"  Consolidated macros (all active sets)")
     self.main.console.debugMessage(f"--------------------------------------------------------")
     for hk in consolidated.keys():
       self.main.console.debugMessage(f"  {hk}:")
@@ -448,60 +425,46 @@ class cShortcuts(cTab):
     return consolidated
 
   #----------------------------------------------------------------------------------------------------------
-  def removeShortcutEntry(self):
-    sset = self.shortcutListWidget.selectedItems()
+  def removeMacroEntry(self):
+    sset = self.macroListWidget.selectedItems()
     if not sset: return
     crow = self.table.currentRow()
     sset[0].removeRow(crow)
     self.table.removeRow(crow)
 
   #----------------------------------------------------------------------------------------------------------
-  def saveSelectedShortcutSet(self):
-    sset = self.shortcutListWidget.selectedItems()
+  def saveSelectedMacroSet(self):
+    sset = self.macroListWidget.selectedItems()
     if not sset: return
     sset[0].save()
 
   #----------------------------------------------------------------------------------------------------------
-  def saveAllShortcutSet(self):
-    for sset in self.allShortcutItems.values():
+  def saveAllMacroSet(self):
+    for sset in self.allMacroItems.values():
       sset.save()
 
   #----------------------------------------------------------------------------------------------------------
-  def reloadAllShortcutSet(self):
-    for sset in self.allShortcutItems.values():
+  def reloadAllMacroSet(self):
+    for sset in self.allMacroItems.values():
       sset.load()
     self.updateTable()
 
   #----------------------------------------------------------------------------------------------------------
-  def reloadSelectedShortcutSet(self):
-    sset = self.shortcutListWidget.selectedItems()
+  def reloadSelectedMacroSet(self):
+    sset = self.macroListWidget.selectedItems()
     if not sset: return
     sset[0].load()
     self.updateTable()
 
   #----------------------------------------------------------------------------------------------------------
-  def updateShortcutSetFile(self, sset : cShortcutItem):
-    key = next((k for k, v in self.allShortcutItems.items() if v is sset), None)
+  def updateMacroSetFile(self, sset : cMacroItem):
+    key = next((k for k, v in self.allMacroItems.items() if v is sset), None)
     if key != sset.text():
-      self.main.console.info(f"Renaming shortcut set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
-      os.rename(P_DEFAULT_SHORTCUTDIR+os.sep+key+P_DEFAULT_SHORTCUTEXT, P_DEFAULT_SHORTCUTDIR+os.sep+sset.text()+P_DEFAULT_SHORTCUTEXT, )
-      self.allShortcutItems[sset.text()] = sset
-      del self.allShortcutItems[key]
-    
-
-    # from pynput import keyboard
-
-    # def on_activate_h():
-    #     print('++h pressed')
-
-    # def on_activate_i():
-    #     print('++i pressed')
-
-    # with keyboard.GlobalHotKeys({
-    #     '<ctrl>+h': on_activate_h,
-    #     '<ctrl>+i': on_activate_i}) as h:
-    #     h.join()
-
+      self.main.console.info(f"Renaming macro set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
+      os.rename(P_DEFAULT_MACRODIR+os.sep+key+P_DEFAULT_MACROEXT, P_DEFAULT_MACRODIR+os.sep+sset.text()+P_DEFAULT_MACROEXT, )
+      self.allMacroItems[sset.text()] = sset
+      del self.allMacroItems[key]
+  
 
     
 

@@ -17,12 +17,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QPushButton, QMenu, QSplitter, QFrame
-from PyQt6.QtGui import QIcon, QPixmap
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QMainWindow, QWidget, QMenu, QSplitter, QGridLayout
+from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from cCredentials import cCredentials
 from cSettings import cSettings
-from cShortcuts import cShortcuts
+from cMacros import cMacros
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
@@ -30,63 +29,71 @@ from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cDDO import cDDO
-from cWidgets.cButton import cButton, cLauncherButton
+from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 
-from PyQt6.QtGui import QKeySequence, QShortcut
-
 class cMainWindow(QMainWindow):
+  P_POS_X = 100
+  P_POS_Y = 100
+  P_SIZE_W = 768
+  P_SIZE_H = 1024
   sigProfileChanged = pyqtSignal(list)
 
   def __init__(self):
     super().__init__()
     self.setWindowTitle("μDDO")
-    self.setWindowIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/icon.png')))
-    self.launchMenu = QMenu() # filled in cSettings
+    self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))
+    self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
 
-    self.lblProfile = QLabel()
-    self.lblProfile.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    self.lblProfile.mousePressEvent = lambda e: self.launchMenu.exec(self.lblProfile.mapToGlobal(e.pos()))
-
-    self.btnLaunch = cLauncherButton(" &Launch", P_ICON_D20, False)
-    self.btnDH = cLauncherButton("Dungeon\nHelper", tooltip="Launches Dungeon Helper (it if is installed); activates on all"\
-                                 " instances of the game for as long as it runs.")
-    self.btnDH.setIcon(QIcon(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DungeonHelperIcon32.png')))
-    btnQuit = cLauncherButton(" &Quit", P_ICON_EXIT)
-    
+    self.btnLaunch = cOrb("Launch", P_ICON_D20, tooltip="Launches Dungeons & Dragons Online for all selected" \
+                          " accounts in the selected world. <br><b><i>Right-click for more options</i></b>")
+    btnQuit = cOrb("Quit", P_ICON_EXIT)
+        
     self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
     self.credentials = cCredentials(self)
-    self.news = cNews()
+    self.news = cNews(self)
     self.patch = cPatch(self)
     self.settings = cSettings(self)
-    self.shortcuts = cShortcuts(self)
+    self.macros = cMacros(self)
     self.processManager = cProcessManager(self)
-    self.processManager.setVisible(False)
+    self.processManager.setVisible(False)    
+    self.dh = cDungeonHelper(self)
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
-    self.btnDH.clicked.connect(self.launchDH)
+    # self.btnDH.clicked.connect(self.launchDH)
 
-    lButtonsBar = newHLayout([self.btnDH, self.shortcuts.btnDaemonToggle, self.lblProfile, 
-                              self.btnLaunch, btnQuit])
+    g = QGridLayout()
+    g.addWidget(self.credentials.loginSummary,0,0,1,3)
+    g.addWidget(newRQLabel("World: "),1,0,1,1)
+    g.addWidget(newRQLabel("Profile: "),2,0,1,1)
+    g.addWidget(self.credentials.listWorlds,1,1,1,2)
+    g.addWidget(self.settings.profileMain,2,1,1,2)
+    self.summary = QWidget()
+    self.summary.setMaximumWidth(480)
+    self.summary.setLayout(g)
+    lButtonsBar = newHLayout([self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
+                              "__stretch__", self.summary, "__stretch__", 
+                              self.credentials.toggler, self.processManager.toggler, self.macros.toggler, self.settings.toggler, 
+                              self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
 
-    tabController  = QWidget()
-    tabController.setLayout(newHLayout([self.settings.toggler, self.processManager.toggler, 
-                                        self.shortcuts.toggler, self.patch.toggler, self.news.toggler]))
+    aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
+    aKillAll = self.btnLaunch.menu.addAction("Kill all")
+    aRestoreAll = self.btnLaunch.menu.addAction("Restore all windows positions")
+    aSaveAll = self.btnLaunch.menu.addAction("Save all windows positions")
+    aConf = self.btnLaunch.menu.addAction("Show/Hide setting UI")
+    aLaunchAll.triggered.connect(self.processManager.startAll)
+    aKillAll.triggered.connect(self.processManager.killAll)
+    aRestoreAll.triggered.connect(self.processManager.restoreWindowAll)
+    aSaveAll.triggered.connect(self.processManager.saveWindowAll)
+    aConf.triggered.connect(self.credentials.toggle)
+    aConf.triggered.connect(self.processManager.toggle)
 
-    _splitter = QSplitter(Qt.Orientation.Vertical)
-    _splitter.addWidget(self.processManager)
-    _splitter.addWidget(self.shortcuts)
-    _splitter.addWidget(self.news)
-    _splitter.addWidget(self.patch)
-    _splitter.addWidget(self.console)
+    self.console.show()
 
-    w = QWidget()
-    # w.setLayout(newVLayout([self.credentials, tabController, self.settings, 
-    #             self.processManager, self.shortcuts, self.news, self.patch, self.console, lButtonsBar]))
-    w.setLayout(newVLayout([self.credentials, tabController, self.settings, _splitter, lButtonsBar]))
-    self.setCentralWidget(w)
-    self.resize(768,1024)
+    self.setCentralWidget(newVFrame([lButtonsBar]))
+    self.loadState()
 
     if not P_CERTFILE:
       self.console.error(f"Failed to intialize certificate, is the file \"{P_CERTFILE}\" accessible? ")
@@ -98,14 +105,13 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    self.sigProfileChanged.connect(lambda : self.btnDH.setVisible(self.profile().useDungeonHelper.isChecked()))
-    self.sigProfileChanged.connect(lambda p: self.lblProfile.setText(f"Profile: {p[1]}{getArrow()}"))
+    self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     self.settings.initialize()
     if self.profile() is None:
       self.console.abort("No valid profile loaded!")
     self.credentials.initialize()
-    self.shortcuts.initialize()
+    self.macros.initialize()
     self.news.initialize()
     self.patch.initialize()
     self.credentials.sigFetchedQueueInfo.connect(self.captureOrphan)
@@ -163,16 +169,39 @@ class cMainWindow(QMainWindow):
       proc.launch()
     self.console.info("Finished queueing...")
   
-  #----------------------------------------------------------------------------------------------------------
-  def launchDH(self):
-    self.processManager.setVisible(True)
-    dh = cDungeonHelper(self)
-    self.processManager.addItem(dh)
-    dh.launch()
+  # #----------------------------------------------------------------------------------------------------------
+  # def launchDH(self):
+  #   if not self.DHProcess:
+  #     self.DHProcess = cDungeonHelper(self)
+  #     self.processManager.addItem(self.DHProcess)
+  #   self.processManager.setVisible(True)
+  #   self.DHProcess.launch()
 
+  #----------------------------------------------------------------------------------------------------------
+  def loadState(self):
+    settings = QSettings(P_DEFAULT_CONF)
+    pos = settings.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
+    size = settings.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
+    self.move(pos)
+    self.resize(size)
+  
+  #----------------------------------------------------------------------------------------------------------
+  def saveState(self):
+    settings = QSettings(P_DEFAULT_CONF)
+    settings.setValue(f"μDDO/pos",  self.pos())
+    settings.setValue(f"μDDO/size", self.size())
+  
   #----------------------------------------------------------------------------------------------------------
   def close(self):
     self.settings.save()
+    self.settings.close()
+    self.macros.close()
+    self.processManager.close()
+    self.patch.close()
+    self.news.close()
+    self.credentials.close()
+    self.console.close()
+    self.saveState()
     super().close()
 
 
