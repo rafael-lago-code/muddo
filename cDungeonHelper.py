@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 #----------------------------------------------------------------------------------------------------------
 class cDungeonHelper(aProcessItem):
   def __init__(self, main : cMainWindow):
-    super().__init__(main)
+    super().__init__()
     self.key = "dh"    
     self.profileID.setText("")
     self.worldname.setText("")
@@ -55,8 +55,8 @@ class cDungeonHelper(aProcessItem):
     self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
     self.actionToggle.triggered.connect(self.toggle)
     self.actionRestart.triggered.connect(self.restart)
-    self.actionKill.triggered.connect(lambda : self.kill(force=True))
-    self.actionConf.triggered.connect(lambda : self.main.settings.toggle())
+    self.actionKill.triggered.connect(lambda : self.terminate(force=True))
+    self.actionConf.triggered.connect(lambda : main.settings.toggle())
 
     self.sigGotPID.connect(self.updateTooltip)    
   
@@ -102,13 +102,13 @@ class cDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def toggle(self):
     if self.status == self.P_STATUS_RUNNING:
-      self.kill()
+      self.terminate()
     else:
       self.launch()
 
   #----------------------------------------------------------------------------------------------------------
-  def kill(self, force=False):
-    super().kill(force)
+  def terminate(self, force=False):
+    super().terminate(force)
     self.setStatus(self.P_STATUS_KILLED)
     self.clear()
 
@@ -127,7 +127,7 @@ class cDungeonHelper(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def restart(self, force=False):
-    self.kill(force)
+    self.terminate(force)
     self.launch()
 
   #----------------------------------------------------------------------------------------------------------

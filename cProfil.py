@@ -38,7 +38,6 @@ class cProfil(QWidget):
     self.console = main.console
     self.name = name
     self.useHighRes = QCheckBox("use HighRes")
-    self.usexdotool = QCheckBox("use xdotool")
     self.useDungeonHelper = QCheckBox("use DungeonHelper")
     self.useDebugging = QCheckBox("enable debug")
     self.useHighRes.setChecked(True)
@@ -49,7 +48,6 @@ class cProfil(QWidget):
     self.languageCombo.setEnabled(False)
 
     self.useHighRes.setToolTip(f"Use HighRes game texture")
-    self.usexdotool.setToolTip(f"Used to move windows and for shortcuts/macro programming")
     self.useDungeonHelper.setToolTip(f"Comprehensive DDO add-on with many features including auto-follow and advanced maps. Must be installed externally")
     self.useDebugging.setToolTip(f"Enables debugging messages inside of the log file (defaults to {P_DEFAULT_CONFIGDIR}/log). Console remains unchanged")
 
@@ -66,7 +64,6 @@ class cProfil(QWidget):
     self.winePrefix  = QLineEdit()
     self.gameDir     = QLineEdit()
     self.steamRoot   = QLineEdit()
-    self.xdotoolExec = QLineEdit()
     self.DungeonHelperExec = QLineEdit()
 
     btnSelectProtonExec  = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select Steam Proton executable")
@@ -75,7 +72,6 @@ class cProfil(QWidget):
     btnSelectWinePrefix  = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select WINEPREFIX")
     btnSelectSteamRoot   = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select STEAM_ROOT")
     btnSelectGameDir     = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select Dungeons \& Dragons Online game path")
-    btnSelectxdotoolExec = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select xdotool executable")
     btnSelectDungeonHelperExec = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select DungeonHelper executable")
 
     lblWineExec   = newRQLabel("Wine Executable: ")
@@ -97,7 +93,6 @@ class cProfil(QWidget):
     g.appendRow([self.useDebugging,     lblSteamRoot,  self.steamRoot,   btnSelectSteamRoot])
     g.appendRow([self.useHighRes,       newRQLabel("Game Path: "),    self.gameDir,     btnSelectGameDir])
     g.appendRow([self.useDungeonHelper, newRQLabel("DungeonHelper exec: "), self.DungeonHelperExec, btnSelectDungeonHelperExec])
-    g.appendRow([self.usexdotool,       newRQLabel("xdotool exec: "), self.xdotoolExec, btnSelectxdotoolExec])
 
     # I am overlapping on purpose, because only one of the two will be visible at the same time
     g.lastRow = 0
@@ -106,13 +101,7 @@ class cProfil(QWidget):
     g.setColumnMinimumWidth(1, 150)
     self.setLayout(g)
 
-    self.usexdotool.toggled.connect(btnSelectxdotoolExec.setEnabled)
-    self.usexdotool.toggled.connect(self.xdotoolExec.setEnabled)
     self.useDebugging.toggled.connect(self.main.console.setDebug)
-    self.usexdotool.toggled.connect(self.findxdotool)
-    self.usexdotool.setChecked(False)
-    self.xdotoolExec.setEnabled(False)
-    btnSelectxdotoolExec.setEnabled(False)
 
     self.useDungeonHelper.toggled.connect(btnSelectDungeonHelperExec.setEnabled)
     self.useDungeonHelper.toggled.connect(self.DungeonHelperExec.setEnabled)
@@ -146,8 +135,7 @@ class cProfil(QWidget):
     btnSelectCompatData.clicked.connect( lambda x : self.selectDialog(self.steamRoot, "STEAM_COMPAT_DATA"))
     btnSelectSteamRoot.clicked.connect(  lambda x : self.selectDialog(self.steamRoot, "STEAM_ROOT"))
     btnSelectGameDir.clicked.connect(    lambda x : self.selectDialog(self.gameDir,   "game path"))
-    btnSelectxdotoolExec.clicked.connect(lambda x : self.selectDialog(self.xdotoolExec, "xdotool executable", False))
-    btnSelectDungeonHelperExec.clicked.connect(lambda x : self.selectDialog(self.xdotoolExec, "DungeonHelper executable", False))
+    btnSelectDungeonHelperExec.clicked.connect(lambda x : self.selectDialog(self.DungeonHelperExec, "DungeonHelper executable", False))
 
   #----------------------------------------------------------------------------------------------------------
   def save(self):
@@ -167,8 +155,6 @@ class cProfil(QWidget):
     values['steamRoot']    = self.steamRoot.text()
     values['useDebugging'] = self.useDebugging.isChecked()
     values['useHighRes']   = self.useHighRes.isChecked()
-    values['usexdotool']   = self.usexdotool.isChecked()
-    values['xdotoolExec']  = self.xdotoolExec.text()
     values['useDungeonHelper']  = self.useDungeonHelper.isChecked()
     values['DungeonHelperExec'] = self.DungeonHelperExec.text()
 
@@ -209,8 +195,6 @@ class cProfil(QWidget):
         if 'steamRoot'    in values.keys(): self.steamRoot.setText(values['steamRoot'])
         if 'useDebugging' in values.keys(): self.useDebugging.setChecked(values['useDebugging'])
         if 'useHighRes'   in values.keys(): self.useHighRes.setChecked(values['useHighRes'])
-        if 'usexdotool'   in values.keys(): self.usexdotool.setChecked(values['usexdotool'])
-        if 'xdotoolExec'  in values.keys(): self.xdotoolExec.setText(values['xdotoolExec'])
         if 'DungeonHelperExec' in values.keys(): self.DungeonHelperExec.setText(values['DungeonHelperExec'])
         if 'useDungeonHelper'  in values.keys(): self.useDungeonHelper.setChecked(values['useDungeonHelper'])
         if 'lastActiveShortcutSet' in values.keys(): self.main.macros.setActiveSets(values['lastActiveShortcutSet'])
@@ -264,19 +248,19 @@ class cProfil(QWidget):
         except Exception as e:
           self.console.error("Error looking for DungeonHelper binary", e)
 
-  #----------------------------------------------------------------------------------------------------------
-  def findxdotool(self):
-    if self.usexdotool.isChecked() and self.xdotoolExec.text()=="":
-      try:
-        result = subprocess.run(["which", "xdotool"], stdout=subprocess.PIPE)
-        if result.stdout:
-          result = result.stdout.decode('utf-8').strip()
-          self.xdotoolExec.setText(result)
-          self.console.info(f"Setting xdotool binary to {result}...")
-        else:
-          self.console.info(f"{C_RED}[WARNING]</font> xdotool binary not found! Is it installed? If so, please set it manually...")
-      except Exception as e:
-        self.console.error("Error looking for xdotool binary", e)
+  # #----------------------------------------------------------------------------------------------------------
+  # def findxdotool(self):
+  #   if self.usexdotool.isChecked() and self.xdotoolExec.text()=="":
+  #     try:
+  #       result = subprocess.run(["which", "xdotool"], stdout=subprocess.PIPE)
+  #       if result.stdout:
+  #         result = result.stdout.decode('utf-8').strip()
+  #         self.xdotoolExec.setText(result)
+  #         self.console.info(f"Setting xdotool binary to {result}...")
+  #       else:
+  #         self.console.info(f"{C_RED}[WARNING]</font> xdotool binary not found! Is it installed? If so, please set it manually...")
+  #     except Exception as e:
+  #       self.console.error("Error looking for xdotool binary", e)
 
   #----------------------------------------------------------------------------------------------------------
   def findProton(self):

@@ -6,8 +6,29 @@ if TYPE_CHECKING:
    from cMilvian import cMilvian
 
 
-P_DEFAULT_SHMPATH = '/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/'
+# bridgePath = '/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/'
 P_MILVIAN_DEBUG=True
+
+def getInputActions():
+  sys.path.append('/home/steam/prefixes/DDO_Main/pfx/drive_c/users/holysword/AppData/Roaming/Dungeon Helper/')
+  from pythonnet import load
+  load("coreclr")
+  import clr
+  clr.AddReference("VoK.Sdk")
+  clr.AddReference("System.Private.CoreLib") 
+  from VoK.Sdk.Ddo.Enums import InputActions
+  from System import Enum as DotNetEnum
+
+  ia = {}
+  iaNames  = DotNetEnum.GetNames(InputActions)
+  iaValues = DotNetEnum.GetValues(InputActions)
+  ia = { n.lower(): int(v).to_bytes(4, byteorder='little', signed=False)
+                          for (n,v) in zip(iaNames,iaValues) }
+    # Adds some useful shortcuts to it b4k3
+  for b in range(10):
+    for k in range(10):
+      ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
+  return ia
 
 #---------------------------------------------------------------------------------------------------------------
 class cMilvian():
@@ -19,11 +40,26 @@ class cMilvian():
     'querycharname': int.to_bytes(4, byteorder='little', signed=False),
     'charname':      int.to_bytes(4, byteorder='little', signed=False),
   }
+  bridgePath = ''
   inputActions = None
+  printInfo    = lambda x : print(x)
+  printDebug   = lambda x : print(x)
+  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
+  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
 
+  #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def getInputActions(self):
-    sys.path.append('/home/steam/prefixes/DDO_Main/pfx/drive_c/users/holysword/AppData/Roaming/Dungeon Helper/')
+  def setup(self, dhpath, console=None):
+    if console:
+      self.attachConsole(console)
+    self.setBridgePath(os.path.dirname(dhpath)+"/Milvian/")
+    self.getInputActions(dhpath)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def getInputActions(self, dhpath):
+    if self.inputActions: return
+    sys.path.append(dhpath)
     from pythonnet import load
     load("coreclr")
     import clr
@@ -32,21 +68,44 @@ class cMilvian():
     from VoK.Sdk.Ddo.Enums import InputActions
     from System import Enum as DotNetEnum
 
-    if not self.inputActions:
-      iaNames  = DotNetEnum.GetNames(InputActions)
-      iaValues = DotNetEnum.GetValues(InputActions)
-      self.inputActions = { n.lower(): int(v).to_bytes(4, byteorder='little', signed=False)
-                           for (n,v) in zip(iaNames,iaValues) }
+    ia = {}
+    iaNames  = DotNetEnum.GetNames(InputActions)
+    iaValues = DotNetEnum.GetValues(InputActions)
+    ia = { n.lower(): int(v).to_bytes(4, byteorder='little', signed=False)
+                            for (n,v) in zip(iaNames,iaValues) }
       # Adds some useful shortcuts to it b4k3
-      for b in range(10):
-        for k in range(10):
-          self.inputActions[f"b{b+1}k{k+1}"] = self.inputActions[f"shortcut_bar{b+1}_key{k+1}"]
+    for b in range(10):
+      for k in range(10):
+        ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
+    self.inputActions = ia
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def attachConsole(self, console):
+    self.printInfo = console.info
+    self.printError = console.error
+    self.printDebug = console.debug
+    self.printWarning = console.warning
+    self.printInfo("Console attached to cMilvian")
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def deattachConsole(self):
+    self.printInfo    = lambda x : print(x)
+    self.printError   = lambda x : print(x)
+    self.printDebug   = lambda x : print(x)
+    self.printWarning = lambda x : print(x)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def setBridgePath(self, path):
+    self.bridgePath = path
 
   #---------------------------------------------------------------------------------------------------------------
   @classmethod
   def printInputActions(self):
     if not self.inputActions: self.getInputActions()
-    print(self.inputActions.keys())
+    self.printDebug(self.inputActions.keys())
 
   #---------------------------------------------------------------------------------------------------------------
   @classmethod
@@ -59,26 +118,35 @@ class cMilvian():
     # pathSHM can be pathSHMI or pathSHMO, doesn't matter
     self.charName = None
 
-    self.__class__.getInputActions()
-
     if pathSHM.endswith("I") or pathSHM.endswith("O"):
       pathSHM = pathSHM[:-1]
     self.pathSHMO = pathSHM+"O"
     self.pathSHMI = pathSHM+"I"
-    if os.path.exists(self.pathSHMI) and os.path.exists(self.pathSHMO):
-      self.sendRequest(self.tokenPrefix['charname'])
-      time.sleep(0.05)
-      response = self.waitResponse(timeout=1.0)
-      if response:
-        response = response.split()
-        if response[0]=="Character:":
-          self.charName = response[1].lower()
-        else:
-          print(f"Error, could not retrieve charName. Maybe {pathSHM} is defunct?")
-      else:
-        print(f"Error, could not retrieve charName. Maybe {pathSHM} is defunct?")
-    else:
-      print(f"Error, {self.pathSHMI} or {self.pathSHMO} do not exist!")
+    
+    if not os.path.exists(self.pathSHMI) or not os.path.exists(self.pathSHMO):
+      self.printError(f"Error, {os.path.basename(self.pathSHMI)} or {os.path.basename(self.pathSHMO)} do not exist!")
+      return
+    
+    self.sendRequest(self.tokenPrefix['charname'])
+    time.sleep(0.05)
+    response = self.waitResponse(timeout=1.0)
+    if not response:
+      self.printError(f"Error, could not retrieve charName. Maybe {os.path.basename(pathSHM)} is defunct?")
+      return
+    
+    response = response.split()
+    if len(response)<2:
+      self.printError(f"Error, could not retrieve charName. Maybe {os.path.basename(pathSHM)} is defunct?")
+      return
+    
+    if response[0]!="Character:":
+      self.printError(f"cMilvian: strange charName for {os.path.basename(pathSHM)}: got \"{response}\"?")
+      return
+    self.charName = response[1].lower()
+
+
+      
+      
       
 
   #---------------------------------------------------------------------------------------------------------------
@@ -86,7 +154,7 @@ class cMilvian():
     timer = 0.0
     while True:
       if timeout and timer>timeout:
-        if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] timeout ({timeout}) in waitResponse! charName={self.charName}, pathO={self.pathSHMO}")
+        self.printDebug(f"[cMilvian:Debug] timeout ({timeout}) in waitResponse! charName={self.charName}, pathO={self.pathSHMO}")
         return None
       with open(self.pathSHMO, 'r+b') as fdSHMO:
         shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
@@ -123,7 +191,7 @@ class cMilvian():
       
   #---------------------------------------------------------------------------------------------------------------
   def packInputAction(self, cmd: str) -> bytes:
-    if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] {self.charName} - packInputAction({cmd})")
+    self.printDebug(f"[cMilvian:Debug] {self.charName} - packInputAction({cmd})")
     payload = ( self.tokenPrefix['inputaction'] +  # prefix byte = 1
                 self.inputActions[cmd]             # the uint32
     )
@@ -140,7 +208,7 @@ class cMilvian():
   
   #---------------------------------------------------------------------------------------------------------------
   def packSingleToken(self, token: str) -> bytes:
-    if P_MILVIAN_DEBUG: print(f"[cMilvian:Debug] {self.charName} - packSingleToken({token})")
+    self.printDebug(f"[cMilvian:Debug] {self.charName} - packSingleToken({token})")
     payload = ( self.tokenPrefix[token] )
     return payload
   
@@ -169,9 +237,12 @@ class cMilvian():
   
   #---------------------------------------------------------------------------------------------------------------
   def sendList(self, data: list):
-    if len(data)==1:
-      self.sendRequest(self.packString(data[0]))
-    self.sendRequest(self.packList(data))
+    while len(data)==1:
+      data = data[0]
+    if isinstance(data,list):
+      self.sendRequest(self.packList(data))
+    else:
+      self.sendRequest(self.packString(data))
       
   #---------------------------------------------------------------------------------------------------------------
   def sendInputAction(self, cmd: str):
@@ -203,7 +274,7 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   def clearO(self):
-    print(f"[*] Clearing {self.pathSHMO}")
+    self.printInfo(f"[*] cMilvian: clearing {self.pathSHMO}")
     with open(self.pathSHMO, 'r+b') as fdSHMO:
       shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
       shmO.seek(0)
@@ -214,8 +285,9 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   @staticmethod
-  def getFromDir(path=P_DEFAULT_SHMPATH, getUnknown=False, purgeUnknown=False) -> list:
-    files = [f for f in os.listdir(path) if f.startswith("tmpAccount")]
+  def getFromDir(path=None, getUnknown=False, purgeUnknown=False) -> list:
+    if not path: path = cMilvian.bridgePath
+    files = [f for f in os.listdir(path) if f.startswith("bridge")]
     filesO = [os.path.join(path, f) for f in files if f.endswith("O")]
 
     characters = {}
@@ -223,14 +295,15 @@ class cMilvian():
       m = cMilvian(f)
       if m.charName:
         characters[m.charName] = m
+        cMilvian.printInfo(f" [*] cMilvian: found {os.path.basename(f)}")
       elif getUnknown:
         i = 1
         while f"NA{i}" in characters: i += 1
         characters[f"NA{i}"] = m
       elif purgeUnknown:
-        print(f" [*] cMilvian: file {f} seems to be orphaned. Deleting... ")
+        cMilvian.printInfo(f" [*] cMilvian: file {os.path.basename(f)} seems to be orphaned. Deleting... ")
         os.remove(f)
         os.remove(f[:-1]+"I")
-    return characters
+    return characters 
 
 # sleep_1.0, b5k3, interact , sleep_1.0

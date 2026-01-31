@@ -34,7 +34,7 @@ P_POST_FOCUS_DELAY = "delay_0.01"
 #----------------------------------------------------------------------------------------------------------
 class cMacrosDaemon(aProcessItem):
   def __init__(self, main : cMainWindow):
-    super().__init__(main)
+    super().__init__()
     self.key = "Macros Daemon"
     self.process = None
     self.milvianProc = None
@@ -53,8 +53,8 @@ class cMacrosDaemon(aProcessItem):
     self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
     self.actionToggle.triggered.connect(self.toggle)
     self.actionRestart.triggered.connect(self.restart)
-    self.actionKill.triggered.connect(lambda : self.kill(force=True))
-    self.actionConf.triggered.connect(lambda : self.main.macros.toggle())
+    self.actionKill.triggered.connect(lambda : self.terminate(force=True))
+    self.actionConf.triggered.connect(lambda : main.macros.toggle())
     
     self.profileID.setText("")
     self.worldname.setText("")
@@ -121,6 +121,9 @@ class cMacrosDaemon(aProcessItem):
   def convert(self, consolidated : dict) -> dict:
     parsed = {}
     if not self.milvianProc: self.milvianProc = cMilvian.getFromDir(purgeUnknown=True)
+    if len(self.milvianProc) == 0:
+      self.main.console.warning("Attempted to start Macro Daemon, but no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
+      return {}
 
     # first, get rid of "alls" and "selfs":
     for trigger in consolidated.keys():
@@ -172,7 +175,7 @@ class cMacrosDaemon(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def toggle(self):
     if self.status == self.P_STATUS_RUNNING:
-      self.kill()
+      self.terminate()
     else:
       self.launch()
 
@@ -190,7 +193,6 @@ class cMacrosDaemon(aProcessItem):
         return
       else:
         xh = XHelper()
-        xh.sigDebugPrinted.connect(self.main.console.debugMessage)
         for hk, script in parsed.items():
           parsed[hk] = lambda x=script : xh.execute(x)
         self.process = xh.getShortcutsDaemon(parsed)
@@ -214,20 +216,21 @@ class cMacrosDaemon(aProcessItem):
       self.actionToggle.setText("Launch")
 
   #----------------------------------------------------------------------------------------------------------
-  def kill(self, force=False, remove=False):
+  def terminate(self, force=False, remove=False):
     if not self.process: return
     self.process.stop()
     if force: self.cleanup()
     self.setStatus(self.P_STATUS_KILLED)
     self.process = None
-    for k in self.milvianProc.keys():
+    allk = list(self.milvianProc.keys())
+    for k in allk:
       del self.milvianProc[k]
-    self.milvianProc: None
+    self.milvianProc = None
     # if remove: self.clear()
 
   #----------------------------------------------------------------------------------------------------------
   def restart(self, force=False):
-    self.kill(force)
+    self.terminate(force)
     self.launch()
 
   #----------------------------------------------------------------------------------------------------------

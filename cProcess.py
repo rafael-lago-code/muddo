@@ -23,9 +23,11 @@ from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
 from cWidgets.cToggler import cToggler
 from collections import OrderedDict
-import subprocess
+import threading
 from cWidgets.util import *
 from cWidgets.cOrb import cOrbSmall
+from cTop import cTop
+import signal
 from XHelper import XHelper
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -33,12 +35,43 @@ if TYPE_CHECKING:
 
 class cProcessManager(cToggler):
 
-  def __init__(self, main : cMainWindow):
+  printInfo    = lambda x : print(x)
+  printDebug   = lambda x : print(x)
+  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
+  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
+
+  main = None      # set in attachMain
+  profile = None   # set in attachMain
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def attachConsole(self, console):
+    self.printInfo = console.info
+    self.printError = console.error
+    self.printDebug = console.debug
+    self.printWarning = console.warning
+    self.printInfo(f"Console attached to {self.__class__}")
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def attachMain(self, main : cMainWindow):
+    self.main = main
+    self.attachConsole(main.console)
+    aProcessItem.attachMain(main)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def deattachConsole(self):
+    self.printInfo    = lambda x : print(x)
+    self.printError   = lambda x : print(x)
+    self.printDebug   = lambda x : print(x)
+    self.printWarning = lambda x : print(x)
+
+  #----------------------------------------------------------------------------------------------------------
+  def __init__(self):
     self.widgetID = "processManager"
     super().__init__("Process\nManager", P_ICON_PROPERTIES)
     self.toggler.setToolTip("Toggle Process Manager and allows control of individual launched processes")
-    self.main = main
-    self.console = main.console
     self.items : OrderedDict[str, aProcessItem] = OrderedDict()
     pal = QPalette()
     self.colour1 = pal.color(QPalette.ColorRole.Window)
@@ -58,11 +91,11 @@ class cProcessManager(cToggler):
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")
     
-    self.btnCaptureOrphans.clicked.connect(self.main.captureOrphan)
+    # self.btnCaptureOrphans.clicked.connect(self.main.captureOrphan)
     self.btnStartAll.clicked.connect(self.startAll)
-    self.btnKillAll.clicked.connect(self.killAll)
-    self.btnKillAll.ctrlClicked.connect(lambda : self.killAll(force=True))
-    self.btnKillAll.rightClicked.connect(lambda : self.killAll(force=True))
+    self.btnKillAll.clicked.connect(self.terminateAll)
+    self.btnKillAll.ctrlClicked.connect(lambda : self.terminateAll(force=True))
+    self.btnKillAll.rightClicked.connect(lambda : self.terminateAll(force=True))
     self.btnSaveAll.clicked.connect(self.saveWindowAll)
     self.btnRestoreAll.clicked.connect(self.restoreWindowAll)
     self.btnCleanAll.clicked.connect(self.cleanAll)
@@ -78,12 +111,12 @@ class cProcessManager(cToggler):
                     "__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
-  def cleanItem(self, item : aProcessItem, kill=False):
+  def clearItem(self, item : aProcessItem, kill=False):
     if kill and item.status == item.P_STATUS_RUNNING:
       try:
-        item.kill()
+        item.terminate()
       except Exception as e:
-        self.console.error(f"cProcessManager.cleanItem: error killing \"{item.key}\"", e)
+        self.printError(f"cProcessManager.cleanItem: error killing \"{item.key}\"", e)
     elif item.status == item.P_STATUS_RUNNING:
       return
     
@@ -91,7 +124,7 @@ class cProcessManager(cToggler):
       self.layout().removeWidget(item)
       del self.items[item.key]
     except Exception as e:
-      self.console.error(f"cProcessManager.cleanItem: unknown error removing item \"{item.key}\"", e)
+      self.printError(f"cProcessManager.cleanItem: unknown error removing item \"{item.key}\"", e)
 
     self.main.processManager.resetColour()
     item.hide()
@@ -102,7 +135,7 @@ class cProcessManager(cToggler):
   def cleanAll(self, kill=False):
     allItems  = set(self.items.values())
     for i in allItems: 
-      self.cleanItem(i,kill)
+      self.clearItem(i,kill)
 
   #----------------------------------------------------------------------------------------------------------
   def startAll(self):
@@ -112,10 +145,18 @@ class cProcessManager(cToggler):
         self.items[u].launch()
 
   #----------------------------------------------------------------------------------------------------------
-  def killAll(self, force=False):
-    for u in self.items.keys(): 
-      if u.startswith("dh_"): continue
-      self.items[u].kill(force)
+  def terminateAll(self):
+    allItems = list(self.items.keys())
+    for i in allItems: 
+      if i.startswith("dh_"): continue
+      self.items[i].terminate()
+
+  #----------------------------------------------------------------------------------------------------------
+  def killAll(self):
+    allItems = list(self.items.keys())
+    for i in allItems: 
+      if i.startswith("dh_"): continue
+      self.items[i].kill()
     
   #----------------------------------------------------------------------------------------------------------
   def saveWindowAll(self):
@@ -171,35 +212,69 @@ class cProcessManager(cToggler):
 
 #----------------------------------------------------------------------------------------------------------
 class aProcessItem(QWidget):
-  sigRunning = pyqtSignal(bool)
-  sigGotPID = pyqtSignal(bool)
-  sigTerminated = pyqtSignal(bool)
+  sigRunning = pyqtSignal()
+  sigKilled = pyqtSignal()
+  sigTerminated = pyqtSignal()
+  sigError = pyqtSignal(str)
+
+  sigChangeRequest = pyqtSignal(int)
+  sigStatusChanged = pyqtSignal(int)
+  sigGotPID = pyqtSignal(str)
 
   P_STATUS_ERROR   = -1
-  P_STATUS_UNKNOWN = 0
-  P_STATUS_AUTHENTICATING    = 1
-  P_STATUS_QUEUEING   = 2
-  P_STATUS_RUNNING = 3
-  P_STATUS_KILLED  = 4
+  P_STATUS_UNKNOWN = 0         # status if PID is unknown. Also after terminating
+  P_STATUS_RUNNING = 1         # after gotPID returns it will be idle or running
+  P_STATUS_KILLED  = 2         # if forcibly terminated i.e. killed
+  P_STATUS_TERMINATED = P_STATUS_UNKNOWN
+  P_STATUS_REFRESH = -10
 
-  def __init__(self, main : cMainWindow):
-    super().__init__()
+  printInfo    = lambda x : print(x)
+  printDebug   = lambda x : print(x)
+  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
+  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
+
+  main = None      # set in attachMain
+  profile = None   # set in attachMain
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def attachConsole(self, console):
+    self.printInfo = console.info
+    self.printError = console.error
+    self.printDebug = console.debug
+    self.printWarning = console.warning
+    self.printInfo(f"Console attached to {self.__class__}")
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def attachMain(self, main : cMainWindow):
     self.main = main
-    self.console = main.console
-    self.status = self.P_STATUS_UNKNOWN
     self.profile = main.profile # pointer to the function
+    self.attachConsole(main.console)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def deattachConsole(self):
+    self.printInfo    = lambda x : print(x)
+    self.printError   = lambda x : print(x)
+    self.printDebug   = lambda x : print(x)
+    self.printWarning = lambda x : print(x)
+
+  #----------------------------------------------------------------------------------------------------------
+  def __init__(self):
+    super().__init__()
     self.key = ""
-    
-    self.pid = newProcessField("", 50)
-    self.winID = newProcessField("")
+    self.status    = self.P_STATUS_UNKNOWN
+    self.pid       = newProcessField("", 50)
+    self.winID     = newProcessField("")
     self.profileID = newProcessField("")
     self.worldname = newProcessField("")
-    self.username = QLabel()
+    self.username  = QLabel()
 
     self.btnToggle  = cOrbSmall(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
     self.btnSave    = cOrbSmall(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
     self.btnRestore = cOrbSmall(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
-    self.btnClear  = cOrbSmall(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
+    self.btnClear   = cOrbSmall(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
     self.btnMute    = cOrbSmall(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
     self.btnToggle.clicked.connect(self.toggle)
     self.btnToggle.rightClicked.connect(lambda : self.toggle(True))
@@ -211,7 +286,8 @@ class aProcessItem(QWidget):
     self.btnClear.rightClicked.connect(lambda : self.clear(True))
     self.btnMute.clicked.connect(self.audioToggle)
 
-    self.sigTerminated.connect(lambda : self.setStatus(aProcessItem.P_STATUS_KILLED))
+    self.sigChangeRequest.connect(self.setStatus)
+    self.sigGotPID.connect(lambda x : self.pid.setText(x))
     
     self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
@@ -223,7 +299,7 @@ class aProcessItem(QWidget):
 
   #----------------------------------------------------------------------------------------------------------
   def clear(self, kill=False):
-    self.main.processManager.cleanItem(self, kill)
+    self.main.processManager.clearItem(self, kill)
   
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
@@ -238,32 +314,42 @@ class aProcessItem(QWidget):
     pass
 
   #----------------------------------------------------------------------------------------------------------
-  def setStatus(self, status):
-    if status == "running" or status == aProcessItem.P_STATUS_RUNNING: 
-      self.status = aProcessItem.P_STATUS_RUNNING
-      self.btnSave.setEnabled(True)
-      self.btnRestore.setEnabled(True)
-      self.btnToggle.setEnabled(True)
-      self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
-      self.btnClear.setEnabled(True)
-      self.btnMute.setEnabled(True)
-    elif status == "killed" or status == aProcessItem.P_STATUS_KILLED:
-      self.pid.setText("")
-      self.winID.setText("")
-      self.btnSave.setEnabled(False)
-      self.btnRestore.setEnabled(False)
-      self.btnToggle.setEnabled(True)
-      self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
-      self.btnMute.setEnabled(False)
-      self.status = aProcessItem.P_STATUS_UNKNOWN
-    elif status == "error" or status == aProcessItem.P_STATUS_ERROR:
-      self.username.setText(f"C_RED{self.username.text()}[E]</font>")
-      self.btnSave.setEnabled(False)
-      self.btnRestore.setEnabled(False)
-      self.btnToggle.setEnabled(False)
-      self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
-      self.btnMute.setEnabled(False)
-      self.status = aProcessItem.P_STATUS_UNKNOWN
+  def setStatus(self, newStatus):
+    self.btnToggle.setEnabled( self.pid.text().isdigit())
+    self.btnMute.setEnabled(   self.pid.text().isdigit())
+    self.btnSave.setEnabled(   self.winID.text().isdigit())
+    self.btnRestore.setEnabled(self.winID.text().isdigit())
+    if self.status != newStatus:
+      if newStatus == "error" or newStatus == aProcessItem.P_STATUS_ERROR:
+        self.username.setText(f"{C_RED}{self.username.text()}[E]</font>")
+        self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
+        self.btnClear.setEnabled(True)
+        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.status = aProcessItem.P_STATUS_ERROR 
+        self.sigError.emit("APROCESS_UNKNOWN_ERROR")
+      elif newStatus == "terminated" or newStatus == aProcessItem.P_STATUS_TERMINATED:
+        self.pid.setText("")
+        self.winID.setText("")
+        self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
+        self.btnClear.setEnabled(True)
+        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.status = aProcessItem.P_STATUS_UNKNOWN
+        self.sigTerminated.emit()
+      elif newStatus == "running" or newStatus == aProcessItem.P_STATUS_RUNNING:
+        self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
+        self.btnClear.setEnabled(True)
+        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.status = aProcessItem.P_STATUS_RUNNING
+        self.sigRunning.emit()
+      elif newStatus == "killed" or newStatus == aProcessItem.P_STATUS_KILLED:
+        self.pid.setText("")
+        self.winID.setText("")
+        self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
+        self.btnClear.setEnabled(True)
+        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.status = aProcessItem.P_STATUS_UNKNOWN
+        self.sigKilled.emit()
+      self.sigStatusChanged.emit(self.status)
 
   # #----------------------------------------------------------------------------------------------------------
   # def clean(self):
@@ -276,25 +362,41 @@ class aProcessItem(QWidget):
   #   self.status = self.P_STATUS_UNKNOWN
 
   #----------------------------------------------------------------------------------------------------------
-  def kill(self, force=False):
-    if not force and not self.pid.text().isdigit(): return
-    if self.worldname.text():
-      self.console.info(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
-    else:
-      self.console.info(f"Killing {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font>...")
-    signal = "-9" if force else "-15"
-    try:
-      out = subprocess.check_output([f"kill {signal} {self.pid.text()}"], shell=True)
-    except Exception as e:
-      self.console.error(f"aProcessItem.kill: unknown error killing (signal: {signal})process with PID {self.pid.text()}", e)
-      self.status = self.P_STATUS_ERROR
-    else:
-      self.setStatus(aProcessItem.P_STATUS_KILLED)
-  
+  def kill(self):
+    self._terminate(signal.SIGKILL)
+
   #----------------------------------------------------------------------------------------------------------
-  def toggle(self, force=False):
+  def terminate(self):
+    self._terminate(signal.SIGTERM)
+
+  #----------------------------------------------------------------------------------------------------------
+  def _terminate(self, sig : signal):
+    if not self.pid.text().isdigit():
+      self.printError(f"aProcessItem.terminate:Error terminating {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font> is invalid!")
+      self.setStatus(self.P_STATUS_ERROR)
+      return
+    
+    if self.worldname.text():
+      self.printInfo(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+    else:
+      self.printInfo(f"Killing {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font>...")
+
+    try:
+      if sig == signal.SIGKILL:
+        cTop.kill(int(self.pid.text()))
+        self.setStatus(self.P_STATUS_KILLED)
+      else:
+        cTop.terminate(int(self.pid.text()))
+        self.setStatus(self.P_STATUS_TERMINATED)
+    except Exception as e:
+      self.printError(f"aProcessItem.terminate: unknown error terminating (signal: {sig}) process with PID {self.pid.text()}", e)
+      self.setStatus(self.P_STATUS_ERROR)
+ 
+  #----------------------------------------------------------------------------------------------------------
+  def toggle(self, kill=False):
     if self.status == self.P_STATUS_RUNNING:
-      self.kill(force)
+      if kill: self.kill()
+      else:    self.terminate()
     else:
       self.launch()
 

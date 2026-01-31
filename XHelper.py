@@ -112,9 +112,30 @@ class XHelper(QObject):
   sigGotWinID = pyqtSignal((int,list))
   KEYSYM = parseKeysymHeader(P_DEFAULT_KEYSYM) 
   MODIFIERS, MODIFIER_MASKS = buildModifiers()
+  printInfo    = lambda x : print(x)
+  printError   = lambda x : print(x)
+  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
+  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
 
   #----------------------------------------------------------------------------------------------------------
-  def __init__(self, main=None):
+  @classmethod
+  def attachConsole(self, console):
+    self.printInfo = console.info
+    self.printError = console.error
+    self.printDebug = console.debug
+    self.printWarning = console.warning
+    self.printInfo("Console attached to XHelper")
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def deattachConsole(self):
+    self.printInfo    = lambda x : print(x)
+    self.printDebug   = lambda x : print(x)
+    self.printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
+    self.printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
+
+  #----------------------------------------------------------------------------------------------------------
+  def __init__(self):
     super().__init__()
     self.disp = display.Display()
     self.root : display.Window = self.disp.screen().root
@@ -124,17 +145,6 @@ class XHelper(QObject):
     self.netWMName = self.disp.intern_atom('_NET_WM_NAME')
     self.WMName = self.disp.intern_atom('WM_NAME')
     self.utf8String = self.disp.intern_atom('UTF8_STRING')
-
-    if main:
-      self.printInfo = self.main.console.info
-      self.printError = self.main.console.error
-      self.printDebug = self.main.console.debug
-      self.printWarning = self.main.console.warning
-    else:
-      self.printInfo    = lambda x : print(x)
-      self.printError   = lambda x : print(x)
-      self.printDebug   = lambda x : print(x)
-      self.printWarning = lambda x : print(x)
 
   #----------------------------------------------------------------------------------------------------------
   def getKeySym(self, key : str) -> int:
@@ -162,7 +172,7 @@ class XHelper(QObject):
         time.sleep(P_DEFAULT_SLEEP)
         continue
       else:
-        self.printInfo(f" Error in XHelper.getWinID: no window found {f'(timeout={timeout})' if timeout>0.0 else ''}")
+        self.printInfo(f"[XHelper.getWinID] no window found {f'(timeout={timeout})' if timeout>0.0 else ''}")
         return None
       
   #----------------------------------------------------------------------------------------------------------
@@ -172,7 +182,7 @@ class XHelper(QObject):
     clientList = self.root.get_full_property(self.netClientList, X.AnyPropertyType)
 
     if not clientList:
-      self.printInfo(" Error in XHelper.tryWinID: no windows founds at all!")
+      self.printError("[XHelper.tryWinID] no windows founds at all!")
       return None
 
     for winID in clientList.value:
@@ -290,7 +300,7 @@ class XHelper(QObject):
         print(f"Warning: MOTIF hints has {len(values)} values (expected 5)")
         return {'raw': values}
     else:
-      self.printError(f"ERROR in XHelper: window {winID} has no MOTIF WM hints property")
+      self.printError(f"[xHelper.getWindowHint] window {winID} has no MOTIF WM hints property")
       return None
       
   #----------------------------------------------------------------------------------------------------------
@@ -350,10 +360,8 @@ class XHelper(QObject):
     #   seq = self._parseKeystring(keystring)
           
     for item in script:
-      print(f"executing {item}")
       # TODO: parse accepted commands properly
       if callable(item):
-        print(f"calling callable {item}")
         item()
         time.sleep(0.1)
       elif item.startswith("sleep") or item.startswith("delay"):
@@ -462,18 +470,18 @@ class XHelper(QObject):
         grabbed[(modmask, keycode)] = callback
         self.root.grab_key( keycode, modmask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
         grabbed[(modmask | X.LockMask, keycode)] = callback
-        self.printDebug(f"XHelper.getShortcutsDaemon: registered \"{keystring}\"")
+        self.printDebug(f"[XHelper.getShortcutsDaemon:Debug] registered \"{keystring}\"")
       except Exception as e:
         raise(f"XHelper.getShortcutsDaemon: failed to grab \"{keystring}\"\n{e}")
     
     if not grabbed:
-      self.printDebug(f"XHelper.getShortcutsDaemon: not hotkeys passed!")
+      self.printDebug(f"[XHelper.getShortcutsDaemon:Debug] no hotkeys passed!")
       return
     
     daemonStopSignal = threading.Event()
     
     def daemonLoop():
-      self.printDebug(f"XHelper.getShortcutsDaemon: daemon started running")
+      self.printDebug(f"[XHelper.getShortcutsDaemon:Debug] daemon started running")
       self.root.change_attributes(event_mask=X.KeyPressMask)
       
       # try:

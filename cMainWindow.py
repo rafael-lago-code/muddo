@@ -56,7 +56,7 @@ class cMainWindow(QMainWindow):
     self.patch = cPatch(self)
     self.settings = cSettings(self)
     self.macros = cMacros(self)
-    self.processManager = cProcessManager(self)
+    self.processManager = cProcessManager()
     self.processManager.setVisible(False)    
     self.dh = cDungeonHelper(self)
 
@@ -84,7 +84,7 @@ class cMainWindow(QMainWindow):
     aSaveAll = self.btnLaunch.menu.addAction("Save all windows positions")
     aConf = self.btnLaunch.menu.addAction("Show/Hide setting UI")
     aLaunchAll.triggered.connect(self.processManager.startAll)
-    aKillAll.triggered.connect(self.processManager.killAll)
+    aKillAll.triggered.connect(self.processManager.terminateAll)
     aRestoreAll.triggered.connect(self.processManager.restoreWindowAll)
     aSaveAll.triggered.connect(self.processManager.saveWindowAll)
     aConf.triggered.connect(self.credentials.toggle)
@@ -105,7 +105,12 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
+    from XHelper import XHelper
+    from cMilvian import cMilvian
+    from cTop import cTop
     self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
+
+    cProcessManager.attachMain(self)
 
     self.settings.initialize()
     if self.profile() is None:
@@ -115,6 +120,13 @@ class cMainWindow(QMainWindow):
     self.news.initialize()
     self.patch.initialize()
     self.credentials.sigFetchedQueueInfo.connect(self.captureOrphan)
+
+    XHelper.attachConsole(self.console)
+    cTop.attachConsole(self.console)
+    cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()), self.console)
+    
+    #TODO MOVE CAPTURE ORPHANS TO cPROCESS!!!! AND CONNECT btNCAPUREORPHANS !
+   
 
   #----------------------------------------------------------------------------------------------------------
   def profile(self, pname : str = None) -> cProfil:

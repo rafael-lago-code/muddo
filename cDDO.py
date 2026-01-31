@@ -22,8 +22,9 @@ from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
 from tAuthenticator import tAuthenticator
 from XHelper import XHelper
+from cTop import cTop
 import subprocess
-import os, time, glob
+import os, time, glob, threading
 from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -39,8 +40,12 @@ class cDDO(aProcessItem):
   sigGotWinID = pyqtSignal(bool)
   gameExec = 'x64/dndclient64.exe'
 
+  P_STATUS_AUTHENTICATING = 30
+  P_STATUS_QUEUEING       = 31
+  P_STATUS_QUEUEDONE      = 32
+
   def __init__(self, main : cMainWindow, username : str, world : cWorld):
-    super().__init__(main)
+    super().__init__()
     self.auth : tAuthenticator = None
     self.world = world
     self.key = username
@@ -56,29 +61,97 @@ class cDDO(aProcessItem):
     self.btnRestore.setEnabled(False)
     self.updateTooltip()
 
-    self.sigAuthenticated.connect(self.updateTooltip) # also calls self.auth.queue()
     self.sigRunning.connect(self.watchPID)
     self.sigGotPID.connect(self.watchWinID)
+    self.sigGotWinID.connect(lambda : self.setStatus(self.status))
     self.sigGotWinID.connect(self.restoreWindow)
     self.sigGotWinID.connect(self.btnSave.setEnabled)
     self.sigGotWinID.connect(self.btnRestore.setEnabled)
 
-    self.sigAuthenticating.connect(lambda : self.pid.setText("Auth"))
-    self.sigQueued.connect(lambda : self.pid.setText("Queue"))
-    self.sigQueueDone.connect(lambda : self.pid.setText("Launch"))
+  #----------------------------------------------------------------------------------------------------------
+  def setStatus(self, newStatus):
+    _oldstatus = self.status
+    if self.status != newStatus:
+      if newStatus == self.P_STATUS_AUTHENTICATING:
+        self.status = self.P_STATUS_AUTHENTICATING
+        self.sigAuthenticating.emit(self.username.text())
+        self.pid.setText("Auth")
+        self.printInfo(f"Authenticating \"{C_SILVER}{self.username.text()}</font>\"...")
+      elif newStatus == self.P_STATUS_QUEUEING:
+        self.status = self.P_STATUS_QUEUEING
+        self.sigAuthenticated.emit(self.username.text())
+        self.pid.setText("Queue")
+        self.printInfo(f"Queueing \"{C_SILVER}{self.username.text()}</font>\"...")
+        self.sigQueued.emit(self.username.text())
+      elif newStatus == self.P_STATUS_QUEUEDONE:
+        self.status = self.P_STATUS_QUEUEDONE
+        self.pid.setText("Launch")
+        self.sigQueueDone.emit(self.username.text())
+      elif newStatus == self.P_STATUS_RUNNING:
+        self.printInfo(f"Running \"{C_SILVER}{self.username.text()}</font>\"...")
+    super().setStatus(newStatus)
+    if _oldstatus != self.status: self.sigStatusChanged.emit(self.status)
+    self.updateTooltip()
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
-    exec = tGameExecutable(self)
-    QtCore.QThreadPool.globalInstance().start(exec)
-    self.setStatus(cDDO.P_STATUS_RUNNING)
-    self.console.info(f"Launching {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
+    t = threading.Thread(target=self._launchThread, daemon=True)
+    t.start()
+    self.printInfo(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
                       {self.worldname.text()}</font>...")
-  
+    
   #----------------------------------------------------------------------------------------------------------
-  def watchPID(self):
-    pidw = tPIDWatcher(self)
-    QtCore.QThreadPool.globalInstance().start(pidw)
+  def _launchThread(self):
+    self.auth = tAuthenticator(self)
+    self.sigChangeRequest.emit(self.P_STATUS_AUTHENTICATING)
+
+    if not self.auth.authenticate():
+      self.sigChangeRequest.emit(self.P_STATUS_ERROR)
+      return
+    
+    self.sigChangeRequest.emit(self.P_STATUS_QUEUEING)
+    if not self.auth.wait():
+      self.sigChangeRequest.emit(self.P_STATUS_ERROR)
+      return
+    self.sigChangeRequest.emit(self.P_STATUS_QUEUEDONE)
+
+    arg = self.parseArguments()
+    gameDir = self.frozenProfile.gameDir.text()
+
+    cmd = (
+        f'cd "{gameDir}" && '
+        f'STEAM_ROOT="{self.frozenProfile.steamRoot.text()}" '
+        f'PROTON_LOG=1 '
+        f'STEAM_COMPAT_DATA_PATH="{self.frozenProfile.compatData.text()}" '
+        f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.frozenProfile.compatData.text()}" '
+        f'"{self.frozenProfile.protonExec.text()}" run "{cDDO.gameExec}" {arg} '
+    )
+
+    logFile = open(f"{P_DEFAULT_CONFIGDIR}/ddoLog{self.username.text()}.txt", "w")
+    proc = subprocess.Popen(
+        cmd,
+        shell=True,                     # Needed for env var prefix + cd + &&
+        stdout=logFile,
+        stderr=subprocess.STDOUT,       # Merge stderr → stdout → log
+        start_new_session=True,         # New session → survives Python exit
+        close_fds=True,
+        env=os.environ.copy(),          # Inherit + your vars are in cmd
+    )
+    if proc:
+      self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
+      exitCode = proc.wait()
+    else:
+      self.printInfo("tGameExecutable.run:Error launching, check logs for details!")
+      exitCode = 1
+
+    # this locks until the DDO process ends, and it is intentional!
+    # If it does end, then it was closed by the user (or some error...)
+    if exitCode==137:
+      self.sigChangeRequest.emit(self.P_STATUS_KILLED)
+    elif exitCode in (1,2,126,127):
+      self.sigChangeRequest.emit(self.P_STATUS_ERROR)
+    else:
+      self.sigChangeRequest.emit(self.P_STATUS_TERMINATED)
 
   #----------------------------------------------------------------------------------------------------------
   def watchWinID(self):
@@ -93,34 +166,62 @@ class cDDO(aProcessItem):
         if title == 'Dungeons and Dragons Online' or worldPrefix in title:
           self.winID.setText(str(w))
           self.sigGotWinID.emit(True)
-  
     xh = XHelper()
     xh.sigGotWinID.connect(validateWinID)
     xh.requestWinID(self.pid.text(), 10.0)
 
   #----------------------------------------------------------------------------------------------------------
+  def watchPID(self):
+    def _watchPIDThread(self):
+      startTime = time.time()
+      while True:
+        candidates = cTop.getByCommand(self.auth.subscription)
+        for c in candidates:
+          if cTop.getCommand(c).startswith(cDDO.gameExec):
+            self.sigGotPID.emit(str(c))
+            self.sigChangeRequest.emit(self.status)
+            return c
+        if (time.time() - startTime) > 15.0:
+          self.printError(f"aProcessItem.watchPID: timeout error while looking for PID for {self.username.text()}")
+          return None
+        time.sleep(0.1)
+      # candidates = cTop.waitPID(exec, self.auth.subscription, 15.0)
+      # print(self.auth.subscription)
+      # print(candidates)
+      # if isinstance(candidates[0],int):
+      #   self.sigGotPID.emit(str(candidates[0]))
+      #   self.sigChangeRequest.emit(self.status)
+      # else:
+      # self.printError(f"aProcessItem.watchPID:Error getting PID, don't know what to do with this: {candidates}")
+
+    t = threading.Thread(target=_watchPIDThread, args=(self,), daemon=True)
+    t.start()
+
+  #----------------------------------------------------------------------------------------------------------
   def audioToggle(self):
     if XHelper().isPIDMuted(self.pid):
-      self.console.info(f"{C_SILVER}Muting</font> {self.pid}...")
+      self.printInfo(f"{C_SILVER}Muting</font> {self.pid}...")
       XHelper().unmutePID(self.pid)
       self.btnMute.setIcon(getIcon(P_ICON_UNMUTE))
     else:
-      self.console.info(f"{C_SILVER}Unmuting</font> {self.pid}...")
+      self.printInfo(f"{C_SILVER}Unmuting</font> {self.pid}...")
       XHelper().mutePID(self.pid)
       self.btnMute.setIcon(getIcon(P_ICON_MUTE))
   
   #----------------------------------------------------------------------------------------------------------
   def updateTooltip(self):
-    if self.auth is None:
-      text = "<i>Not yet authenticated...</i>"
-    else:
-      arg = self.parseArguments().split(" ")
-      text = "<b>Commandline arguments:<br>-----------------------------------------------------</b></br>"
-      for a in arg:
-        if a.startswith("-"):
-          text += "<br><b>"+a+"</b> "
-        else:
-          text += a
+    text = "<i>Not yet authenticated...</i>"
+    if self.auth:
+      try:
+        arg = self.parseArguments().split(" ")
+        text = "<b>Commandline arguments:<br>-----------------------------------------------------</b></br>"
+        for a in arg:
+          if a.startswith("-"):
+            text += "<br><b>"+a+"</b> "
+          else:
+            text += a
+      except:
+        pass
     self.setToolTip(text)
   
   #----------------------------------------------------------------------------------------------------------
@@ -140,8 +241,8 @@ class cDDO(aProcessItem):
       return
     xh = XHelper()
     xh.moveWindow(int(self.winID.text()), pos1, pos2)
-    xh.remapWindow(int(self.winID.text()))
-    xh.setBorderless(int(self.winID.text()))
+    # xh.remapWindow(int(self.winID.text()))
+    # xh.setBorderless(int(self.winID.text()))
   
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):
@@ -179,14 +280,14 @@ class cDDO(aProcessItem):
           username = ((os.path.basename(a)).replace("GLSAuthServer_","")).replace(".xml","")
           break
     if not username:
-      main.console.debugMessage(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
+      cDDO.printDebug(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
       return None
     
     for w in main.credentials.listWorlds.worlds.values():
       if w.loginServer == loginServer:
         world = w
     if not world:
-      main.console.debugMessage(f" Trying to match orphan process failed; loginServer={loginServer} doesn't match any world")
+      cDDO.printDebug(f" Trying to match orphan process failed; loginServer={loginServer} doesn't match any world")
       return None
 
     # missing profile info, what to do?
@@ -194,92 +295,4 @@ class cDDO(aProcessItem):
     orphan.pid.setText(pid)
     orphan.setStatus(cDDO.P_STATUS_RUNNING)
     orphan.watchWinID()
-    return orphan
-
-
-#----------------------------------------------------------------------------------------------------------
-class tGameExecutable(QRunnable):
-  def __init__(self, ddo : cDDO):
-    super().__init__()
-    self.ddo = ddo
-    self.console = ddo.console
-
-  #----------------------------------------------------------------------------------------------------------
-  def run(self):
-    self.ddo.auth = tAuthenticator(self.ddo)
-    self.ddo.setStatus(self.ddo.P_STATUS_AUTHENTICATING)
-    self.ddo.sigAuthenticating.emit(self.ddo.username.text())
-    self.console.info(f"Authenticating \"{C_SILVER}{self.ddo.username.text()}</font>\"...")
-
-    if not self.ddo.auth.authenticate():
-      self.ddo.setStatus(self.ddo.P_STATUS_ERROR)
-      return
-    
-    self.ddo.sigAuthenticated.emit(self.ddo.username.text())
-    self.ddo.setStatus(self.ddo.P_STATUS_QUEUEING)
-    self.ddo.sigQueued.emit(self.ddo.username.text())
-    self.console.info(f"Queueing \"{C_SILVER}{self.ddo.username.text()}</font>\"...")
-    if not self.ddo.auth.wait():
-      self.ddo.setStatus(self.ddo.P_STATUS_ERROR)
-      return
-    
-    self.ddo.sigQueueDone.emit(self.ddo.username.text())
-
-    arg = self.ddo.parseArguments()
-    gameDir = self.ddo.frozenProfile.gameDir.text()
-
-    cmd  = f"cd \"{gameDir}\" ; "
-    cmd += f"STEAM_ROOT=\"{self.ddo.frozenProfile.steamRoot.text()}\" PROTON_LOG=1 "
-    cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.ddo.frozenProfile.compatData.text()}\" "
-    cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.ddo.frozenProfile.compatData.text()}\" "
-    cmd += f"\"{self.ddo.frozenProfile.protonExec.text()}\" run "
-    cmd += f"{cDDO.gameExec} "
-    cmd += f"{arg}"
-
-    # TODO: I was supposed to use subprocess and set environment variables and CWD properly
-    # but it simply does not start the game. Once I figure it out I will use it instead of
-    # os.system call. For the time being, everything needs to be a oneliner.
-    # TODO: logfile is not working anyways...
-    # logname = P_DEFAULT_CONFIGDIR+os.sep+self.auth.world.name+"_"+self.auth.username
-    # if os.path.exists(logname+".out"): os.rename(logname+".out",logname+".out.old")
-    # if os.path.exists(logname+".err"): os.rename(logname+".err",logname+".err.old")
-    self.ddo.setStatus(self.ddo.P_STATUS_RUNNING)
-    self.ddo.sigRunning.emit(True)
-    self.console.info(f"Launching \"{C_SILVER}{self.ddo.username.text()}</font>\"...")
-    os.system(cmd)
-
-    if self.ddo.status == self.ddo.P_STATUS_RUNNING:
-      self.ddo.sigTerminated.emit(True)
-    # out = subprocess.Popen([self.cmd], cwd=self.gameDir, env=self.evars, \
-    #                        stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
-    # while True:
-    #   line = out.stdout.readline()
-    #   if line: print(line)
-    #   line = out.stderr.readline()
-    #   if line: print(line)
-  
-#----------------------------------------------------------------------------------------------------------
-class tPIDWatcher(QRunnable):
-  def __init__(self, ddo : cDDO):
-    super().__init__()
-    self.ddo = ddo
-
-  #----------------------------------------------------------------------------------------------------------
-  def run(self):
-    for i in range(100):
-      try:
-        out = subprocess.check_output([f"ps a -o pid,command | grep {self.ddo.auth.subscription}"], shell=True)
-        for line in out.decode().strip().split('\n'):
-          line = line.split()
-          if line[1] == cDDO.gameExec:
-            self.ddo.pid.setText(line[0])
-            self.ddo.sigGotPID.emit(True)
-            return True
-      except: pass
-      time.sleep(0.1)
-    self.ddo.console.error("tPIDWatcher: could not get PID, process may not be running anymore...")
-    self.ddo.sigGotPID.emit(False)
-    return False
-
-
   

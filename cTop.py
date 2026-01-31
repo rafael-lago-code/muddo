@@ -25,6 +25,27 @@ P_DEFAULT_USERNAME=os.getlogin()
 
 #----------------------------------------------------------------------------------------------------------
 class cTop:
+  printInfo    = lambda x : print(x)
+  printDebug   = lambda x : print(x)
+  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
+  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def attachConsole(self, console):
+    self.printInfo = console.info
+    self.printError = console.error
+    self.printDebug = console.debug
+    self.printWarning = console.warning
+    self.printInfo("Console attached to cTop")
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def deattachConsole(self):
+    self.printInfo    = lambda x : print(x)
+    self.printError   = lambda x : print(x)
+    self.printDebug   = lambda x : print(x)
+    self.printWarning = lambda x : print(x)
   
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
@@ -63,9 +84,25 @@ class cTop:
   
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
+  def getExec(pid) -> str:
+    if os.path.exists(f'/proc/{pid}/exe'):
+      return os.path.realpath(f'/proc/{pid}/exe')
+    else:
+      return ""
+  
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def getCommand(pid) -> str:
+    if os.path.exists(f'/proc/{pid}/cmdline'):
+      with open(f'/proc/{pid}/cmdline', 'rb') as f:
+        return f.read().decode('utf-8', errors='ignore')
+    else:
+      return ""
+  
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
   def getByCommand(searchTerm, username=P_DEFAULT_USERNAME) -> list:
     pids = []
-    
     for pid in cTop.getAll(username):
       try:
         cmdlinePath = f'/proc/{pid}/cmdline'
@@ -296,3 +333,18 @@ class cTop:
       time.sleep(0.1)
     
     return True
+  
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def waitPID(exec=None, cmd=None, timeout=None):
+    # Matches are exec OR cmd, not AND!
+    startTime = time.time()
+    while True:
+      candidates = []
+      if exec: candidates += cTop.getByExec(exec)
+      if cmd:  candidates += cTop.getByCommand(cmd)
+      if candidates:
+        return candidates
+      if timeout is not None and (time.time() - startTime) > timeout:
+        return False      
+      time.sleep(0.1)

@@ -148,19 +148,19 @@ class cSettings(cToggler):
       self.main.console.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{pname}\",\
                           but it was not found! Doing nothing instead...")
 
-  #----------------------------------------------------------------------------------------------------------
-  def findxdotool(self):
-    if self.usexdotool.isChecked() and self.xdotoolExec.text()=="":
-      try:
-        result = subprocess.run(["which", "xdotool"], stdout=subprocess.PIPE)
-        if result.stdout:
-          result = result.stdout.decode('utf-8').strip()
-          self.xdotoolExec.setText(result)
-          self.main.console.info(f"Setting xdotool binary to {result}...")
-        else:
-          self.main.console.info("[W] xdotool binary not found! Is it installed? If so, please set it manually...")
-      except Exception as e:
-        self.main.console.error("Error looking for xdotool binary", e)
+  # #----------------------------------------------------------------------------------------------------------
+  # def findxdotool(self):
+  #   if self.usexdotool.isChecked() and self.xdotoolExec.text()=="":
+  #     try:
+  #       result = subprocess.run(["which", "xdotool"], stdout=subprocess.PIPE)
+  #       if result.stdout:
+  #         result = result.stdout.decode('utf-8').strip()
+  #         self.xdotoolExec.setText(result)
+  #         self.main.console.info(f"Setting xdotool binary to {result}...")
+  #       else:
+  #         self.main.console.info("[W] xdotool binary not found! Is it installed? If so, please set it manually...")
+  #     except Exception as e:
+  #       self.main.console.error("Error looking for xdotool binary", e)
 
   #----------------------------------------------------------------------------------------------------------
   def load(self):
