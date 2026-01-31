@@ -206,6 +206,23 @@ class cTop:
   
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
+  def sinalAll(cmd, sig):
+    allPIDs = cTop.getByCommand(cmd)
+    for p in allPIDs:
+      cTop.sendSignal(p, sig)
+
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def terminateAll(cmd):
+    cTop.sendSignal(cmd, signal.SIGTERM)
+
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def killAll(cmd):
+    cTop.sendSignal(cmd, signal.SIGKILL)
+
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
   def kill(pid):
     cTop.sendSignal(pid, signal.SIGKILL)
   

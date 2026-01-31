@@ -182,12 +182,12 @@ class cMacrosDaemon(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
     if self.process:
-      self.main.console.warning(" Attempting to launch Macros Daemon when one is already running."+
+      self.printWarning(" Attempting to launch Macros Daemon when one is already running."+
                                 " Try right-click->kill to cleanup state.")
     else:
       parsed = self.convert(self.main.macros.consolidateActiveMacros())
       if not parsed:
-        self.main.console.warning(" Attempting to launch Macros Daemon but no macros found." \
+        self.printWarning(" Attempting to launch Macros Daemon but no macros found." \
         " Make you have macro sets selected and that the relevant accounts are online before starting" \
         " the Macros Daemon")
         return
@@ -235,7 +235,7 @@ class cMacrosDaemon(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def cleanup(self):
-    self.main.console.info("Purging all possible shortcuts combinations...")
+    self.printInfo("Purging all possible shortcuts combinations...")
     XHelper().forceCleanup()
 
   

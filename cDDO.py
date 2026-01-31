@@ -37,7 +37,6 @@ class cDDO(aProcessItem):
   sigAuthenticated = pyqtSignal(str)
   sigQueued = pyqtSignal(str)
   sigQueueDone = pyqtSignal(str)
-  sigGotWinID = pyqtSignal(bool)
   gameExec = 'x64/dndclient64.exe'
 
   P_STATUS_AUTHENTICATING = 30
@@ -64,9 +63,9 @@ class cDDO(aProcessItem):
     self.sigRunning.connect(self.watchPID)
     self.sigGotPID.connect(self.watchWinID)
     self.sigGotWinID.connect(lambda : self.setStatus(self.status))
-    self.sigGotWinID.connect(self.restoreWindow)
-    self.sigGotWinID.connect(self.btnSave.setEnabled)
-    self.sigGotWinID.connect(self.btnRestore.setEnabled)
+    self.sigGotWinID.connect(lambda x: self.restoreWindow())
+    # self.sigGotWinID.connect(lambda x: self.btnSave.setEnabled(x!=None))
+    # self.sigGotWinID.connect(lambda x: self.btnRestore.setEnabled(x!=None))
 
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, newStatus):
@@ -127,7 +126,7 @@ class cDDO(aProcessItem):
         f'"{self.frozenProfile.protonExec.text()}" run "{cDDO.gameExec}" {arg} '
     )
 
-    logFile = open(f"{P_DEFAULT_CONFIGDIR}/ddoLog{self.username.text()}.txt", "w")
+    logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(
         cmd,
         shell=True,                     # Needed for env var prefix + cd + &&
@@ -165,7 +164,7 @@ class cDDO(aProcessItem):
         title = xh.getWindowTitle(w)
         if title == 'Dungeons and Dragons Online' or worldPrefix in title:
           self.winID.setText(str(w))
-          self.sigGotWinID.emit(True)
+          self.sigGotWinID.emit(str(w))
     xh = XHelper()
     xh.sigGotWinID.connect(validateWinID)
     xh.requestWinID(self.pid.text(), 10.0)
@@ -182,17 +181,9 @@ class cDDO(aProcessItem):
             self.sigChangeRequest.emit(self.status)
             return c
         if (time.time() - startTime) > 15.0:
-          self.printError(f"aProcessItem.watchPID: timeout error while looking for PID for {self.username.text()}")
+          self.printError(f"cDDO.watchPID: timeout error while looking for PID for {self.username.text()}")
           return None
         time.sleep(0.1)
-      # candidates = cTop.waitPID(exec, self.auth.subscription, 15.0)
-      # print(self.auth.subscription)
-      # print(candidates)
-      # if isinstance(candidates[0],int):
-      #   self.sigGotPID.emit(str(candidates[0]))
-      #   self.sigChangeRequest.emit(self.status)
-      # else:
-      # self.printError(f"aProcessItem.watchPID:Error getting PID, don't know what to do with this: {candidates}")
 
     t = threading.Thread(target=_watchPIDThread, args=(self,), daemon=True)
     t.start()
@@ -244,6 +235,10 @@ class cDDO(aProcessItem):
     # xh.remapWindow(int(self.winID.text()))
     # xh.setBorderless(int(self.winID.text()))
   
+  #----------------------------------------------------------------------------------------------------------
+  def getLogFilename(self):
+    return f"{P_DEFAULT_CONFIGDIR}/ddoLog_{self.username.text()}.txt"
+
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):
     arg = self.auth.credentials.serverInfo.gameClientArgTemplate

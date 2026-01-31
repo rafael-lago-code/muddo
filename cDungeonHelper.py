@@ -20,8 +20,10 @@
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable
 from cProcess import aProcessItem
+from XHelper import XHelper
+from cTop import cTop
 import subprocess
-import os, time
+import os, time, threading
 from cWidgets.cOrb import cOrb
 from cWidgets.util import *
 from typing import TYPE_CHECKING
@@ -55,18 +57,15 @@ class cDungeonHelper(aProcessItem):
     self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
     self.actionToggle.triggered.connect(self.toggle)
     self.actionRestart.triggered.connect(self.restart)
-    self.actionKill.triggered.connect(lambda : self.terminate(force=True))
+    self.actionKill.triggered.connect(self.kill)
     self.actionConf.triggered.connect(lambda : main.settings.toggle())
 
-    self.sigGotPID.connect(self.updateTooltip)    
-  
-  #----------------------------------------------------------------------------------------------------------
-  # def launchDH(self):
-  #   if not self.DHProcess:
-  #     self.DHProcess = cDungeonHelper(self)
-  #     self.processManager.addItem(self.DHProcess)
-  #   self.processManager.setVisible(True)
-  #   self.DHProcess.launch()
+    self.sigRunning.connect(self.watchPID)
+    self.sigGotPID.connect(self.watchWinID)
+    self.sigGotWinID.connect(lambda : self.setStatus(self.status))
+    # self.sigGotWinID.connect(lambda x: self.restoreWindow(x!=None))
+    # self.sigGotWinID.connect(lambda x: self.btnSave.setEnabled(x!=None))
+    # self.sigGotWinID.connect(lambda x: self.btnRestore.setEnabled(x!=None))
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
@@ -75,29 +74,103 @@ class cDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
     if not self.main.profile().useDungeonHelper.isChecked(): return
-    if self.status != self.P_STATUS_RUNNING:
-      self.console.info(f"Launching DungeonHelper.exe...")
+    if self.status == self.P_STATUS_RUNNING:
+      self.printWarning(" Attempting to launch Dungeon Helper, but it is already running."+
+                        " Try right-click->kill to cleanup state.")
+      return
+    self.pid.setText("")
+    self.printInfo(f"Starting {C_SILVER}DungeonHelper.exe</font>...")
+    t = threading.Thread(target=self._launchThread, daemon=True)
+    t.start()
+    
+  #----------------------------------------------------------------------------------------------------------
+  def _launchThread(self):
+    
+    dhexec = self.main.profile().DungeonHelperExec.text()
+    cmd = (
+      f'STEAM_ROOT="{self.main.profile().steamRoot.text()}" PROTON_LOG=1 '
+      f'STEAM_COMPAT_DATA_PATH="{self.profile().compatData.text()}" '
+      f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.profile().compatData.text()}" '
+      f'"{self.profile().protonExec.text()}" run "{pathLinux2Windows(dhexec)}" '
+    )
 
-      dhexec = self.main.profile().DungeonHelperExec.text()
-      cmd  = f"STEAM_ROOT=\"{self.main.profile().steamRoot.text()}\" PROTON_LOG=1 "
-      cmd += f"STEAM_COMPAT_DATA_PATH=\"{self.profile().compatData.text()}\" "
-      cmd += f"STEAM_COMPAT_CLIENT_INSTALL_PATH=\"{self.profile().compatData.text()}\" "
-      cmd += f"\"{self.profile().protonExec.text()}\" run "
-      cmd += f"\"{pathLinux2Windows(dhexec)}\""
+    logFile = open(self.getLogFilename(), "w")
+    proc = subprocess.Popen(
+        cmd,
+        shell=True,                     # Needed for env var prefix + cd + &&
+        stdout=logFile,
+        stderr=subprocess.STDOUT,       # Merge stderr → stdout → log
+        start_new_session=True,         # New session → survives Python exit
+        close_fds=True,
+        env=os.environ.copy(),          # Inherit + your vars are in cmd
+    )
 
-      exec = tDungeonHelperExecutable(self, cmd)
-      QtCore.QThreadPool.globalInstance().start(exec)
-      self.profileID.setText(self.main.profile().name)
-      self.pid.setText("L")
-      pidw = tDHPIDWatcher(self, dhexec)
-      QtCore.QThreadPool.globalInstance().start(pidw)
-
-      if not self.main.processManager.itemExists(self):
-        self.main.processManager.addItem(self)
-      self.setStatus(self.P_STATUS_RUNNING)
+    if proc:
+      self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
+      self.main.processManager.addItem(self)
+      exitCode = proc.wait()
     else:
-      self.main.console.warning(" Attempting to launch Dungeon Helper it is already running."+
-                                " Try right-click->kill to cleanup state.")
+      self.printInfo("cDungeonHelper.launchThread: error launching, check logs for details!")
+      exitCode = 1
+
+    # this locks until the DH process ends, and it is intentional!
+    # If it does end, then it was closed by the user (or some error...)
+    if exitCode==137:
+      self.sigChangeRequest.emit(self.P_STATUS_KILLED)
+    elif exitCode in (1,2,126,127):
+      self.sigChangeRequest.emit(self.P_STATUS_ERROR)
+    else:
+      self.sigChangeRequest.emit(self.P_STATUS_TERMINATED)
+
+  #----------------------------------------------------------------------------------------------------------
+  def watchPID(self):
+    def _watchPIDThread(self, baseExec):
+      startTime = time.time()
+      while True:
+        candidates = cTop.getByCommand(baseExec)
+        for c in candidates:
+          if cTop.getCommand(c).startswith('C:\\'):
+            self.sigGotPID.emit(str(c))
+            self.sigChangeRequest.emit(self.status) # just to refresh
+            return c
+        if (time.time() - startTime) > 15.0:
+          self.printError(f"cDungeonHelper.watchPID: timeout error while looking for PID")
+          return None
+        time.sleep(0.1)
+    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    t = threading.Thread(target=_watchPIDThread, args=(self,baseExec), daemon=True)
+    t.start()
+
+  #----------------------------------------------------------------------------------------------------------
+  def watchWinID(self):
+    def _watchWinIDThread(self):
+      xh = XHelper()
+      startTime = time.time()
+      while True:
+        candidates = xh.getWinID(self.pid.text())
+        if candidates:
+          self.sigGotWinID.emit(str(candidates[0]))
+          self.sigChangeRequest.emit(self.status) # just to refresh
+          return candidates[0]
+        if (time.time() - startTime) > 15.0:
+          self.printError(f"cDungeonHelper.watchWinID: timeout error while looking for WinID")
+          return None
+        time.sleep(0.1)
+
+    t = threading.Thread(target=_watchWinIDThread, args=(self,), daemon=True)
+    t.start()
+
+  #----------------------------------------------------------------------------------------------------------
+  def setStatus(self, newStatus):
+    if newStatus != self.P_STATUS_RUNNING:
+        self.pid.setText("")
+    super().setStatus(newStatus)
+    self.btnMute.setEnabled(False)
+    self.updateTooltip()
+
+  #----------------------------------------------------------------------------------------------------------
+  def getLogFilename(self):
+    return f"{P_DEFAULT_CONFIGDIR}/dhelper_{self.username.text()}.txt"
 
   #----------------------------------------------------------------------------------------------------------
   def toggle(self):
@@ -107,9 +180,17 @@ class cDungeonHelper(aProcessItem):
       self.launch()
 
   #----------------------------------------------------------------------------------------------------------
-  def terminate(self, force=False):
-    super().terminate(force)
-    self.setStatus(self.P_STATUS_KILLED)
+  def terminate(self):
+    super().terminate()
+    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    cTop.terminateAll(baseExec)
+    self.clear()
+
+  #----------------------------------------------------------------------------------------------------------
+  def kill(self):
+    super().kill()
+    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    cTop.killAll(baseExec)
     self.clear()
 
   #----------------------------------------------------------------------------------------------------------
@@ -127,7 +208,10 @@ class cDungeonHelper(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def restart(self, force=False):
-    self.terminate(force)
+    if force:
+      self.kill()
+    else:
+      self.terminate()
     self.launch()
 
   #----------------------------------------------------------------------------------------------------------
@@ -137,43 +221,4 @@ class cDungeonHelper(aProcessItem):
     else:
       text = "<i>Not running</i>"
     self.setToolTip(text)
-  
-#----------------------------------------------------------------------------------------------------------
-class tDungeonHelperExecutable(QRunnable):
-  def __init__(self,dh : cDungeonHelper, exec):
-    super().__init__()
-    self.dh = dh
-    self.exec = exec
-  #----------------------------------------------------------------------------------------------------------
-  def run(self):
-    os.system(self.exec)
-    if self.dh.status == self.dh.P_STATUS_RUNNING:
-      self.dh.sigTerminated.emit(True)
-
-
-#----------------------------------------------------------------------------------------------------------
-class tDHPIDWatcher(QRunnable):
-  def __init__(self, dhWidget : cDungeonHelper, exec : str):
-    super().__init__()
-    self.dh = dhWidget
-    self.exec = exec
-
-  #----------------------------------------------------------------------------------------------------------
-  def run(self):
-    baseExec = os.path.basename(self.exec)
-    for i in range(100):
-      try:
-        out = subprocess.check_output([f"ps x | grep {baseExec}"], shell=True)
-        for line in out.decode().strip().split('\n'):
-          line = line.split()
-          if line[4].startswith("C:\\"):
-            self.dh.pid.setText(line[0])
-            self.dh.status = self.dh.P_STATUS_RUNNING
-            self.dh.sigGotPID.emit(True)
-            return True
-      except: pass
-      time.sleep(0.1)
-    self.dh.console.error("tDHPIDWatcher: could not get PID, process may not be running anymore...")
-    self.dh.sigGotPID.emit(False)
-    return False
   

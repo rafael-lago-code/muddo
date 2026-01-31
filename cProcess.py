@@ -175,6 +175,7 @@ class cProcessManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def addItem(self, p : aProcessItem):
+    if self.itemExists(p): return
     self.btnKillAll.setEnabled(True)
     self.btnSaveAll.setEnabled(True)
     self.btnRestoreAll.setEnabled(True)
@@ -220,6 +221,7 @@ class aProcessItem(QWidget):
   sigChangeRequest = pyqtSignal(int)
   sigStatusChanged = pyqtSignal(int)
   sigGotPID = pyqtSignal(str)
+  sigGotWinID = pyqtSignal(str)
 
   P_STATUS_ERROR   = -1
   P_STATUS_UNKNOWN = 0         # status if PID is unknown. Also after terminating
@@ -287,7 +289,8 @@ class aProcessItem(QWidget):
     self.btnMute.clicked.connect(self.audioToggle)
 
     self.sigChangeRequest.connect(self.setStatus)
-    self.sigGotPID.connect(lambda x : self.pid.setText(x))
+    self.sigGotPID.connect(self.pid.setText)
+    self.sigGotWinID.connect(self.winID.setText)
     
     self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
