@@ -91,7 +91,7 @@ class cProcessManager(cToggler):
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")
     
-    # self.btnCaptureOrphans.clicked.connect(self.main.captureOrphan)
+    self.btnCaptureOrphans.clicked.connect(self.captureOrphan)
     self.btnStartAll.clicked.connect(self.startAll)
     self.btnKillAll.clicked.connect(self.terminateAll)
     self.btnKillAll.ctrlClicked.connect(lambda : self.terminateAll(force=True))
@@ -210,6 +210,31 @@ class cProcessManager(cToggler):
     self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
     for u in self.items.keys():
       self.setColour(self.items[u])
+
+  #----------------------------------------------------------------------------------------------------------
+  def captureOrphan(self):
+    from cDDO import cDDO
+    # output = subprocess.check_output("ps -eo pid,command", shell=True, text=True)
+    # output = output.split("\n")
+    found = 0
+    orphanCandidates = cTop.getByCommand(cDDO.gameExec)
+    for c in orphanCandidates:
+      cmdline = cTop.getCommand(c)
+      cmdline = cmdline.replace("\x00", " ")
+      if cDDO.isDDOCmd(cmdline) and \
+         not self.isPIDManaged(c):
+        orphan : cDDO = cDDO.createFromOrphan(self.main, c, cmdline)
+        if orphan:
+          found += 1
+          self.printInfo(f"cProcessManager: found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
+          self.addItem(orphan)
+          orphan.printInfo = self.printInfo # restores printing ability of orphan
+    if found == 0:
+      self.printInfo(f"cProcessManager: no orphan DDO processes were found")
+
+
+
+
 
 #----------------------------------------------------------------------------------------------------------
 class aProcessItem(QWidget):

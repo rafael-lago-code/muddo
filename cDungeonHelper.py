@@ -18,7 +18,6 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtCore import QRunnable
 from cProcess import aProcessItem
 from XHelper import XHelper
 from cTop import cTop

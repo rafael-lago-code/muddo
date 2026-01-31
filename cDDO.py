@@ -260,11 +260,11 @@ class cDDO(aProcessItem):
   
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
-  def createFromOrphan(main : cMainWindow, line : str) -> cDDO:
-    line = line.split(' ')
-    pid = line[0]
-    auth = line[3]        # used to figure out the account
-    loginServer = line[5] # used to figure out the world
+  def createFromOrphan(main : cMainWindow, pid : int, cmdline : str) -> cDDO:
+    cmdline = cmdline.split(' ')
+    pid = str(pid)
+    auth = cmdline[2]        # used to figure out the account
+    loginServer = cmdline[4] # used to figure out the world
     world = ""
     username = ""
 
@@ -287,7 +287,12 @@ class cDDO(aProcessItem):
 
     # missing profile info, what to do?
     orphan = cDDO(main, username, world)
+    orphan.printInfo = lambda x : None    # Just to prevent it from printing standard messages while building
+    orphan.auth = tAuthenticator(orphan)
+    orphan.auth.subscription = auth
+    orphan.auth.status = tAuthenticator.P_STATUS_DONE
     orphan.pid.setText(pid)
     orphan.setStatus(cDDO.P_STATUS_RUNNING)
     orphan.watchWinID()
+    return orphan
   

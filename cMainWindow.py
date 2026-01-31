@@ -62,7 +62,6 @@ class cMainWindow(QMainWindow):
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
-    # self.btnDH.clicked.connect(self.launchDH)
 
     g = QGridLayout()
     g.addWidget(self.credentials.loginSummary,0,0,1,3)
@@ -100,8 +99,6 @@ class cMainWindow(QMainWindow):
     else:
       self.console.info(f"SSL certificate verification enabled! Using {P_CERTFILE}")
 
-    self.credentials.sigFetchedWorldsInfo.connect(self.captureOrphan)
-
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
@@ -111,6 +108,10 @@ class cMainWindow(QMainWindow):
     self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     cProcessManager.attachMain(self)
+    XHelper.attachConsole(self.console)
+    cTop.attachConsole(self.console)
+
+    self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
 
     self.settings.initialize()
     if self.profile() is None:
@@ -119,14 +120,9 @@ class cMainWindow(QMainWindow):
     self.macros.initialize()
     self.news.initialize()
     self.patch.initialize()
-    self.credentials.sigFetchedQueueInfo.connect(self.captureOrphan)
-
-    XHelper.attachConsole(self.console)
-    cTop.attachConsole(self.console)
+  
     cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()), self.console)
-    
-    #TODO MOVE CAPTURE ORPHANS TO cPROCESS!!!! AND CONNECT btNCAPUREORPHANS !
-   
+
 
   #----------------------------------------------------------------------------------------------------------
   def profile(self, pname : str = None) -> cProfil:
@@ -136,34 +132,13 @@ class cMainWindow(QMainWindow):
       return self.settings.profiles[self.settings.profileList.currentText()]
     else:
       return None
-    
-  #----------------------------------------------------------------------------------------------------------
-  def captureOrphan(self):
-    import subprocess
-    output = subprocess.check_output("ps -eo pid,command", shell=True, text=True)
-    output = output.split("\n")
-    orphanCandidates = {}
-    found = False
-    for line in output:
-      line = (line.strip()).split(" ")
-      if len(line)<2: continue
-      if not self.processManager.isPIDManaged(line[0]):
-        if cDDO.isDDOCmd(line[1]):
-          orphanCandidates[line[0]] = " ".join(line[1:])
-          orphan : cDDO = cDDO.createFromOrphan(self, " ".join(line))
-          if orphan:
-            found = True
-            self.console.info(f"Found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
-            self.processManager.addItem(orphan)
-    if not found:
-      self.console.info(f"No orphan DDO processes were found")
       
   #----------------------------------------------------------------------------------------------------------
   # This will queue everything; once a user is done queuing, it will emit 
   # sigQueuedUserDone. This will cause self.launchUser() to be triggered
   # for each user individually
   def launchAll(self):
-    self.captureOrphan()
+    self.processManager.captureOrphan()
     accs = self.credentials.getSelectedAccounts()
     if not accs: accs = [self.credentials.username.text()]
     if not accs:
@@ -181,14 +156,6 @@ class cMainWindow(QMainWindow):
       proc.launch()
     self.console.info("Finished queueing...")
   
-  # #----------------------------------------------------------------------------------------------------------
-  # def launchDH(self):
-  #   if not self.DHProcess:
-  #     self.DHProcess = cDungeonHelper(self)
-  #     self.processManager.addItem(self.DHProcess)
-  #   self.processManager.setVisible(True)
-  #   self.DHProcess.launch()
-
   #----------------------------------------------------------------------------------------------------------
   def loadState(self):
     settings = QSettings(P_DEFAULT_CONF)
