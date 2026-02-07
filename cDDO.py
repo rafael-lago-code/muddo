@@ -237,7 +237,7 @@ class cDDO(aProcessItem):
   
   #----------------------------------------------------------------------------------------------------------
   def getLogFilename(self):
-    return f"{P_DEFAULT_CONFIGDIR}/ddoLog_{self.username.text()}.txt"
+    return f"{P_DEFAULT_LOGSDIR}/ddoLog_{self.username.text()}.txt"
 
   #----------------------------------------------------------------------------------------------------------
   def parseArguments(self):

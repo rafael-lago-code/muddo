@@ -25,7 +25,7 @@ from __future__ import annotations
 from PyQt6.QtCore import QRunnable
 from PyQt6.QtCore import pyqtSignal
 from cWidgets.util import *
-import os
+import os, time
 import xml.dom.minidom
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -157,8 +157,9 @@ class tServerInfo(QRunnable):
       self.main.credentials.sigFetchedWorldsInfo.emit(False)
       return False
     else:
-      self.main.credentials.sigFetchedWorldsInfo.emit(True)
       self.console.info("Fetched worlds data")
+      time.sleep(1)
+      self.main.credentials.sigFetchedWorldsInfo.emit(True)
       return True
   
   #----------------------------------------------------------------------------------------------------------
@@ -170,7 +171,7 @@ class tServerInfo(QRunnable):
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
 
-      filename = P_DEFAULT_WORKDIR+"/dndlauncher.server.xml"
+      filename = P_DEFAULT_SERVERDIR+"/dndlauncher.server.xml"
       with open(filename, "w") as f:
         f.write(tempxml)
 

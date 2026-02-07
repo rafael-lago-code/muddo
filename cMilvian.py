@@ -9,36 +9,40 @@ if TYPE_CHECKING:
 # bridgePath = '/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/'
 P_MILVIAN_DEBUG=True
 
-def getInputActions():
-  sys.path.append('/home/steam/prefixes/DDO_Main/pfx/drive_c/users/holysword/AppData/Roaming/Dungeon Helper/')
-  from pythonnet import load
-  load("coreclr")
-  import clr
-  clr.AddReference("VoK.Sdk")
-  clr.AddReference("System.Private.CoreLib") 
-  from VoK.Sdk.Ddo.Enums import InputActions
-  from System import Enum as DotNetEnum
+# def getInputActions():
+#   sys.path.append('/home/steam/prefixes/DDO_Main/pfx/drive_c/users/holysword/AppData/Roaming/Dungeon Helper/')
+#   from pythonnet import load
+#   load("coreclr")
+#   import clr
+#   clr.AddReference("VoK.Sdk")
+#   clr.AddReference("System.Private.CoreLib") 
+#   from VoK.Sdk.Ddo.Enums import InputActions
+#   from System import Enum as DotNetEnum
 
-  ia = {}
-  iaNames  = DotNetEnum.GetNames(InputActions)
-  iaValues = DotNetEnum.GetValues(InputActions)
-  ia = { n.lower(): int(v).to_bytes(4, byteorder='little', signed=False)
-                          for (n,v) in zip(iaNames,iaValues) }
-    # Adds some useful shortcuts to it b4k3
-  for b in range(10):
-    for k in range(10):
-      ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
-  return ia
+#   ia = {}
+#   iaNames  = DotNetEnum.GetNames(InputActions)
+#   iaValues = DotNetEnum.GetValues(InputActions)
+#   ia = { n.lower(): int(v).to_bytes(4, byteorder='little', signed=False)
+#                           for (n,v) in zip(iaNames,iaValues) }
+#     # Adds some useful shortcuts to it b4k3
+#   for b in range(10):
+#     for k in range(10):
+#       ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
+#   return ia
 
 #---------------------------------------------------------------------------------------------------------------
 class cMilvian():
   tokenPrefix = {
-    'misc':          int.to_bytes(0, byteorder='little', signed=False),
-    'list':          int.to_bytes(1, byteorder='little', signed=False),
-    'sleep':         int.to_bytes(2, byteorder='little', signed=False),
-    'inputaction':   int.to_bytes(3, byteorder='little', signed=False),
-    'querycharname': int.to_bytes(4, byteorder='little', signed=False),
-    'charname':      int.to_bytes(4, byteorder='little', signed=False),
+    'misc':           b'\x00',
+    'list':           b'\x01',
+    'sleep':          b'\x02',
+    'inputaction':    b'\x03',
+    'querycharname':  b'\x04',
+    'charname':       b'\x04',
+    'queryparty':     b'\x05',
+    'queryselected':  b'\x06',
+    'queryinventory': b'\x08',
+    'debug':          b'\x07',
   }
   bridgePath = ''
   inputActions = None
@@ -93,8 +97,8 @@ class cMilvian():
   def deattachConsole(self):
     self.printInfo    = lambda x : print(x)
     self.printError   = lambda x : print(x)
-    self.printDebug   = lambda x : print(x)
-    self.printWarning = lambda x : print(x)
+    self.printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
+    self.printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -105,7 +109,7 @@ class cMilvian():
   @classmethod
   def printInputActions(self):
     if not self.inputActions: self.getInputActions()
-    self.printDebug(self.inputActions.keys())
+    cMilvian.printDebug(self.inputActions.keys())
 
   #---------------------------------------------------------------------------------------------------------------
   @classmethod
@@ -124,23 +128,23 @@ class cMilvian():
     self.pathSHMI = pathSHM+"I"
     
     if not os.path.exists(self.pathSHMI) or not os.path.exists(self.pathSHMO):
-      self.printError(f"Error, {os.path.basename(self.pathSHMI)} or {os.path.basename(self.pathSHMO)} do not exist!")
+      cMilvian.printError(f"Error, {os.path.basename(self.pathSHMI)} or {os.path.basename(self.pathSHMO)} do not exist!")
       return
     
     self.sendRequest(self.tokenPrefix['charname'])
     time.sleep(0.05)
     response = self.waitResponse(timeout=1.0)
     if not response:
-      self.printError(f"Error, could not retrieve charName. Maybe {os.path.basename(pathSHM)} is defunct?")
+      cMilvian.printError(f"Error, could not retrieve charName. Maybe {os.path.basename(pathSHM)} is defunct?")
       return
     
     response = response.split()
     if len(response)<2:
-      self.printError(f"Error, could not retrieve charName. Maybe {os.path.basename(pathSHM)} is defunct?")
+      cMilvian.printError(f"Error, could not retrieve charName. Maybe {os.path.basename(pathSHM)} is defunct?")
       return
     
     if response[0]!="Character:":
-      self.printError(f"cMilvian: strange charName for {os.path.basename(pathSHM)}: got \"{response}\"?")
+      cMilvian.printError(f"cMilvian: strange charName for {os.path.basename(pathSHM)}: got \"{response}\"?")
       return
     self.charName = response[1].lower()
 
@@ -305,5 +309,3 @@ class cMilvian():
         os.remove(f)
         os.remove(f[:-1]+"I")
     return characters 
-
-# sleep_1.0, b5k3, interact , sleep_1.0

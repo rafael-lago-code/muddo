@@ -17,8 +17,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QTextEdit, QWidget
+from PyQt6.QtWidgets import QTextEdit, QTabWidget
 from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import QFileSystemWatcher
 from cWidgets.util import *
 from cWidgets.cToggler import cToggler
 from datetime import datetime
@@ -37,6 +38,12 @@ class cConsole(cToggler):
     super().__init__("Log", P_ICON_CONSOLE)
     self.isDebugging = True
     self.logFileName = filename
+    self.tabWidget = QTabWidget()
+    self.tabWidget.setTabPosition(QTabWidget.TabPosition.East)
+    self.tabWidget.setTabsClosable(True)
+    self.tabWidget.setTabBarAutoHide(True)
+    self.tabs = {}
+    
     try:
       os.mkdir(os.path.dirname(filename))
     except: pass
@@ -58,12 +65,15 @@ class cConsole(cToggler):
     self.content = QTextEdit()
     self.content.setReadOnly(True)
     self.content.setAcceptRichText(True)
-    self.setLayout(newHLayout([self.content]))
+    self.tabWidget.addTab(self.content, "Log")
+
+    self.setLayout(newHLayout([self.tabWidget]))
 
     self.sigInfo.connect(self.printMessage)
     self.sigDebug.connect(self.debugMessage)
     self.sigError.connect(self.errorMessage)
     self.sigWarning.connect(self.warningMessage)
+    self.tabWidget.tabCloseRequested.connect(self.onTabCloseRequested)
 
   def prefixStr(self):
     return f'[ {datetime.now().strftime("%Y/%m/%d %H:%M:%S")} ] '
@@ -101,6 +111,41 @@ class cConsole(cToggler):
   #------------------------------------------------------------------------------------
   def debug(self, message:str):
     self.sigDebug.emit(message)
+
+  #------------------------------------------------------------------------------------
+  def getTabIndex(self, name: str) -> int:
+    for i in range(self.tabWidget.count()):
+        if self.tabWidget.tabText(i) == name:
+            return i
+    return None
+  
+  #------------------------------------------------------------------------------------
+  def addTab(self, logger) -> bool:
+    if self.getTabIndex(logger.name) is None:
+      self.tabWidget.addTab(logger, logger.name)
+      return True
+    else:
+      return False
+    
+  #------------------------------------------------------------------------------------
+  def removeTab(self, logger):
+    i = self.getTabIndex(logger.name)
+    if i is None: 
+      self.warning(f"Cannot remove  tab \"{logger.name}\", not found!")
+      return
+    self.tabWidget.removeTab(i)
+
+  #------------------------------------------------------------------------------------
+  def onTabCloseRequested(self, index: int):
+      if self.tabWidget.count()>index:
+        if self.tabWidget.tabText(index) == "Log":
+          self.warning("Main \"Log\" tab cannot be closed by design. Doing nothing.")
+          return
+        else:
+          # cLog's deleteLater method also removes it from the tabWidget
+          # I didn't find a cleaner way of doing this, because cLog also has to be
+          # able to delete itself via context menu and other toggle button
+          self.tabWidget.widget(index).deleteLater()
 
   #------------------------------------------------------------------------------------
   def printMessage(self, message : str, endLine = True):
@@ -148,3 +193,56 @@ class cConsole(cToggler):
     print(f"Closing log file \"{self.logFileName}\"...")
     self.logFile.close()
     return super().close()
+  
+  # #------------------------------------------------------------------------------------
+  # def addTab(self, filePath: str, name : str):
+  #   if filePath in self.tabs:
+  #     print(f"Tab for {filePath} already exists.")
+  #     return
+
+  #   try:
+  #     textEdit = QTextEdit()
+  #     textEdit.setReadOnly(True)
+
+  #     if os.path.exists(filePath):
+  #       with open(filePath, 'r', encoding='utf-8', errors='replace') as f:
+  #         textEdit.setPlainText(f.read())
+
+  #     watcher = QFileSystemWatcher()
+  #     watcher.addPath(filePath)
+  #     watcher.fileChanged.connect(lambda path: self.updateTabContent(name))
+
+  #     self.tabWidget.addTab(textEdit, name)
+
+  #     self.tabs[name] = {
+  #       'filePath': filePath,
+  #       'textEdit': textEdit,
+  #       'lastPos': 0,
+  #       'watcher': watcher
+  #     }
+
+  #     self.info(f"Following log for {C_SILVER}{name}</font>...")
+  #     self.updateTabContent(name)
+
+  #   except Exception as e:
+  #     self.error(f"Failed to add tail tab for {filePath}", e)
+
+  # #------------------------------------------------------------------------------------ 
+  # def updateTabContent(self, name: str):
+  #     if name not in self.tabs:
+  #       return
+
+  #     path     = self.tabs[name]['filePath']
+  #     textEdit : QTextEdit = self.tabs[name]['textEdit']
+
+  #     try:
+  #       with open(path, 'r', encoding='utf-8', errors='replace') as f:
+  #         f.seek(self.tabs[name]['lastPos'])
+  #         newContent = f.read()
+  #         textEdit.append(newContent)
+  #         self.tabs[name]['lastPos'] = f.tell()
+
+  #       textEdit.verticalScrollBar().setValue(textEdit.verticalScrollBar().maximum())
+
+  #     except Exception as e:
+  #       self.error(f"Error reading updated file {path}", e)

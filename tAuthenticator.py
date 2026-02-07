@@ -36,7 +36,7 @@ class tAuthenticator():
   P_STATUS_DONE = 1
   P_STATUS_AUTHENTICATING = 3
   P_STATUS_QUEUEING = 4
-  P_GLSAUTHFILE = P_DEFAULT_WORKDIR+os.sep+"GLSAuthServer_"
+  P_GLSAUTHFILE = P_DEFAULT_SERVERDIR+os.sep+"GLSAuthServer_"
 
   def __init__(self, ddo : cDDO):
     super().__init__()
@@ -149,7 +149,7 @@ class tAuthenticator():
 
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
-      filename = P_DEFAULT_CONFIGDIR+os.sep+"WorldQueue_"+self.ddo.username.text()+".xml"
+      filename = P_DEFAULT_SERVERDIR+os.sep+"WorldQueue_"+self.ddo.username.text()+".xml"
 
       with open(filename, "w") as f:
         f.write(tempxml)

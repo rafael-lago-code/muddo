@@ -169,14 +169,7 @@ class cDungeonHelper(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def getLogFilename(self):
-    return f"{P_DEFAULT_CONFIGDIR}/dhelper_{self.username.text()}.txt"
-
-  #----------------------------------------------------------------------------------------------------------
-  def toggle(self):
-    if self.status == self.P_STATUS_RUNNING:
-      self.terminate()
-    else:
-      self.launch()
+    return f"{P_DEFAULT_LOGSDIR}/dhelper.txt"
 
   #----------------------------------------------------------------------------------------------------------
   def terminate(self):

@@ -22,7 +22,7 @@
 #
 #
 from PyQt6.QtWidgets import QComboBox
-from PyQt6.QtCore import QRunnable, QObject
+from PyQt6.QtCore import QRunnable, QObject, pyqtSignal
 from cWidgets.util import *
 import xml.dom.minidom
 
@@ -77,6 +77,7 @@ class cWorld(QObject):
 
 #----------------------------------------------------------------------------------------------------------
 class cWorldList(QComboBox):
+  sigWorldUpdated = pyqtSignal(bool)
   defaultWorlds = ["Cormyr [US]", "Moonsea [EU]", "Shadowdale [US]", "Thrane [US]"]
 #   defaultWorlds += ["Argonnessen [Old]", "Cannith [Old]", "Ghallanda [Old]", "Khyber [Old]",
 #                    "Orien [Old]", "Sarlona [Old]", "Thelanis [Old]", "Wayfinder [Old]"]
@@ -116,6 +117,8 @@ class cWorldList(QComboBox):
         self.worlds[name] = cWorld(self, name, chatServer, statusServer, self.count())
         self.addItem(self.worlds[name])
     self.worlds[name].checkStatus()
+    self.sigWorldUpdated.emit(True)
+
 
 #----------------------------------------------------------------------------------------------------------
 class tWorldChecker(QRunnable):
@@ -131,7 +134,7 @@ class tWorldChecker(QRunnable):
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
 
-      filename = P_DEFAULT_CONFIGDIR+"/Server_"+self.world.name+".xml"
+      filename = P_DEFAULT_SERVERDIR+self.world.name+".xml"
       with open(filename, "w") as f:
         f.write(tempxml)
 

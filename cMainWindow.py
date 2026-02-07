@@ -50,7 +50,7 @@ class cMainWindow(QMainWindow):
                           " accounts in the selected world. <br><b><i>Right-click for more options</i></b>")
     btnQuit = cOrb("Quit", P_ICON_EXIT)
         
-    self.console = cConsole(P_DEFAULT_CONFIGDIR+'/log')
+    self.console = cConsole(P_DEFAULT_LOGSDIR+'/log')
     self.credentials = cCredentials(self)
     self.news = cNews(self)
     self.patch = cPatch(self)
@@ -105,11 +105,13 @@ class cMainWindow(QMainWindow):
     from XHelper import XHelper
     from cMilvian import cMilvian
     from cTop import cTop
+    from cWidgets.cLog import cLog
     self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     cProcessManager.attachMain(self)
     XHelper.attachConsole(self.console)
     cTop.attachConsole(self.console)
+    cLog.attachConsole(self.console)
 
     self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
 
@@ -150,9 +152,10 @@ class cMainWindow(QMainWindow):
     world = self.credentials.listWorlds.currentItem()
     for username in accs:
       if username in self.processManager.items.keys():
-        continue
-      proc = cDDO(self, username, world)
-      self.processManager.addItem(proc)
+        proc = self.processManager.items[username]
+      else:
+        proc = cDDO(self, username, world)
+        self.processManager.addItem(proc)
       proc.launch()
     self.console.info("Finished queueing...")
   
