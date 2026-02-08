@@ -214,12 +214,12 @@ class cTop:
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
   def terminateAll(cmd):
-    cTop.sendSignal(cmd, signal.SIGTERM)
+    cTop.sinalAll(cmd, signal.SIGTERM)
 
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
   def killAll(cmd):
-    cTop.sendSignal(cmd, signal.SIGKILL)
+    cTop.sinalAll(cmd, signal.SIGKILL)
 
   #----------------------------------------------------------------------------------------------------------
   @staticmethod

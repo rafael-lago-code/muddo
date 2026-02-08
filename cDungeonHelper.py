@@ -106,7 +106,6 @@ class cDungeonHelper(aProcessItem):
 
     if proc:
       self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
-      self.main.processManager.addItem(self)
       exitCode = proc.wait()
     else:
       self.printInfo("cDungeonHelper.launchThread: error launching, check logs for details!")
@@ -114,6 +113,7 @@ class cDungeonHelper(aProcessItem):
 
     # this locks until the DH process ends, and it is intentional!
     # If it does end, then it was closed by the user (or some error...)
+    logFile.close()
     if exitCode==137:
       self.sigChangeRequest.emit(self.P_STATUS_KILLED)
     elif exitCode in (1,2,126,127):
@@ -182,6 +182,7 @@ class cDungeonHelper(aProcessItem):
   def kill(self):
     super().kill()
     baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    self.printWarning(f"Killing all processes containing {baseExec}...")
     cTop.killAll(baseExec)
     self.clear()
 
@@ -193,6 +194,7 @@ class cDungeonHelper(aProcessItem):
     self.btnMute.setEnabled(False)
     if status == aProcessItem.P_STATUS_RUNNING:
       self.orb.setChecked(True)
+      self.main.processManager.addItem(self)
       # self.actionToggle.setText("Stop")
     else:
       self.orb.setChecked(False)
