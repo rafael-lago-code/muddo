@@ -164,7 +164,7 @@ class cDungeonHelper(aProcessItem):
     if newStatus != self.P_STATUS_RUNNING:
         self.pid.setText("")
     super().setStatus(newStatus)
-    self.btnMute.setEnabled(False)
+    self.btnAudio.setEnabled(False)
     self.updateTooltip()
 
   #----------------------------------------------------------------------------------------------------------
@@ -191,7 +191,7 @@ class cDungeonHelper(aProcessItem):
     super().setStatus(status)
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
-    self.btnMute.setEnabled(False)
+    self.btnAudio.setEnabled(False)
     if status == aProcessItem.P_STATUS_RUNNING:
       self.orb.setChecked(True)
       self.main.processManager.addItem(self)

@@ -94,6 +94,7 @@ class cDDO(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
+    if self.status == aProcessItem.P_STATUS_RUNNING: return
     t = threading.Thread(target=self._launchThread, daemon=True)
     t.start()
     self.printInfo(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
@@ -190,14 +191,25 @@ class cDDO(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def audioToggle(self):
-    if XHelper().isPIDMuted(self.pid):
-      self.printInfo(f"{C_SILVER}Muting</font> {self.pid}...")
-      XHelper().unmutePID(self.pid)
-      self.btnMute.setIcon(getIcon(P_ICON_UNMUTE))
-    else:
-      self.printInfo(f"{C_SILVER}Unmuting</font> {self.pid}...")
-      XHelper().mutePID(self.pid)
-      self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+    if self.pid.text().isdigit():
+      if XHelper.audioQueryMuted(self.pid.text()):
+        self.audioUnmute()
+      else:
+        self.audioMute()  
+
+  #----------------------------------------------------------------------------------------------------------
+  def audioMute(self):
+    if self.pid.text().isdigit():
+      self.printInfo(f"{C_SILVER}Muting</font> {self.pid.text()}...")
+      XHelper.audioMute(str(self.pid.text()))
+      self.btnAudio.setIcon(getIcon(P_ICON_UNMUTE))
+
+  #----------------------------------------------------------------------------------------------------------
+  def audioUnmute(self):
+    if self.pid.text().isdigit():
+      self.printInfo(f"{C_SILVER}Unmuting</font> {self.pid.text()}...")
+      XHelper.audioUnmute(str(self.pid.text()))
+      self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
   
   #----------------------------------------------------------------------------------------------------------
   def updateTooltip(self):

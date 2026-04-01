@@ -207,7 +207,7 @@ class cMacrosDaemon(aProcessItem):
     super().setStatus(status)
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
-    self.btnMute.setEnabled(False)
+    self.btnAudio.setEnabled(False)
     if status == aProcessItem.P_STATUS_RUNNING:
       self.orb.setChecked(True)
       self.actionToggle.setText("Stop")

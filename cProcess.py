@@ -87,7 +87,7 @@ class cProcessManager(cToggler):
     self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
     self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
     self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEAR,     tooltip="Clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
-    self.btnMuteAll    = cOrbSmall(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
+    self.btnAudioAll    = cOrbSmall(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
     self.btnLogAll     = cOrbSmall(icon=P_ICON_NOTES,     tooltip="Toggles logs on/off for all processes")
     self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/chain.png'), tooltip="Attempts to find running instances of DDO and capture them"\
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
@@ -103,13 +103,16 @@ class cProcessManager(cToggler):
     self.btnCleanAll.clicked.connect(self.cleanAll)
     self.btnCleanAll.ctrlClicked.connect(lambda : self.cleanAll(True))
     self.btnCleanAll.rightClicked.connect(lambda : self.cleanAll(True))
+    self.btnAudioAll.clicked.connect(self.toggleAudioAll)
+    self.btnAudioAll.ctrlClicked.connect(self.audioMuteAll)
+    self.btnAudioAll.rightClicked.connect(self.audioMuteAll)
 
     justSpace = QLabel(" ")
     justSpace.setMinimumWidth(2)
     
     self.content = newVLayout([header])
     self.setLayout(newVLayout([self.content, newHLayout([self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
-      self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnCleanAll, self.btnLogAll, self.btnMuteAll, justSpace]),
+      self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnCleanAll, self.btnLogAll, self.btnAudioAll, justSpace]),
                     "__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
@@ -159,6 +162,18 @@ class cProcessManager(cToggler):
     for i in allItems: 
       if i.startswith("dh_"): continue
       self.items[i].kill()
+
+  #----------------------------------------------------------------------------------------------------------
+  def toggleAudioAll(self):
+    allItems = list(self.items.keys())
+    for i in allItems: 
+      self.items[i].audioToggle()
+
+  #----------------------------------------------------------------------------------------------------------
+  def audioMuteAll(self):
+    allItems = list(self.items.keys())
+    for i in allItems: 
+      self.items[i].audioMute()
     
   #----------------------------------------------------------------------------------------------------------
   def saveWindowAll(self):
@@ -304,7 +319,7 @@ class aProcessItem(QWidget):
     self.btnRestore = cOrbSmall(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
     self.btnClear   = cOrbSmall(icon=P_ICON_TRASH, tooltip="Left click: Removes this process from the list of processes.<br>Right click or ctrl click: force kill and remove")
     self.btnLog     = cOrbSmall(icon=P_ICON_NOTES, tooltip="Toggles follow log")
-    self.btnMute    = cOrbSmall(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
+    self.btnAudio   = cOrbSmall(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
 
     self.btnLog.setCheckable(True)
     self.btnLog.setCheckable(True)
@@ -316,7 +331,7 @@ class aProcessItem(QWidget):
     self.btnClear.clicked.connect(self.clear)
     self.btnClear.ctrlClicked.connect(lambda : self.clear(True))
     self.btnClear.rightClicked.connect(lambda : self.clear(True))
-    self.btnMute.clicked.connect(self.audioToggle)
+    self.btnAudio.clicked.connect(self.audioToggle)
     self.btnLog.clicked.connect(self.logToggle)
 
     self.sigChangeRequest.connect(self.setStatus)
@@ -325,8 +340,7 @@ class aProcessItem(QWidget):
     
     self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
-                              self.btnClear, self.btnLog, self.btnMute]))
-    
+                              self.btnClear, self.btnLog, self.btnAudio]))
   
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
@@ -349,6 +363,14 @@ class aProcessItem(QWidget):
     pass
 
   #----------------------------------------------------------------------------------------------------------
+  def audioMute(self):
+    pass
+
+  #----------------------------------------------------------------------------------------------------------
+  def audioUnmute(self):
+    pass
+
+  #----------------------------------------------------------------------------------------------------------
   def getLogFilename(self) -> str:
     return ""
   
@@ -364,7 +386,7 @@ class aProcessItem(QWidget):
 
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, newStatus):
-    self.btnMute.setEnabled(   self.pid.text().isdigit())
+    self.btnAudio.setEnabled(   self.pid.text().isdigit())
     self.btnSave.setEnabled(   self.winID.text().isdigit())
     self.btnRestore.setEnabled(self.winID.text().isdigit())
     self.btnLog.setEnabled(    self.winID.text().isdigit())
@@ -376,7 +398,7 @@ class aProcessItem(QWidget):
         self.btnToggle.setChecked(False)
         self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
         self.btnClear.setEnabled(True)
-        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
         self.status = aProcessItem.P_STATUS_ERROR 
         self.sigError.emit("APROCESS_UNKNOWN_ERROR")
       elif newStatus == "terminated" or newStatus == aProcessItem.P_STATUS_TERMINATED:
@@ -386,7 +408,7 @@ class aProcessItem(QWidget):
         self.btnToggle.setChecked(False)
         self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
         self.btnClear.setEnabled(True)
-        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
         self.status = aProcessItem.P_STATUS_UNKNOWN
         self.sigTerminated.emit()
       elif newStatus == "running" or newStatus == aProcessItem.P_STATUS_RUNNING:
@@ -394,7 +416,7 @@ class aProcessItem(QWidget):
         self.btnToggle.setChecked(True)
         self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
         self.btnClear.setEnabled(True)
-        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
         self.status = aProcessItem.P_STATUS_RUNNING
         self.sigRunning.emit()
       elif newStatus == "killed" or newStatus == aProcessItem.P_STATUS_KILLED:
@@ -404,7 +426,7 @@ class aProcessItem(QWidget):
         self.btnToggle.setChecked(False)
         self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
         self.btnClear.setEnabled(True)
-        self.btnMute.setIcon(getIcon(P_ICON_MUTE))
+        self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
         self.status = aProcessItem.P_STATUS_UNKNOWN
         self.sigKilled.emit()
       self.sigStatusChanged.emit(self.status)

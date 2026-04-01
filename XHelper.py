@@ -472,7 +472,7 @@ class XHelper(QObject):
         grabbed[(modmask | X.LockMask, keycode)] = callback
         self.printDebug(f"[XHelper.getShortcutsDaemon:Debug] registered \"{keystring}\"")
       except Exception as e:
-        raise(f"XHelper.getShortcutsDaemon: failed to grab \"{keystring}\"\n{e}")
+        self.printError(f"[XHelper.getShortcutsDaemon:Error]: failed to grab \"{keystring}\"\n{e}")
     
     if not grabbed:
       self.printDebug(f"[XHelper.getShortcutsDaemon:Debug] no hotkeys passed!")
@@ -538,73 +538,37 @@ class XHelper(QObject):
 
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
-  def mutePID(pid):
-    try:
-      cmd = ["pw-cli", "list-objects", "Node", "-f", "json"]
-      output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
-      
-      # Parse JSON output
-      nodes = json.loads(output)
-      
-      for node in nodes:
-        # Check if this node belongs to our PID
-        props = node.get('info', {}).get('props', {})
-        app_pid = props.get('application.process.id')
-        
-        if app_pid and str(pid) == str(app_pid):
-          # Found it! Get node ID and mute
-          node_id = node['id']
-          
-          # Mute command
-          subprocess.run([
-              "pw-cli", "set-param", str(node_id), 
-              "Props", "Mute", "true"
-          ], stderr=subprocess.DEVNULL)
-          return True
-    except Exception as e:
-        print(e)
-    return False
+  def audioToggle(pid):
+    # if XHelper.audioQueryMuted(pid):
+    #   XHelper.audioUnmute(pid)
+    # else:
+    #   XHelper.audioMute(pid)
+    subprocess.run(["wpctl", "set-mute", "-p", str(pid), "toggle"], stderr=subprocess.DEVNULL)
+
 
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
-  def unmutePID(pid):
-    try:
-      cmd = ["pw-cli", "list-objects", "Node", "-f", "json"]
-      output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
-      nodes = json.loads(output)
-      
-      for node in nodes:
-        props = node.get('info', {}).get('props', {})
-        app_pid = props.get('application.process.id')
-        
-        if app_pid and str(pid) == str(app_pid):
-          node_id = node['id']
-          subprocess.run([
-              "pw-cli", "set-param", str(node_id),
-              "Props", "Mute", "false"
-          ], stderr=subprocess.DEVNULL)
-          return True
-    except Exception as e:
-        print(e)
-    return False
+  def audioMute(pid):
+    subprocess.run(["wpctl", "set-mute", "-p", str(pid), "1"], stderr=subprocess.DEVNULL)
+
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def audioUnmute(pid):
+    subprocess.run(["wpctl", "set-mute", "-p", str(pid), "0"], stderr=subprocess.DEVNULL)
   
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
-  def isPIDMuted(pid):
-    try:
-      cmd = ["pw-cli", "list-objects", "Node", "-f", "json"]
-      output = subprocess.check_output(cmd, text=True, stderr=subprocess.DEVNULL)
-      nodes = json.loads(output)
-      
-      for node in nodes:
-        props = node.get('info', {}).get('props', {})
-        app_pid = props.get('application.process.id')
-        
-        if app_pid and str(pid) == str(app_pid):
-          # Check mute state
-          mute_state = props.get('Mute', 'false')
-          return mute_state.lower() == 'true'
-    except Exception as e:
-        print(e)
-    return None  # Couldn't determine
+  def audioQueryMuted(pid) -> bool:
+    #@TODO this is really inefficient, but wpctl doesn't have a way to query a single pid,
+    # so we have to parse the entire list every time
+    #@TODO each client may/will have multiple nodes, and each one of them may be toggled
+    # differently (e.g. sink and sources). This will return the value of the first node it finds!
+    # In DDO, there are 3 nodes, the first one is usually the sink
+    output = subprocess.check_output(['pw-dump'], text=True, stderr=subprocess.DEVNULL)
+    alldata = json.loads(output)
+
+    for i in alldata:
+      if i.get('type',{}).endswith("Node"):
+        if str(pid) == str(i.get('info',{}).get('props',{}).get('application.process.id',{})):
+          return str(i.get('info',{}).get('params',{}).get('Props',{})[0]['mute']).lower()=='true'
 
