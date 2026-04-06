@@ -28,6 +28,7 @@ from cConsole import cConsole
 from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
+from cInventory import cStorageManager
 from cDDO import cDDO
 from cWidgets.cOrb import cOrb
 from cWidgets.util import *
@@ -59,6 +60,7 @@ class cMainWindow(QMainWindow):
     self.processManager = cProcessManager()
     self.processManager.setVisible(False)    
     self.dh = cDungeonHelper(self)
+    self.storageManager = cStorageManager(self)
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
@@ -74,8 +76,8 @@ class cMainWindow(QMainWindow):
     self.summary.setLayout(g)
     lButtonsBar = newHLayout([self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
                               "__stretch__", self.summary, "__stretch__", 
-                              self.credentials.toggler, self.processManager.toggler, self.macros.toggler, self.settings.toggler, 
-                              self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
+                              self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler, 
+                              self.macros.toggler, self.settings.toggler, self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
 
     aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
     aKillAll = self.btnLaunch.menu.addAction("Kill all")
@@ -122,6 +124,7 @@ class cMainWindow(QMainWindow):
     self.macros.initialize()
     self.news.initialize()
     self.patch.initialize()
+    self.storageManager.initialize()
   
     cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()), self.console)
 
@@ -183,6 +186,7 @@ class cMainWindow(QMainWindow):
     self.news.close()
     self.credentials.close()
     self.console.close()
+    self.storageManager.close()
     self.saveState()
     super().close()
 

@@ -28,9 +28,11 @@ from cWidgets.util import *
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
+import glob
 
 #----------------------------------------------------------------------------------------------------------
 class cDungeonHelper(aProcessItem):
+  dhExec = "DungeonHelper.exe"
   def __init__(self, main : cMainWindow):
     super().__init__()
     self.key = "dh"    
@@ -45,7 +47,7 @@ class cDungeonHelper(aProcessItem):
 
     self.orb = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
                     tooltip="Launches Dungeon Helper (it if is installed); activates on all instances" \
-                     " of the game for as long as it runs.<br><b><i>Right-click for more options</i></b>")
+                     " of the game for as long as it runs.<br><b>Ctrl+Click to purge any instances and restart Dungeon Helper.<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
     self.actionToggle  = self.orb.menu.addAction("Launch DungeonHelper")
     self.actionRestart = self.orb.menu.addAction("Restart DungeonHelper")
@@ -78,7 +80,10 @@ class cDungeonHelper(aProcessItem):
                         " Try right-click->kill to cleanup state.")
       return
     self.pid.setText("")
+    for file in glob.glob("/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/bridge*"):
+      os.remove(file)
     self.printInfo(f"Starting {C_SILVER}DungeonHelper.exe</font>...")
+    self.show()
     t = threading.Thread(target=self._launchThread, daemon=True)
     t.start()
     
@@ -177,6 +182,18 @@ class cDungeonHelper(aProcessItem):
     baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
     cTop.terminateAll(baseExec)
     self.clear()
+  
+  #----------------------------------------------------------------------------------------------------------
+  def clear(self, kill=False):
+    self.profileID.setText("")
+    self.worldname.setText("")
+    self.username.setText("Dungeon Helper")
+    self.updateTooltip()
+    self.btnToggle.setEnabled(True)
+    self.btnSave.setEnabled(False)
+    self.btnRestore.setEnabled(False)
+    self.btnClear.setEnabled(False)
+    self.hide()
 
   #----------------------------------------------------------------------------------------------------------
   def kill(self):
@@ -215,4 +232,16 @@ class cDungeonHelper(aProcessItem):
     else:
       text = "<i>Not running</i>"
     self.setToolTip(text)
+
+  #----------------------------------------------------------------------------------------------------------
+  def createFromOrphan(self, pid : int):
+    self.sigGotPID.emit(str(pid))
+    self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
+    self.show()
+    return True
+
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def isCMD(line) -> bool:
+    return line.startswith('C:\\users\\') and line.endswith(cDungeonHelper.dhExec)
   

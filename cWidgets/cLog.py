@@ -53,6 +53,7 @@ class cLog(QTextEdit):
 
   # -------------------------------------------------------------------------------------------------------------
   def __init__(self, filePath: str, name : str):
+    super().__init__()
     if not os.path.exists(filePath):
       self.printError(f"Error trying to create cLog \"{name}\": {filePath} does not exist!")
       return None
@@ -60,7 +61,6 @@ class cLog(QTextEdit):
       self.printError(f"Error trying to create cLog \"{name}\": tab with this name already exists!")
       return None
 
-    super().__init__()
     self.name = name
     self.filePath = filePath
     self.setReadOnly(True)

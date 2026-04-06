@@ -12,15 +12,14 @@ Currently implemented features:
  - manages all processes/instances launched, including terminate, kill, restart, etc
  - basic X window management of game windows: save position and border status and restores them
    - no Wayland support and no plans for it
+ - basic pipewire support for Audio muting/unmuting (you don't want all game instances narrating the dungeon, do you?)
  - basic [Dungeon Helper](https://dungeonhelper.com/) integration (must be installed separately)
- - basic [Macro'ing](docs/Macros.md) capabilities, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) with Milvian plugin
+ - basic [Macro'ing](docs/Macros.md) capabilities, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
+ - support for inventory management (via Milvian) underway (pre-alpha stage)
 
 ## TODO
-  - to fix: macros shortcut aren't recognized if a mouse button (e.g. right) is being held
-  - save border/borderless state (currently forces borderless)
+    - save border/borderless state (currently forces borderless)
   - fix several minor bugs with aProcessItem and their mismatching state with cOrb
-  - allow detection of orphaned Dungeon Helper processes
-  - add window audio muting options
   - update README's screenshot
   - implement the patching capabilities
     - the first patching (when you install the game) doesn't seem to be working, but subsequent patches seem to be fine

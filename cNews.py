@@ -28,7 +28,7 @@ from cWidgets.cToggler import cToggler
 class cNews(cToggler):
 
   def __init__(self, main):
-    self.widgetID = "news"
+    self.widgetID = "blablabla"
     self.main = main
     super().__init__("News", P_ICON_SCROLL)
     self.toggler.setToolTip("Toggle News UI<br><b><i>NOT IMPLEMENTED</i></b>")
@@ -41,7 +41,7 @@ class cNews(cToggler):
     v.addWidget(self.context)
     self.setLayout(v)
   
-    #----------------------------------------------------------------------------------------------------------
+  #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     pass
 

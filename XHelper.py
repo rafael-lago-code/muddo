@@ -470,6 +470,14 @@ class XHelper(QObject):
         grabbed[(modmask, keycode)] = callback
         self.root.grab_key( keycode, modmask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
         grabbed[(modmask | X.LockMask, keycode)] = callback
+        self.root.grab_key( keycode, modmask | X.Button1Mask, True, X.GrabModeAsync, X.GrabModeAsync )
+        grabbed[(modmask | X.Button1Mask, keycode)] = callback
+        self.root.grab_key( keycode, modmask | X.Button1Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
+        grabbed[(modmask | X.Button1Mask | X.LockMask, keycode)] = callback
+        self.root.grab_key( keycode, modmask | X.Button3Mask, True, X.GrabModeAsync, X.GrabModeAsync )
+        grabbed[(modmask | X.Button3Mask, keycode)] = callback
+        self.root.grab_key( keycode, modmask | X.Button3Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
+        grabbed[(modmask | X.Button3Mask | X.LockMask, keycode)] = callback
         self.printDebug(f"[XHelper.getShortcutsDaemon:Debug] registered \"{keystring}\"")
       except Exception as e:
         self.printError(f"[XHelper.getShortcutsDaemon:Error]: failed to grab \"{keystring}\"\n{e}")

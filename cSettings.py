@@ -183,6 +183,7 @@ class cSettings(cToggler):
         if 'newsVisible'  in values.keys(): self.main.news.setVisible(values['newsVisible'])
         if 'patchVisible' in values.keys(): self.main.patch.setVisible(values['patchVisible'])
         if 'shortcutsVisible' in values.keys(): self.main.macros.setVisible(values['shortcutsVisible'])
+        if 'storageManagerVisible' in values.keys(): self.main.storageManager.setVisible(values['storageManagerVisible'])
         if 'multiAccount' in values.keys(): 
           self.main.credentials.multiAccount.setChecked(values['multiAccount'])
           self.main.credentials.updateMultiAccount()
@@ -216,6 +217,7 @@ class cSettings(cToggler):
     values['newsVisible']  = self.main.news.isVisible()
     values['patchVisible'] = self.main.patch.isVisible()
     values['shortcutsVisible'] = self.main.macros.isVisible()
+    values['storageManagerVisible'] = self.main.storageManager.isVisible()
     values['multiAccount'] = self.main.credentials.multiAccount.isChecked()
     values['lastProfile']  = self.profileList.currentText()
     if self.profileList.currentText(): self.main.profile().save()

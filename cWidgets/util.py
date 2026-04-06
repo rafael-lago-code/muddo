@@ -18,7 +18,7 @@
 #
 #
 import os
-from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout,\
+from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout, \
                             QVBoxLayout, QLayout, QFrame
 from PyQt6.QtGui import QIcon, QPixmap, QImage
 from PyQt6 import QtCore
@@ -92,6 +92,8 @@ P_ICON_LOGIN     = "login"
 P_ICON_GEARLOOP  = "gear-loop"
 P_ICON_GEARHIER  = "gears-hierarchy"
 P_ICON_GEARSTACK = "gears-stack"
+P_ICON_BACKPACK  = "backpack"
+P_ICON_CHEST     = "chest"
 
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"
@@ -281,7 +283,15 @@ def newProcessField(title, width=80):
   flbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
   flbl.setFixedWidth(width)
   return flbl
-  
+
+#----------------------------------------------------------------------------------------------------------
+def newCell(text, data=None):
+  from PyQt6.QtCore import Qt
+  from PyQt6.QtWidgets import QTableWidgetItem
+  cell = QTableWidgetItem(str(text))
+  cell.setData(Qt.ItemDataRole.UserRole, data if data else text)
+  return cell
+
 #----------------------------------------------------------------------------------------------------------
 def pathLinux2Windows(linuxPath : str):
   tmp = linuxPath.split('/')

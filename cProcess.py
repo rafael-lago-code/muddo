@@ -23,7 +23,7 @@ from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
 from cWidgets.cToggler import cToggler
 from collections import OrderedDict
-import threading
+import re
 from cWidgets.util import *
 from cWidgets.cOrb import cOrbSmall
 from cWidgets.cLog import cLog
@@ -231,6 +231,7 @@ class cProcessManager(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def captureOrphan(self):
     from cDDO import cDDO
+    from cDungeonHelper import cDungeonHelper
     # output = subprocess.check_output("ps -eo pid,command", shell=True, text=True)
     # output = output.split("\n")
     found = 0
@@ -238,8 +239,7 @@ class cProcessManager(cToggler):
     for c in orphanCandidates:
       cmdline = cTop.getCommand(c)
       cmdline = cmdline.replace("\x00", " ")
-      if cDDO.isDDOCmd(cmdline) and \
-         not self.isPIDManaged(c):
+      if cDDO.siCMD(cmdline) and not self.isPIDManaged(c):
         orphan : cDDO = cDDO.createFromOrphan(self.main, c, cmdline)
         if orphan:
           found += 1
@@ -248,6 +248,16 @@ class cProcessManager(cToggler):
           orphan.printInfo = self.printInfo # restores printing ability of orphan
     if found == 0:
       self.printInfo(f"cProcessManager: no orphan DDO processes were found")
+    
+    orphanCandidates = cTop.getByCommand(cDungeonHelper.dhExec)
+    for c in orphanCandidates:
+      cmdline = cTop.getCommand(c)
+      cmdline = cmdline.replace("\x00", " ").strip()
+      if cDungeonHelper.isCMD(cmdline) and not self.isPIDManaged(c):
+        self.main.dh.createFromOrphan(c)
+        self.printInfo(f"cProcessManager: found orphan DungeonHelper: [{c}]")
+        break
+      
 
 
 #----------------------------------------------------------------------------------------------------------
@@ -376,12 +386,14 @@ class aProcessItem(QWidget):
   
   #----------------------------------------------------------------------------------------------------------
   def logToggle(self):
-    if self.logger and self.logger.name:
+    if self.logger:
       self.logger.deleteLater()
       self.logger = None
       self.btnLog.setChecked(False)
     else:
-      self.logger = cLog(self.getLogFilename(),self.username.text())
+      tabName = re.sub(r'<[^>]+>', '', self.username.text())
+      tabName = tabName.replace("[E]", "")
+      self.logger = cLog(self.getLogFilename(), tabName)
       self.btnLog.setChecked(True)
 
   #----------------------------------------------------------------------------------------------------------

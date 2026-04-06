@@ -41,7 +41,7 @@ class cMacrosDaemon(aProcessItem):
 
     self.orb = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
                            tooltip="Toggle on/off all shortcuts from all active sets" \
-                           "<br><b><i>Right-click for more options</i></b>")
+                           "<br><b>Ctrl+Click</b> to purge all shortcuts and restart daemon<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
     # self.orbToggler.setMenu(QMenu("Macros Daemon", self.orbToggler))
     self.actionToggle  = self.orb.menu.addAction("Launch Daemon")
@@ -65,62 +65,10 @@ class cMacrosDaemon(aProcessItem):
     self.btnRestore.setEnabled(False)
     self.btnClear.setEnabled(True)
 
-    # self.sigGotPID.connect(self.updateTooltip)
-
-  # #----------------------------------------------------------------------------------------------------------
-  # Legacy XHelper backend
-  # def convert(self, consolidated : dict) -> dict:
-  #   parsed = {}
-  #   winID = {}
-  #   for i in self.main.processManager.items.values():
-  #     if i.__class__.__name__ == "cDDO":
-  #       winID[i.username.text()] = i.winID.text()
-
-  #   self.main.console.debugMessage(f"  Converting shortcuts to backend; winID of active accounts:")
-  #   self.main.console.debugMessage(f"--------------------------------------------------------")
-  #   for k in winID.keys():
-  #     self.main.console.debugMessage(f"  {k}: {winID[k]}")
-  #   self.main.console.debugMessage(f"--------------------------------------------------------")
-
-  #   # first, get rid of "alls" and "selfs":
-  #   for trigger in consolidated.keys():
-  #     if "all" in consolidated[trigger].keys():
-  #       for t in winID:
-  #         if t in consolidated[trigger].keys():
-  #           consolidated[trigger][t] += consolidated[trigger]["all"]
-  #         else:
-  #           consolidated[trigger][t] = consolidated[trigger]["all"]
-  #       del consolidated[trigger]["all"]
-  #   winID["self"] = "self"
-
-  #   for trigger in consolidated.keys():
-  #     parsed[trigger] = ""
-  #     for target in consolidated[trigger].keys():
-  #       if target not in winID.keys(): continue
-  #       if not consolidated[trigger][target]: continue
-
-  #       if target != "self":
-  #         parsed[trigger] += f" focus_{winID[target]} {P_POST_FOCUS_DELAY}"
-  #       parsed[trigger] += f" {" ".join(consolidated[trigger][target])}"
-  #       for t,id in winID.items():
-  #         parsed[trigger] = parsed[trigger].replace(f"focus_{t}", f"focus_{id}")
-
-  #     if parsed[trigger]:
-  #       parsed[trigger] = f" {parsed[trigger]}"
-  #     else:
-  #       del parsed[trigger]
-
-  #   self.main.console.debugMessage(f"  Shortcuts converted to commands:")
-  #   self.main.console.debugMessage(f"--------------------------------------------------------")
-  #   for trigger in parsed.keys():
-  #     self.main.console.debugMessage(f"  {trigger} : {parsed[trigger]}")
-  #   self.main.console.debugMessage(f"--------------------------------------------------------")
-  #   return parsed
-  
   #----------------------------------------------------------------------------------------------------------
   def convert(self, consolidated : dict) -> dict:
     parsed = {}
-    if not self.milvianProc: self.milvianProc = cMilvian.getFromDir(purgeUnknown=True)
+    if not self.milvianProc: self.milvianProc = cMilvian.getFromDir(purgeUnknown=False)
     if len(self.milvianProc) == 0:
       self.main.console.warning("Attempted to start Macro Daemon, but no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
       return {}

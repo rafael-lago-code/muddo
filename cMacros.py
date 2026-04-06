@@ -18,7 +18,7 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
+from PyQt6.QtWidgets import QAbstractItemView, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
 from cWidgets.util import *
 from cWidgets.cToggler import cToggler
 from cWidgets.cOrb import cOrbSmall
@@ -185,8 +185,8 @@ class cMacros(cToggler):
     self.macroTable.setColumnWidth(40, 40)
     self.macroTable.horizontalHeader().setStretchLastSection(True)
     self.macroTable.verticalHeader().setVisible(False)
+    self.macroTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
     
-
     self.allMacroItems = {}
     self.activeSetLabel = QLabel("Macros in selected set:")
     self.table = QTableWidget(0, 4)
@@ -194,6 +194,7 @@ class cMacros(cToggler):
     self.table.setColumnWidth(0, 40)
     self.table.horizontalHeader().setStretchLastSection(True)
     self.table.verticalHeader().setVisible(False)
+    self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
     _topsplitter = QSplitter()
     _vsplitter = QSplitter(Qt.Orientation.Vertical)
