@@ -18,16 +18,42 @@ Currently implemented features:
  - support for inventory management (via Milvian) underway (pre-alpha stage)
 
 ## TODO
-    - save border/borderless state (currently forces borderless)
-  - fix several minor bugs with aProcessItem and their mismatching state with cOrb
   - update README's screenshot
-  - implement the patching capabilities
-    - the first patching (when you install the game) doesn't seem to be working, but subsequent patches seem to be fine
-  - implement news display
-  - use keyring to store passwords instead of plain text format
-  - test the launcher with Wine (currently tested with Steam Proton)
-  - add cmd line option for verbosity
-  - finalize DungeonHelper support
+  - Milvian Bridge (Macros Daemon)
+    - add complex macros
+      - allow loops
+      - allow branches
+      - allow asynchronous behaviour
+      - allow check state (e.g. cooldown)
+    - ui improvements
+      - create context menu with all existing macros (so that they don't need a keyboard shortcut)
+      - side bar with buttons for selected/favourite macros
+      - vizualize keyboard with its macros
+    - rethink communication protocol
+      - send requests with reqID and epoch and match completion with reqID
+        - prevents macros from stepping onto each other's toes
+        - allows for notifications of macro execution completion
+  - Inventory Manager
+    - make asynchronous and allow for reading "while eximining"
+    - enable selling list of itemIds to currently opened vendor
+    - enable selling gems to currently opened vendor
+    - enable repairing all with currently selected vendor
+    - enable storing list of itemIds to currently opened container/bank
+    - enable dissolving of list of itemIds (cannith crafting)
+    - enable tracking of last known state for each container/character/bank (like Trove Plugin)
+  - XHelper
+    - save border/borderless state (currently forces borderless)
+    - allow for refreshing of OpenGL (workaround black screen bug in some WM)
+  - Other 
+    - move all settings into their own submenu
+    - fix several minor bugs with aProcessItem and their mismatching state with cOrb
+    - allow selecting of aProcessItems for process killing/restoring/saving/muting/etc
+      - use a QTableWidget or QListWidget instead?
+    - fix first patch (when you install the game). It doesn't seem to be working, but subsequent patches do
+    - implement news visualization
+    - use keyring to store passwords instead of plain text format
+    - test the launcher with Wine (currently tested with Steam Proton)
+    - add cmd line option for verbosity
     - maybe add support for downloading/installing DungeonHelper.exe?
 
 ## License

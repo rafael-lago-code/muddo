@@ -282,7 +282,7 @@ class cStorageManager(cToggler):
                                tooltip="Store selected items in the currently open bank/chest. <br><b><i>Right-click for more options</i></b>")
     P_MUDDO_DIR+'/images/'
 
-    self.btnRefresh.clicked.connect(self.requestStorageData)
+    self.btnRefresh.clicked.connect(self.loadStorageData)
     self.btnRefresh.ctrlClicked.connect(lambda : self.requestStorageData(True))
 
     self.btnDeconstruct.clicked.connect(self.requestStorageData)
