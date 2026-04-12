@@ -21,52 +21,28 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
-from cWidgets.cToggler import cToggler
+from widgets.cToggler import cToggler
+from widgets.cOrb import cOrbSmall
+from helpers.util import *
+from widgets.cLog import cLog
+from helpers.cTop import cTop
+from helpers.cPrint import cPrint
 from collections import OrderedDict
 import re
-from cWidgets.util import *
-from cWidgets.cOrb import cOrbSmall
-from cWidgets.cLog import cLog
-from cTop import cTop
 import signal
-from XHelper import XHelper
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 class cProcessManager(cToggler):
-
-  printInfo    = lambda x : print(x)
-  printDebug   = lambda x : print(x)
-  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
-  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
-
   main = None      # set in attachMain
   profile = None   # set in attachMain
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def attachConsole(self, console):
-    self.printInfo = console.info
-    self.printError = console.error
-    self.printDebug = console.debug
-    self.printWarning = console.warning
-    self.printInfo(f"Console attached to {self.__class__}")
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
   def attachMain(self, main : cMainWindow):
     self.main = main
-    self.attachConsole(main.console)
     aProcessItem.attachMain(main)
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def deattachConsole(self):
-    self.printInfo    = lambda x : print(x)
-    self.printError   = lambda x : print(x)
-    self.printDebug   = lambda x : print(x)
-    self.printWarning = lambda x : print(x)
 
   #----------------------------------------------------------------------------------------------------------
   def __init__(self):
@@ -121,7 +97,7 @@ class cProcessManager(cToggler):
       try:
         item.terminate()
       except Exception as e:
-        self.printError(f"cProcessManager.cleanItem: error killing \"{item.key}\"", e)
+        cPrint.error(f"cProcessManager.cleanItem: error killing \"{item.key}\"", e)
     elif item.status == item.P_STATUS_RUNNING:
       return
     
@@ -129,7 +105,7 @@ class cProcessManager(cToggler):
       self.layout().removeWidget(item)
       del self.items[item.key]
     except Exception as e:
-      self.printError(f"cProcessManager.cleanItem: unknown error removing item \"{item.key}\"", e)
+      cPrint.error(f"cProcessManager.cleanItem: unknown error removing item \"{item.key}\"", e)
 
     item.hide()
     self.main.processManager.resetColour()
@@ -243,11 +219,11 @@ class cProcessManager(cToggler):
         orphan : cDDO = cDDO.createFromOrphan(self.main, c, cmdline)
         if orphan:
           found += 1
-          self.printInfo(f"cProcessManager: found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
+          cPrint.info(f"cProcessManager: found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
           self.addItem(orphan)
-          orphan.printInfo = self.printInfo # restores printing ability of orphan
+          orphan.printInfo = cPrint.info # restores printing ability of orphan
     if found == 0:
-      self.printInfo(f"cProcessManager: no orphan DDO processes were found")
+      cPrint.info(f"cProcessManager: no orphan DDO processes were found")
     
     orphanCandidates = cTop.getByCommand(cDungeonHelper.dhExec)
     for c in orphanCandidates:
@@ -255,7 +231,7 @@ class cProcessManager(cToggler):
       cmdline = cmdline.replace("\x00", " ").strip()
       if cDungeonHelper.isCMD(cmdline) and not self.isPIDManaged(c):
         self.main.dh.createFromOrphan(c)
-        self.printInfo(f"cProcessManager: found orphan DungeonHelper: [{c}]")
+        cPrint.info(f"cProcessManager: found orphan DungeonHelper: [{c}]")
         break
       
 
@@ -279,38 +255,14 @@ class aProcessItem(QWidget):
   P_STATUS_TERMINATED = P_STATUS_UNKNOWN
   P_STATUS_REFRESH = -10
 
-  printInfo    = lambda x : print(x)
-  printDebug   = lambda x : print(x)
-  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
-  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
-  console      = None
-
   main = None      # set in attachMain
   profile = None   # set in attachMain
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def attachConsole(self, console):
-    self.printInfo    = console.info
-    self.printError   = console.error
-    self.printDebug   = console.debug
-    self.printWarning = console.warning
-    self.printInfo(f"Console attached to {self.__class__}")
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
   def attachMain(self, main : cMainWindow):
     self.main = main
     self.profile = main.profile # pointer to the function
-    self.attachConsole(main.console)
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def deattachConsole(self):
-    self.printInfo    = lambda x : print(x)
-    self.printError   = lambda x : print(x)
-    self.printDebug   = lambda x : print(x)
-    self.printWarning = lambda x : print(x)
 
   #----------------------------------------------------------------------------------------------------------
   def __init__(self):
@@ -464,14 +416,14 @@ class aProcessItem(QWidget):
   #----------------------------------------------------------------------------------------------------------
   def _terminate(self, sig : signal):
     if not self.pid.text().isdigit():
-      self.printError(f"aProcessItem.terminate:Error terminating {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font> is invalid!")
+      cPrint.error(f"aProcessItem.terminate:Error terminating {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font> is invalid!")
       self.setStatus(self.P_STATUS_ERROR)
       return
     
     if self.worldname.text():
-      self.printInfo(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+      cPrint.info(f"Killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
     else:
-      self.printInfo(f"Killing {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font>...")
+      cPrint.info(f"Killing {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font>...")
 
     try:
       if sig == signal.SIGKILL:
@@ -481,7 +433,7 @@ class aProcessItem(QWidget):
         cTop.terminate(int(self.pid.text()))
         self.setStatus(self.P_STATUS_TERMINATED)
     except Exception as e:
-      self.printError(f"aProcessItem.terminate: unknown error terminating (signal: {sig}) process with PID {self.pid.text()}", e)
+      cPrint.error(f"aProcessItem.terminate: unknown error terminating (signal: {sig}) process with PID {self.pid.text()}", e)
       self.setStatus(self.P_STATUS_ERROR)
  
   #----------------------------------------------------------------------------------------------------------

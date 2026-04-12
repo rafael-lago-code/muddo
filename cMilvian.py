@@ -1,153 +1,59 @@
 #!/usr/bin/env python3
-import sys, mmap, time, os
-import struct, secrets
-from enum import Enum
+#
+#
+#    μDDO
+#    Copyright (C) 2025  Rafael Lago
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+#
+#
+
+import sys, mmap, time, struct
+import os, threading
 from typing import TYPE_CHECKING
+from PyQt6.QtCore import pyqtSignal, QObject
+from helpers.cMilvianPacket import cMilvianPacket, packetCommand, packetStatus
+from helpers.tStoppableThread import tStoppableThread
+from helpers.cPrint import cPrint
+from helpers.cDispatcher import cDispatcher
 if TYPE_CHECKING:
    from cMilvian import cMilvian
 
-
-# bridgePath = '/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/'
 P_MILVIAN_DEBUG=True
+P_SHM_SIZE = 1024*1024
+P_RESPONSE_CBUFFER_BEGIN = 64 
+P_RESPONSE_WRITER_POS    = 4
+P_RESPONSE_READER_POS    = 0
 
-# def getInputActions():
-#   sys.path.append('/home/steam/prefixes/DDO_Main/pfx/drive_c/users/holysword/AppData/Roaming/Dungeon Helper/')
-#   from pythonnet import load
-#   load("coreclr")
-#   import clr
-#   clr.AddReference("VoK.Sdk")
-#   clr.AddReference("System.Private.CoreLib") 
-#   from VoK.Sdk.Ddo.Enums import InputActions
-#   from System import Enum as DotNetEnum
-
-#   ia = {}
-#   iaNames  = DotNetEnum.GetNames(InputActions)
-#   iaValues = DotNetEnum.GetValues(InputActions)
-#   ia = { n.lower(): int(v).to_bytes(4, byteorder='little', signed=False)
-#                           for (n,v) in zip(iaNames,iaValues) }
-#     # Adds some useful shortcuts to it b4k3
-#   for b in range(10):
-#     for k in range(10):
-#       ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
-#   return ia
-
-
-
-class packetCommand(Enum):
-  list           = struct.pack('<I', 1)
-  sleep          = struct.pack('<I', 2)
-  inputaction    = struct.pack('<I', 3)
-  querycharname  = struct.pack('<I', 4)
-  queryparty     = struct.pack('<I', 5)
-  queryselected  = struct.pack('<I', 6)
-  queryinventory = struct.pack('<I', 8)
-  debug          = struct.pack('<I', 7)
-  misc           = struct.pack('<I', 9)
-  unrequested    = struct.pack('<I', 100)
-  none           = struct.pack('<I', 200)
-
-class packetStatus(Enum):
-  unknown = struct.pack('<I', 0)
-  running = struct.pack('<I', 1)
-  parsing = struct.pack('<I', 2)
-  queued  = struct.pack('<I', 3)
-  success = struct.pack('<I', 42)
-  waiting = struct.pack('<I', 40)
-  error   = struct.pack('<I', 255)
-
-
-class milvianPacket():
-  command = packetCommand.none
-  status  = packetStatus.unknown
-  id      = b''
-  inData = None
-  outMessage = None
-  outData = None
-  pathSHM = ""
-
-  #---------------------------------------------------------------------------------------------------------------
-  def __init__(self, command : packetCommand, pathSHM, inData = None):
-    self.command = command
-    self.id      = struct.pack('<I', secrets.randbits(32))
-    self.inData = inData
-    self.status  = packetStatus.unknown
-    self.pathSHM = pathSHM
-  
-  # #---------------------------------------------------------------------------------------------------------------
-  # def getLength(self) -> int:
-  #   if isinstance(self.inData, bytes):
-  #     return len(self.inData)+8
-  #   else:
-  #     return len(self.inData.encode('utf-8'))+8
-    
-  #---------------------------------------------------------------------------------------------------------------
-  def pack(self) -> bytes:
-    message  = self.id+self.command.value
-    if self.inData:
-      if isinstance(self.inData, bytes):
-        message += self.inData
-      else:
-        message += self.inData.encode('utf-8')
-    return message
-
-  #---------------------------------------------------------------------------------------------------------------
-  def checkResponse(self, pos=0) -> bool:
-    with open(self.pathSHM+"O", 'r+b') as fdSHMO:
-      shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
-      shmO.seek(pos)
-      responseLength = int.from_bytes(shmO.read(4), byteorder='little', signed=False)
-      if responseLength > 0:
-        if responseLength == 8 or responseLength > 12:
-          if (self.id == shmO.read(4)):
-            self.status = packetStatus(shmO.read(4))
-            cMilvian.printInfo(f"milvianRequest.checkResponse: found response matching id {int.from_bytes(self.id, byteorder='little', signed=False)}, status={self.status}. ResponseLength={responseLength}, DataLength = {responseLength - 12 if responseLength > 12 else 0}")
-
-            if responseLength > 12: # there is an outData
-              outDataLength = int.from_bytes(shmO.read(4), byteorder='little', signed=False)
-              self.outData = shmO.read(outDataLength)
-
-            # Clear (optional but recommended)
-            # Cleans the first 4 bytes asap to mark message as read
-            shmO.seek(pos)
-            shmO.write(b'\x00'*4)
-            shmO.flush()
-            shmO.close()
-            return True
-        else:
-          cMilvian.printError(f"milvianRequest.checkResponse: got a message with length {responseLength}. Minimum length is 8b (no data) or 13b (with 1b data)\nData corrupted?")
-
-      shmO.close()
-      return False
-
-  #---------------------------------------------------------------------------------------------------------------
-  def wait(self, timeout=None) -> bool:
-    timer = 0.0
-    self.status = packetStatus.waiting
-    while self.status == packetStatus.waiting:
-      if timeout and timer>timeout:
-        cMilvian.printDebug(f"[cMilvian:Debug] timeout ({timeout}) in wait! {self.command}[{int.from_bytes(self.id, byteorder='little', signed=False)}], pathO={self.pathSHM}")
-        return False
-      else:
-        self.checkResponse(pos=0)
-        time.sleep(0.05)
-        timer += 0.05
-    return True
-
+#---------------------------------------------------------------------------------------------------------------
+#
+#
+#                                            M I L V I A N
+#                                  
+#
 #---------------------------------------------------------------------------------------------------------------
 class cMilvian():
   bridgePath = ''
   inputActions = None
-  printInfo    = lambda x : print(x)
-  printDebug   = lambda x : print(x)
-  printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
-  printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
+  responseDaemonStopSignal = None
+  id = 0
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def setup(self, dhpath, console=None):
-    if console:
-      self.attachConsole(console)
-    self.setBridgePath(os.path.dirname(dhpath)+"/Milvian/")
+  def setup(self, dhpath):
+    # self.setBridgePath(os.path.dirname(dhpath)+"/Milvian/")
+    self.setBridgePath("/dev/shm/Milvian/")
     self.getInputActions(dhpath)
 
   #----------------------------------------------------------------------------------------------------------
@@ -160,8 +66,8 @@ class cMilvian():
     import clr
     clr.AddReference("VoK.Sdk")
     clr.AddReference("System.Private.CoreLib") 
-    from VoK.Sdk.Ddo.Enums import InputActions
-    from System import Enum as DotNetEnum
+    from VoK.Sdk.Ddo.Enums import InputActions # type: ignore
+    from System import Enum as DotNetEnum      # type: ignore
 
     ia = {}
     iaNames  = DotNetEnum.GetNames(InputActions)
@@ -176,23 +82,6 @@ class cMilvian():
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def attachConsole(self, console):
-    self.printInfo = console.info
-    self.printError = console.error
-    self.printDebug = console.debug
-    self.printWarning = console.warning
-    self.printInfo("Console attached to cMilvian")
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def deattachConsole(self):
-    self.printInfo    = lambda x : print(x)
-    self.printError   = lambda x : print(x)
-    self.printWarning = lambda x,e=None : print(x + f"\n{e}" if e else "")
-    self.printError   = lambda x,e=None : print(x + f"\n{e}" if e else "")
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
   def setBridgePath(self, path):
     self.bridgePath = path
 
@@ -200,7 +89,7 @@ class cMilvian():
   @classmethod
   def printInputActions(self):
     if not self.inputActions: self.getInputActions()
-    cMilvian.printDebug(self.inputActions.keys())
+    cPrint.debug(self.inputActions.keys())
 
   #---------------------------------------------------------------------------------------------------------------
   @classmethod
@@ -210,53 +99,137 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   def __init__(self, pathSHM : str):
+    super().__init__()
     # pathSHM can be pathSHMI or pathSHMO, doesn't matter
     self.charName = None
+    self.knownPackets = {}
 
     if pathSHM.endswith("I") or pathSHM.endswith("O"):
       pathSHM = pathSHM[:-1]
-    self.pathSHMO = pathSHM+"O"
-    self.pathSHMI = pathSHM+"I"
+    self.pathResponse = pathSHM+"O"
+    self.pathRequest = pathSHM+"I"
+    self.id = int(os.path.basename(pathSHM)[6:])
     
-    if not os.path.exists(self.pathSHMI) or not os.path.exists(self.pathSHMO):
-      cMilvian.printError(f"Error, {os.path.basename(self.pathSHMI)} or {os.path.basename(self.pathSHMO)} do not exist!")
+    if not os.path.exists(self.pathRequest) or not os.path.exists(self.pathResponse):
+      cPrint.error(f"Error, {os.path.basename(self.pathRequest)} or {os.path.basename(self.pathResponse)} do not exist!")
       return
     
-    packet = self.sendSimpleRequest(packetCommand.querycharname)
-    time.sleep(0.05)
+    self.responseDaemonStopSignal = threading.Event()
+    cDispatcher.connect((self.id,'gotData'), self.parseData)
+    self.responseDaemonThread = tStoppableThread(stopper = self.responseDaemonStopSignal, target = self.responseDaemon, daemon=True)
+    self.responseDaemonThread.start()
+    
+    packet = self.sendCommand(packetCommand.querycharname)
     if not packet.wait(1.0):
-      cMilvian.printError(f"cMilvian.init: timedout while waiting for charName. Is {os.path.basename(pathSHM)} is defunct?")
+      cPrint.error(f"cMilvian.init: timedout while waiting for charName. Is {os.path.basename(pathSHM)} is defunct?")
+      print(f" ~~~~  {packet}")
       return
-  
+      
     if packet.status != packetStatus.success:
-      cMilvian.printError(f"cMilvian.init: got status {packet.status} when querying charName on {{os.path.basename(pathSHM)}}.")
+      cPrint.error(f"cMilvian.init: got status {packet.status} when querying charName on {os.path.basename(pathSHM)}.")
       return
     
-    self.charName = packet.outData.decode('utf-8')
-    cMilvian.printInfo(f"cMilvian.init: got charName \"{self.charName}\" for bridge{os.path.basename(pathSHM)[:-1]}")
+    self.charName = packet.outData if isinstance(packet.outData,str) else packet.outData.decode('utf-8')
+    cPrint.info(f"cMilvian.init: got charName \"{self.charName}\" for {os.path.basename(pathSHM)}")
     self.charName = self.charName.lower()
 
   #---------------------------------------------------------------------------------------------------------------
-  def newInputActionRequest(self, cmd: str) -> milvianPacket:
-    cMilvian.printDebug(f"[cMilvian:Debug] {self.charName} - packInputAction({cmd})")
-    return milvianPacket(packetCommand.inputaction, self.pathSHMO[:-1], cMilvian.inputActions[cmd])
+  def close(self):
+    self.responseDaemonStopSignal.set()
+    self.responseDaemonThread.join(timeout=0.1)
+
+  #---------------------------------------------------------------------------------------------------------------
+  def responseDaemon(self) -> bool:
+      try:
+        with open(self.pathResponse, 'r+b') as fdResponse:
+          while not self.responseDaemonStopSignal.is_set():
+            # shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
+            mmResponse = mmap.mmap(fdResponse.fileno(), 0, flags=mmap.MAP_SHARED, prot=mmap.PROT_READ | mmap.PROT_WRITE)
+          
+            writerPos = struct.unpack('<I', mmResponse[P_RESPONSE_WRITER_POS:P_RESPONSE_WRITER_POS+4])[0]
+            readerPos = struct.unpack('<I', mmResponse[P_RESPONSE_READER_POS:P_RESPONSE_READER_POS+4])[0]
+
+            if (writerPos == readerPos):
+              time.sleep(0.05)
+              continue
+            lenMessage = cMilvian.readCircularBuffer(mmResponse, readerPos, 4)
+            lenMessage = struct.unpack('<I', lenMessage)[0]        
+            if lenMessage == 0:
+              cPrint.warning(f"[cMilvian.responseWatcher] seems to have received a message with length=0! Ignoring...")
+              continue
+            if not(lenMessage == 8 or lenMessage > 12):
+              cPrint.error(f"[cMilvian.responseWatcher] seems to have received a message with length={lenMessage}! Valid lengths are 8 (id and status only) and 13 or more (id, status, payload lenght, + payload)...")
+              return False
+            
+            rawData = cMilvian.readCircularBuffer(mmResponse, readerPos+4, lenMessage)
+            cDispatcher.emit((self.id,'gotData'),rawData)
+            cMilvian.setResponseReaderPos(mmResponse,readerPos+4+lenMessage)
+      
+      except Exception as e:
+        print(f" EXCEPTION: {e}")
+      return True
   
   #---------------------------------------------------------------------------------------------------------------
-  def newSleepRequest(self, nsec: float) -> milvianPacket:
-    # I know this looks silly, but I will re-use this later on
-    cMilvian.printDebug(f"[cMilvian:Debug] {self.charName} - packSleep({nsec})")
-    return milvianPacket(packetCommand.sleep, self.pathSHMO[:-1], struct.pack("<f",float(nsec)))
+  @staticmethod
+  def setResponseReaderPos(mmResponse, pos : int):
+      epos = P_RESPONSE_CBUFFER_BEGIN + (pos - P_RESPONSE_CBUFFER_BEGIN) % (P_SHM_SIZE - P_RESPONSE_CBUFFER_BEGIN)
+      mmResponse[P_RESPONSE_READER_POS : P_RESPONSE_READER_POS + 4] = struct.pack('<I', epos)
+      mmResponse.flush()
   
   #---------------------------------------------------------------------------------------------------------------
-  def newSimpleRequest(self, command: str) -> milvianPacket:
-    cMilvian.printDebug(f"[cMilvian:Debug] {self.charName} - packSimpleRequest({command})")
-    if isinstance(command, packetCommand):
-      return milvianPacket(command, self.pathSHMO[:-1])
+  def parseResponse(self, packet : cMilvianPacket):
+    cPrint.debug(f"[cMilvian.parseResponse]:\n{packet}")
+
+  #---------------------------------------------------------------------------------------------------------------
+  def parseData(self, rawData : bytes):
+    id = rawData[0:4]
+
+    if cDispatcher.contains((id,'gotResponse')):
+      cDispatcher.fulfill((id,'gotResponse'), rawData)
+      return
+    
+    packet = cMilvianPacket(packetCommand.unrequested, self)
+    packet.id = id
+    packet.status = packetStatus(rawData[4:8])
+    if len(rawData)>12:
+      packet.outData = rawData[12:]
     else:
-      return milvianPacket(packetCommand[str(command)], self.pathSHMO[:-1])
+      packet.outData = None
+    packet.outMessage = [packet.status.name, packet.outData.decode('utf-8')]
+    cPrint.info(f"{packet}")
+
+  #---------------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def readCircularBuffer(mmResponse : mmap, pos : int, nbytes : int) -> bytes:
+    pos = P_RESPONSE_CBUFFER_BEGIN + (pos - P_RESPONSE_CBUFFER_BEGIN) % (P_SHM_SIZE - P_RESPONSE_CBUFFER_BEGIN)
+    firstChunk = P_SHM_SIZE - pos
+    secondChunk = nbytes - firstChunk
+    data = mmResponse[pos:pos+min(firstChunk, nbytes)]
+    if (secondChunk > 0):
+      data += mmResponse[P_RESPONSE_CBUFFER_BEGIN:secondChunk]
+    return data
+
+  #---------------------------------------------------------------------------------------------------------------
+  def newInputActionRequest(self, cmd: str) -> cMilvianPacket:
+    cPrint.debug(f"[cMilvian:Debug] {self.charName} - packInputAction({cmd})")
+    return cMilvianPacket(packetCommand.inputaction, self, cMilvian.inputActions[cmd])
   
   #---------------------------------------------------------------------------------------------------------------
-  def newListRequest(self, data: list) -> milvianPacket:
+  def newSleepRequest(self, nsec: float) -> cMilvianPacket:
+    # I know this looks silly, but I will re-use this later on
+    cPrint.debug(f"[cMilvian:Debug] {self.charName} - packSleep({nsec})")
+    return cMilvianPacket(packetCommand.sleep, self, struct.pack("<f",float(nsec)))
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def newCommandRequest(self, command: str) -> cMilvianPacket:
+    cPrint.debug(f"[cMilvian:Debug] {self.charName} - packSimpleRequest({command})")
+    if isinstance(command, packetCommand):
+      return cMilvianPacket(command, self)
+    else:
+      return cMilvianPacket(packetCommand[str(command)], self)
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def newListRequest(self, data: list) -> cMilvianPacket:
     # list packet format:
     #  id | list_cmd | inData
     #                  len(data) | item_1_len | item_1_cmd | item_1_data | item_2_len |...
@@ -265,43 +238,55 @@ class cMilvian():
       newReq = self.newStringRequest(item)
       itemData = newReq.pack()
       inData += struct.pack('<I',len(itemData[4:])) + itemData[4:] # ditches the id for the length
-    return milvianPacket(packetCommand.list, self.pathSHMO[:-1], inData)
+    return cMilvianPacket(packetCommand.list, self, inData)
+
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def newDebugCircularRequest(self, nentries: int) -> cMilvianPacket:
+    # I know this looks silly, but I will re-use this later on
+    cPrint.debug(f"[cMilvian:DebugCircular] {self.charName} - debugCircular({nentries})")
+    return cMilvianPacket(packetCommand.debugCircular, self, struct.pack("<I",nentries))
 
   #---------------------------------------------------------------------------------------------------------------
-  def newStringRequest(self, cmd : str) -> milvianPacket:
+  def newStringRequest(self, cmd : str) -> cMilvianPacket:
     cmd = cmd.strip().lower()
     if cmd.startswith('sleep_'):
       return self.newSleepRequest(float(cmd[6:]))
     elif cmd in cMilvian.inputActions.keys():
       return self.newInputActionRequest(cmd)
     else:
-      return self.newSimpleRequest(cmd)
+      return self.newCommandRequest(cmd)
   
   #---------------------------------------------------------------------------------------------------------------
-  def sendList(self, data: list) -> milvianPacket:
+  def sendList(self, data: list) -> cMilvianPacket:
     while isinstance(data,(list,tuple)) and len(data)==1:
       data = data[0]
     if isinstance(data,list):
       return self.sendRequest(self.newListRequest(data))
     else:
       return self.sendRequest(self.newStringRequest(data))
+    
+  #---------------------------------------------------------------------------------------------------------------
+  def sendDebugCircular(self, nentries: str) -> cMilvianPacket:
+    return self.sendRequest(self.newDebugCircularRequest(int(nentries)))
       
   #---------------------------------------------------------------------------------------------------------------
-  def sendInputAction(self, cmd: str) -> milvianPacket:
+  def sendInputAction(self, cmd: str) -> cMilvianPacket:
     return self.sendRequest(self.newInputActionRequest(cmd))
 
   #---------------------------------------------------------------------------------------------------------------
-  def sendSleep(self, nsec: float) -> milvianPacket:
+  def sendSleep(self, nsec: float) -> cMilvianPacket:
     return self.sendRequest(self.newSleepRequest(nsec))
 
   #---------------------------------------------------------------------------------------------------------------
-  def sendSimpleRequest(self, command: str) -> milvianPacket:
-    return self.sendRequest(self.newSimpleRequest(command))
+  def sendCommand(self, command: str) -> cMilvianPacket:
+    return self.sendRequest(self.newCommandRequest(command))
 
   #---------------------------------------------------------------------------------------------------------------
-  def sendRequest(self, packet: milvianPacket) -> milvianPacket:
+  def sendRequest(self, packet: cMilvianPacket) -> cMilvianPacket:
+    cDispatcher.fate((packet.id,'gotResponse'), lambda data, p=packet: p.parseRawData(data))
     message = packet.pack()
-    with open(self.pathSHMI, 'r+b') as fdSHMI:
+    with open(self.pathRequest, 'r+b') as fdSHMI:
       shmI = mmap.mmap(fdSHMI.fileno(), 0, access=mmap.ACCESS_WRITE)
       shmI.seek(4)
       shmI.write(message)
@@ -313,8 +298,8 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   def clearO(self):
-    self.printInfo(f"[*] cMilvian: clearing {self.pathSHMO}")
-    with open(self.pathSHMO, 'r+b') as fdSHMO:
+    cPrint.info(f"[*] cMilvian: clearing {self.pathResponse}")
+    with open(self.pathResponse, 'r+b') as fdSHMO:
       shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
       shmO.seek(0)
       shmO.write(b'\x00' * 4)
@@ -334,13 +319,13 @@ class cMilvian():
       m = cMilvian(f)
       if m.charName:
         characters[m.charName] = m
-        cMilvian.printInfo(f" [*] cMilvian: found {os.path.basename(f)}")
+        cPrint.info(f" [*] cMilvian: found {os.path.basename(f)} for character \"{m.charName}\"")
       elif getUnknown:
         i = 1
         while f"NA{i}" in characters: i += 1
         characters[f"NA{i}"] = m
       elif purgeUnknown:
-        cMilvian.printInfo(f" [*] cMilvian: file {os.path.basename(f)} seems to be orphaned. Deleting... ")
+        cPrint.info(f" [*] cMilvian: file {os.path.basename(f)} seems to be orphaned. Deleting... ")
         os.remove(f)
         os.remove(f[:-1]+"I")
     return characters 

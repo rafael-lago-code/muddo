@@ -23,7 +23,7 @@
 #
 from PyQt6.QtWidgets import QComboBox
 from PyQt6.QtCore import QRunnable, QObject, pyqtSignal
-from cWidgets.util import *
+from helpers.util import *
 import xml.dom.minidom
 
 class cWorld(QObject):

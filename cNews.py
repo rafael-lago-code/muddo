@@ -22,8 +22,8 @@
 #
 #
 from PyQt6.QtWidgets import QTextEdit, QVBoxLayout
-from cWidgets.util import *
-from cWidgets.cToggler import cToggler
+from helpers.util import *
+from widgets.cToggler import cToggler
 
 class cNews(cToggler):
 

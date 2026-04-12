@@ -24,12 +24,12 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QLabel, QTextEdit
 from PyQt6.QtCore import QRunnable, pyqtSignal, QThreadPool
-from cWidgets.cToggler import cToggler
-from cWidgets.cButton import cButton
+from widgets.cToggler import cToggler
+from widgets.cButton import cButton
 import subprocess
 from typing import TYPE_CHECKING
 from datetime import datetime
-from cWidgets.util import *
+from helpers.util import *
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 

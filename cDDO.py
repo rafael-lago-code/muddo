@@ -21,11 +21,12 @@ from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
 from tAuthenticator import tAuthenticator
-from XHelper import XHelper
-from cTop import cTop
+from helpers.XHelper import XHelper
+from helpers.cTop import cTop
 import subprocess
 import os, time, glob, threading
-from cWidgets.util import *
+from helpers.util import *
+from helpers.cPrint import cPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
@@ -75,19 +76,19 @@ class cDDO(aProcessItem):
         self.status = self.P_STATUS_AUTHENTICATING
         self.sigAuthenticating.emit(self.username.text())
         self.pid.setText("Auth")
-        self.printInfo(f"Authenticating \"{C_SILVER}{self.username.text()}</font>\"...")
+        cPrint.info(f"Authenticating \"{C_SILVER}{self.username.text()}</font>\"...")
       elif newStatus == self.P_STATUS_QUEUEING:
         self.status = self.P_STATUS_QUEUEING
         self.sigAuthenticated.emit(self.username.text())
         self.pid.setText("Queue")
-        self.printInfo(f"Queueing \"{C_SILVER}{self.username.text()}</font>\"...")
+        cPrint.info(f"Queueing \"{C_SILVER}{self.username.text()}</font>\"...")
         self.sigQueued.emit(self.username.text())
       elif newStatus == self.P_STATUS_QUEUEDONE:
         self.status = self.P_STATUS_QUEUEDONE
         self.pid.setText("Launch")
         self.sigQueueDone.emit(self.username.text())
       elif newStatus == self.P_STATUS_RUNNING:
-        self.printInfo(f"Running \"{C_SILVER}{self.username.text()}</font>\"...")
+        cPrint.info(f"Running \"{C_SILVER}{self.username.text()}</font>\"...")
     super().setStatus(newStatus)
     if _oldstatus != self.status: self.sigStatusChanged.emit(self.status)
     self.updateTooltip()
@@ -97,7 +98,7 @@ class cDDO(aProcessItem):
     if self.status == aProcessItem.P_STATUS_RUNNING: return
     t = threading.Thread(target=self._launchThread, daemon=True)
     t.start()
-    self.printInfo(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
+    cPrint.info(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
                       {self.worldname.text()}</font>...")
     
   #----------------------------------------------------------------------------------------------------------
@@ -141,7 +142,7 @@ class cDDO(aProcessItem):
       self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
       exitCode = proc.wait()
     else:
-      self.printInfo("tGameExecutable.run:Error launching, check logs for details!")
+      cPrint.info("tGameExecutable.run:Error launching, check logs for details!")
       exitCode = 1
 
     # this locks until the DDO process ends, and it is intentional!
@@ -182,7 +183,7 @@ class cDDO(aProcessItem):
             self.sigChangeRequest.emit(self.status)
             return c
         if (time.time() - startTime) > 15.0:
-          self.printError(f"cDDO.watchPID: timeout error while looking for PID for {self.username.text()}")
+          cPrint.error(f"cDDO.watchPID: timeout error while looking for PID for {self.username.text()}")
           return None
         time.sleep(0.1)
 
@@ -200,14 +201,14 @@ class cDDO(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def audioMute(self):
     if self.pid.text().isdigit():
-      self.printInfo(f"{C_SILVER}Muting</font> {self.pid.text()}...")
+      cPrint.info(f"{C_SILVER}Muting</font> {self.pid.text()}...")
       XHelper.audioMute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_UNMUTE))
 
   #----------------------------------------------------------------------------------------------------------
   def audioUnmute(self):
     if self.pid.text().isdigit():
-      self.printInfo(f"{C_SILVER}Unmuting</font> {self.pid.text()}...")
+      cPrint.info(f"{C_SILVER}Unmuting</font> {self.pid.text()}...")
       XHelper.audioUnmute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
   

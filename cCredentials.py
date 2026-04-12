@@ -25,11 +25,11 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QCheckBox, QListWidget, \
   QSizePolicy, QListWidgetItem
 from PyQt6.QtCore import Qt, pyqtSignal, QThreadPool, QItemSelectionModel, QSize
-from cWidgets.cToggler import cToggler
 from cWorlds import cWorldList
 from tServerInfo import tServerInfo
-from cWidgets.cOrb import cOrbSmall
-from cWidgets.util import *
+from widgets.cToggler import cToggler
+from widgets.cOrb import cOrbSmall
+from helpers.util import *
 import json
 
 from typing import TYPE_CHECKING

@@ -19,12 +19,13 @@
 #
 from __future__ import annotations
 from cProcess import aProcessItem
-from XHelper import XHelper
-from cTop import cTop
+from helpers.XHelper import XHelper
+from helpers.cTop import cTop
 import subprocess
 import os, time, threading
-from cWidgets.cOrb import cOrb
-from cWidgets.util import *
+from widgets.cOrb import cOrb
+from helpers.util import *
+from helpers.cPrint import cPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
@@ -76,13 +77,13 @@ class cDungeonHelper(aProcessItem):
   def launch(self):
     if not self.main.profile().useDungeonHelper.isChecked(): return
     if self.status == self.P_STATUS_RUNNING:
-      self.printWarning(" Attempting to launch Dungeon Helper, but it is already running."+
+      cPrint.warning(" Attempting to launch Dungeon Helper, but it is already running."+
                         " Try right-click->kill to cleanup state.")
       return
     self.pid.setText("")
     for file in glob.glob("/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/bridge*"):
       os.remove(file)
-    self.printInfo(f"Starting {C_SILVER}DungeonHelper.exe</font>...")
+    cPrint.info(f"Starting {C_SILVER}DungeonHelper.exe</font>...")
     self.show()
     t = threading.Thread(target=self._launchThread, daemon=True)
     t.start()
@@ -113,7 +114,7 @@ class cDungeonHelper(aProcessItem):
       self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
       exitCode = proc.wait()
     else:
-      self.printInfo("cDungeonHelper.launchThread: error launching, check logs for details!")
+      cPrint.info("cDungeonHelper.launchThread: error launching, check logs for details!")
       exitCode = 1
 
     # this locks until the DH process ends, and it is intentional!
@@ -138,7 +139,7 @@ class cDungeonHelper(aProcessItem):
             self.sigChangeRequest.emit(self.status) # just to refresh
             return c
         if (time.time() - startTime) > 15.0:
-          self.printError(f"cDungeonHelper.watchPID: timeout error while looking for PID")
+          cPrint.error(f"cDungeonHelper.watchPID: timeout error while looking for PID")
           return None
         time.sleep(0.1)
     baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
@@ -157,7 +158,7 @@ class cDungeonHelper(aProcessItem):
           self.sigChangeRequest.emit(self.status) # just to refresh
           return candidates[0]
         if (time.time() - startTime) > 15.0:
-          self.printError(f"cDungeonHelper.watchWinID: timeout error while looking for WinID")
+          cPrint.error(f"cDungeonHelper.watchWinID: timeout error while looking for WinID")
           return None
         time.sleep(0.1)
 
@@ -199,7 +200,7 @@ class cDungeonHelper(aProcessItem):
   def kill(self):
     super().kill()
     baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
-    self.printWarning(f"Killing all processes containing {baseExec}...")
+    cPrint.warning(f"Killing all processes containing {baseExec}...")
     cTop.killAll(baseExec)
     self.clear()
 

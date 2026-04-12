@@ -19,9 +19,9 @@
 #
 from __future__ import annotations
 from PyQt6.QtWidgets import QAbstractItemView, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
-from cWidgets.util import *
-from cWidgets.cToggler import cToggler
-from cWidgets.cOrb import cOrbSmall
+from helpers.util import *
+from widgets.cToggler import cToggler
+from widgets.cOrb import cOrbSmall
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt

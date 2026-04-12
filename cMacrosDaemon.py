@@ -18,15 +18,16 @@
 #
 #
 from __future__ import annotations
+from PyQt6.QtWidgets import QMenu
+from PyQt6.QtGui import QAction
 from cProcess import aProcessItem
-from XHelper import XHelper
-from cWidgets.cOrb import cOrb
-from cWidgets.util import *
+from widgets.cOrb import cOrb
+from helpers.XHelper import XHelper
+from helpers.util import *
+from helpers.cPrint import cPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
-from PyQt6.QtWidgets import QMenu
-from PyQt6.QtGui import QAction
 from cMilvian import cMilvian
 
 P_POST_FOCUS_DELAY = "delay_0.01"
@@ -130,12 +131,12 @@ class cMacrosDaemon(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
     if self.process:
-      self.printWarning(" Attempting to launch Macros Daemon when one is already running."+
+      cPrint.warning(" Attempting to launch Macros Daemon when one is already running."+
                                 " Try right-click->kill to cleanup state.")
     else:
       parsed = self.convert(self.main.macros.consolidateActiveMacros())
       if not parsed:
-        self.printWarning(" Attempting to launch Macros Daemon but no macros found." \
+        cPrint.warning(" Attempting to launch Macros Daemon but no macros found." \
         " Make you have macro sets selected and that the relevant accounts are online before starting" \
         " the Macros Daemon")
         return
@@ -172,6 +173,7 @@ class cMacrosDaemon(aProcessItem):
     self.process = None
     allk = list(self.milvianProc.keys())
     for k in allk:
+      self.milvianProc[k].close()
       del self.milvianProc[k]
     self.milvianProc = None
     # if remove: self.clear()
@@ -183,7 +185,7 @@ class cMacrosDaemon(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def cleanup(self):
-    self.printInfo("Purging all possible shortcuts combinations...")
+    cPrint.info("Purging all possible shortcuts combinations...")
     XHelper().forceCleanup()
 
   

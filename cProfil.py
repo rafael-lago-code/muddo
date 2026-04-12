@@ -19,13 +19,10 @@
 #
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QFileDialog, QCheckBox, QLineEdit, QWidget
-from cWidgets.util import *
-from cWidgets.cOrb import cOrbSmall
-from cWidgets.cGridLayout import cGridLayout
-import os
-import subprocess
-import json
-import glob
+from helpers.util import *
+from widgets.cOrb import cOrbSmall
+from widgets.cGridLayout import cGridLayout
+import os, subprocess, json
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow

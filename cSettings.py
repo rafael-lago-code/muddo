@@ -18,17 +18,12 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QGridLayout, QComboBox
-from PyQt6.QtGui import QAction
-from cWidgets.cOrb import cOrbSmall
-from cWidgets.util import *
-from cWidgets.cToggler import cToggler
-from cWidgets.cButton import cButton
+from PyQt6.QtWidgets import QComboBox
+from widgets.cOrb import cOrbSmall
+from helpers.util import *
+from widgets.cToggler import cToggler
 from cProfil import cProfil
-import os
-import subprocess
-import json
-import glob
+import os, json, glob
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow

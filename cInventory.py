@@ -23,9 +23,9 @@
 #
 from PyQt6.QtWidgets import QAbstractItemView, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView
 from PyQt6.QtCore import Qt
-from cWidgets.cOrb import cOrbSmall, cOrb
-from cWidgets.util import *
-from cWidgets.cToggler import cToggler
+from widgets.cOrb import cOrbSmall, cOrb
+from helpers.util import *
+from widgets.cToggler import cToggler
 from PIL import Image
 
 P_ITEM_COLUMNS = ["Name", "Owner", "Type", "Equips To", "Binding", "👤", "🔒"]

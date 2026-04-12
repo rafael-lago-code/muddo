@@ -30,8 +30,9 @@ from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cInventory import cStorageManager
 from cDDO import cDDO
-from cWidgets.cOrb import cOrb
-from cWidgets.util import *
+from widgets.cOrb import cOrb
+from helpers.util import *
+from helpers.cPrint import cPrint
 
 class cMainWindow(QMainWindow):
   P_POS_X = 100
@@ -52,6 +53,7 @@ class cMainWindow(QMainWindow):
     btnQuit = cOrb("Quit", P_ICON_EXIT)
         
     self.console = cConsole(P_DEFAULT_LOGSDIR+'/log')
+    cPrint.attachConsole(self.console)
     self.credentials = cCredentials(self)
     self.news = cNews(self)
     self.patch = cPatch(self)
@@ -104,17 +106,13 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    from XHelper import XHelper
+    from helpers.XHelper import XHelper
     from cMilvian import cMilvian
-    from cTop import cTop
-    from cWidgets.cLog import cLog
+    from helpers.cTop import cTop
+    from widgets.cLog import cLog
     self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     cProcessManager.attachMain(self)
-    XHelper.attachConsole(self.console)
-    cTop.attachConsole(self.console)
-    cLog.attachConsole(self.console)
-
     self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
 
     self.settings.initialize()
@@ -126,7 +124,7 @@ class cMainWindow(QMainWindow):
     self.patch.initialize()
     self.storageManager.initialize()
   
-    cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()), self.console)
+    cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()))
 
 
   #----------------------------------------------------------------------------------------------------------

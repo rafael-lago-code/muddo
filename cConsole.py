@@ -20,8 +20,8 @@
 from PyQt6.QtWidgets import QTextEdit, QTabWidget
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtCore import QFileSystemWatcher
-from cWidgets.util import *
-from cWidgets.cToggler import cToggler
+from helpers.util import *
+from widgets.cToggler import cToggler
 from datetime import datetime
 import sys
 
