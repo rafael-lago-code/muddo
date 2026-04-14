@@ -18,7 +18,7 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QAbstractItemView, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter
+from PyQt6.QtWidgets import QAbstractItemView, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit
 from helpers.util import *
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbSmall
@@ -32,6 +32,58 @@ if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 P_DEFAULT_MACROEXT = ".macro"
+
+def aliasRegex(alias: str) -> str:
+  if not alias: return re.escape(alias)
+
+  # Split on $N tokens, keeping them in the result list.
+  # e.g. "tpp$1"   -> ["tpp", "$1", ""]
+  # e.g. "a$1b$2c" -> ["a", "$1", "b", "$2", "c"]
+  parts = re.split(r'(\$\d+)', alias)
+
+  first_literal = parts[0]
+  last_literal  = parts[-1]
+
+  # Left boundary: inspect first real char, or assume word-char when alias starts with $N
+  first_char = first_literal[0] if first_literal else None
+  if first_char is None or first_char.isalnum() or first_char == '_':
+    left = r'\b'
+  else:
+    left = r'(?<!' + re.escape(first_char) + r')'
+
+  # Right boundary: inspect last real char, or assume word-char when alias ends with $N
+  last_char = last_literal[-1] if last_literal else None
+  if last_char is None or last_char.isalnum() or last_char == '_':
+    right = r'\b'
+  else:
+    right = r'(?!' + re.escape(last_char) + r')'
+
+  # Build pattern body: escape literal parts, replace each $N with a capture group
+  body = ''
+  for part in parts:
+    if re.match(r'^\$\d+$', part):
+      body += r'(\w+)'
+    else:
+      body += re.escape(part)
+
+  return left + body + right
+
+
+def aliasReplace(translation: str):
+  """Return a re.sub replacement callable that substitutes $N in translation with group N."""
+  if not re.search(r'\$\d+', translation):
+    return lambda m: translation
+  def repl(m):
+    result = translation
+    for i in range(1, 10):
+      placeholder = f'${i}'
+      if placeholder in result:
+        try:
+          result = result.replace(placeholder, m.group(i))
+        except IndexError:
+          pass
+    return result
+  return repl
 
 class cMacroItem(QListWidgetItem):
   def __init__(self, parent : cMacros, name : str):
@@ -104,17 +156,17 @@ class cMacroItem(QListWidgetItem):
     # If <target> is missing, "self" is assumed (useful for macros)
     # A special target "all" is provided for firing the macro to all running DDO processes
     # Actions:
-    #   - sleep X: wait for X seconds
+    #   - sleep_X: wait for X seconds
     #   - anything else: interpreted as key presses
     # Scripts are all started at the same time whenever their shortcut is pressed
     for row in self.data:
       hotkey  = row[2]
       for k,a in aliases.items():
-        hotkey = hotkey.replace(k,a)
+        hotkey = re.sub(aliasRegex(k), aliasReplace(a), hotkey)
       hotkey  = (hotkey.replace(" ", "")).lower()
       scripts = row[3]
       for k,a in aliases.items():
-        scripts = scripts.replace(k,a)
+        scripts = re.sub(aliasRegex(k), aliasReplace(a), scripts)
       scripts = [e.strip() for e in (scripts).split(";") if e.strip()]
 
       if hotkey in consolidated.keys():
@@ -141,12 +193,6 @@ class cMacroItem(QListWidgetItem):
     # todo: check if "all" is scripting the same action; if yes, then the individual characters don't need to do it by themselves
       consolidated[hotkey] = cs
     return consolidated
-  
-#----------------------------------------------------------------------------------------------------------  
-class cMacroLists(QListWidgetItem):
-  def __init__(self, parent : cMacros):
-    super().__init__()
-    self.parent = parent
 
 #----------------------------------------------------------------------------------------------------------
 class cMacros(cToggler):
@@ -161,7 +207,7 @@ class cMacros(cToggler):
 
     self.daemon = cMacrosDaemon(self.main)
     
-    self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of macros")
+    self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
     self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click or Right click to save all")
     self.btnDeleteSet   = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
     self.btnReloadSet   = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click or Right click to reload all")
@@ -179,14 +225,21 @@ class cMacros(cToggler):
     self.btnDeleteSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnReloadSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     
-    self.macroListWidget = QListWidget()
-    self.macroTable = QTableWidget(0, 2)
-    self.macroTable.setHorizontalHeaderLabels(["Alias", "Translation"])
-    self.macroTable.setColumnWidth(40, 40)
-    self.macroTable.horizontalHeader().setStretchLastSection(True)
-    self.macroTable.verticalHeader().setVisible(False)
-    self.macroTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-    
+    self.setListWidget = QListWidget()
+    self.setListWidget.setWordWrap(True)
+    self.setListWidget.setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
+    self.aliasTable = QTableWidget(0, 2)
+    self.aliasTable.setHorizontalHeaderLabels(["Alias", "Translation"])
+    self.aliasTable.setColumnWidth(40, 40)
+    self.aliasTable.horizontalHeader().setStretchLastSection(True)
+    self.aliasTable.setSortingEnabled(True)
+    self.aliasTable.setWordWrap(True)
+    self.aliasTable.verticalHeader().setVisible(False)
+    self.aliasTable.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
+    self.aliasTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+
+    self.aliasFilter = QLineEdit()
+
     self.allMacroItems = {}
     self.activeSetLabel = QLabel("Macros in selected set:")
     self.table = QTableWidget(0, 4)
@@ -196,34 +249,37 @@ class cMacros(cToggler):
     self.table.verticalHeader().setVisible(False)
     self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
-    _topsplitter = QSplitter()
     _vsplitter = QSplitter(Qt.Orientation.Vertical)
-    _topsplitter.addWidget(newVFrame([ "Macro Sets:", 
-                              newHLayout([self.macroListWidget,
+    _bottomSplitter = QSplitter()
+    _bottomSplitter.addWidget(newVFrame([ "Sets:", 
+                              newHLayout([self.setListWidget,
                                 newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, 
                                   self.btnSaveSet, self.btnReloadSet, "__stretch__"])])]))
-    
-    _topsplitter.addWidget(newVFrame(["Aliases:", 
-                              newHLayout([self.macroTable, 
-                                  newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias,
-                                              self.btnSaveAlias, self.btnReloadAlias,"__stretch__"])])]))
-    _vsplitter.addWidget(_topsplitter)
-    _vsplitter.addWidget(newVFrame([self.activeSetLabel, 
-                            newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry, 
-                                        self.btnRemoveEntry, "__stretch__"])])]))
+    _bottomSplitter.addWidget(newVFrame([self.activeSetLabel, 
+                         newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry, 
+                                     self.btnRemoveEntry, "__stretch__"])])]))
+    _bottomSplitter.setSizes([100,400])
+
+    _vsplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]), 
+                           newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias,
+                                       self.btnSaveAlias, self.btnReloadAlias,"__stretch__"])]))
+    _vsplitter.addWidget(_bottomSplitter)
+    _vsplitter.setSizes([100,300])
+
     self.setLayout(newVLayout([_vsplitter]))
 
     self.btnNewSet.clicked.connect(self.newMacroSet)
     self.btnDeleteSet.clicked.connect(self.deleteMacroSet)
     # self.btnHelp.clicked.connect(self.showHelpWindow)
-    self.macroListWidget.itemChanged.connect(self.updateMacroSetFile)
-    self.macroListWidget.itemSelectionChanged.connect(self.updateTable)
+    self.setListWidget.itemChanged.connect(self.updateMacroSetFile)
+    self.setListWidget.itemSelectionChanged.connect(self.updateTable)
     self.table.cellChanged.connect(self.syncTable2Data)
 
     self.btnAddAlias.clicked.connect(self.addAlias)
     self.btnRemoveAlias.clicked.connect(self.removeAlias)
     self.btnSaveAlias.clicked.connect(self.saveAlias)
     self.btnReloadAlias.clicked.connect(self.reloadAlias)
+    self.aliasFilter.textChanged.connect(self.filterAlias)
 
     self.btnAddEntry.clicked.connect(self.addMacroEntry)
     self.btnRemoveEntry.clicked.connect(self.removeMacroEntry)
@@ -249,7 +305,7 @@ class cMacros(cToggler):
   
   #----------------------------------------------------------------------------------------------------------
   def updateTable(self):
-    sset = self.macroListWidget.selectedItems()
+    sset = self.setListWidget.selectedItems()
     if not sset:
       return
 
@@ -268,28 +324,28 @@ class cMacros(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def syncTable2Data(self, row, column):
-    sset = self.macroListWidget.selectedItems()
+    sset = self.setListWidget.selectedItems()
     if not sset: return
     sset[0].sync(row, column)
-    self.activeSetLabel.setText(f"Macros in \"{sset[0].text()}\":")
+    self.activeSetLabel.setText(f"Shortcuts in \"{sset[0].text()}\":")
   
   #----------------------------------------------------------------------------------------------------------
   def addAlias(self, alias="", action=""):
-    pos = self.macroTable.rowCount()
-    self.macroTable.insertRow(pos)
-    self.macroTable.setItem(pos, 0, QTableWidgetItem(alias))
-    self.macroTable.setItem(pos, 1, QTableWidgetItem(action))
+    pos = self.aliasTable.rowCount()
+    self.aliasTable.insertRow(pos)
+    self.aliasTable.setItem(pos, 0, QTableWidgetItem(alias))
+    self.aliasTable.setItem(pos, 1, QTableWidgetItem(action))
 
   #----------------------------------------------------------------------------------------------------------
   def removeAlias(self):
-    crow = self.macroTable.currentRow()
+    crow = self.aliasTable.currentRow()
     if crow:
-      self.macroTable.removeRow(crow)
+      self.aliasTable.removeRow(crow)
 
   #----------------------------------------------------------------------------------------------------------
   def reloadAlias(self):
-    self.macroTable.clearContents()
-    self.macroTable.setRowCount(0)
+    self.aliasTable.clearContents()
+    self.aliasTable.setRowCount(0)
 
     filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
     with open(filename,"r") as f:
@@ -306,10 +362,17 @@ class cMacros(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def getAliases(self):
     d = {}
-    for row in range(self.macroTable.rowCount()):
-      d[self.macroTable.item(row,0).text()] = self.macroTable.item(row,1).text()
+    for row in range(self.aliasTable.rowCount()):
+      d[self.aliasTable.item(row,0).text()] = self.aliasTable.item(row,1).text()
     return d
 
+  #----------------------------------------------------------------------------------------------------------
+  def filterAlias(self, text: str):
+    text = text.lower()
+    for row in range(self.aliasTable.rowCount()):
+      item = self.aliasTable.item(row, 0)
+      match = text in (item.text().lower() if item else "")
+      self.aliasTable.setRowHidden(row, bool(text) and not match)
 
   #----------------------------------------------------------------------------------------------------------
   def newMacroSet(self):
@@ -323,7 +386,7 @@ class cMacros(cToggler):
     if name in self.allMacroItems: return
 
     self.allMacroItems[name] = cMacroItem(self,name)
-    self.macroListWidget.addItem(self.allMacroItems[name])
+    self.setListWidget.addItem(self.allMacroItems[name])
     
     filename = P_DEFAULT_MACRODIR+os.sep+name+P_DEFAULT_MACROEXT
     if os.path.exists(filename):
@@ -396,7 +459,7 @@ class cMacros(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def deleteMacroSet(self):
-    sset = self.macroListWidget.selectedItems()
+    sset = self.setListWidget.selectedItems()
     if not sset: return
     self.main.console.info(f"Removing macro set \"{C_SILVER}{sset[0].text()}</font>\"...")
     del self.allMacroItems[sset[0].text()]
@@ -404,7 +467,7 @@ class cMacros(cToggler):
       os.remove(P_DEFAULT_MACRODIR+os.sep+sset[0].text()+P_DEFAULT_MACROEXT)
     except:
       pass
-    self.macroListWidget.takeItem(self.macroListWidget.row(sset[0]))
+    self.setListWidget.takeItem(self.setListWidget.row(sset[0]))
     del sset[0]
 
 
@@ -427,7 +490,7 @@ class cMacros(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def removeMacroEntry(self):
-    sset = self.macroListWidget.selectedItems()
+    sset = self.setListWidget.selectedItems()
     if not sset: return
     crow = self.table.currentRow()
     sset[0].removeRow(crow)
@@ -435,7 +498,7 @@ class cMacros(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def saveSelectedMacroSet(self):
-    sset = self.macroListWidget.selectedItems()
+    sset = self.setListWidget.selectedItems()
     if not sset: return
     sset[0].save()
 
@@ -452,7 +515,7 @@ class cMacros(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def reloadSelectedMacroSet(self):
-    sset = self.macroListWidget.selectedItems()
+    sset = self.setListWidget.selectedItems()
     if not sset: return
     sset[0].load()
     self.updateTable()

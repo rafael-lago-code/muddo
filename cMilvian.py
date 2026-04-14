@@ -23,10 +23,11 @@ import sys, mmap, time, struct
 import os, threading
 from typing import TYPE_CHECKING
 from PyQt6.QtCore import pyqtSignal, QObject
-from helpers.cMilvianPacket import cMilvianPacket, packetCommand, packetStatus
+from helpers.cMilvianPacket import cMilvianPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
 from helpers.cPrint import cPrint
 from helpers.cDispatcher import cDispatcher
+from helpers.util import *
 if TYPE_CHECKING:
    from cMilvian import cMilvian
 
@@ -111,27 +112,27 @@ class cMilvian():
     self.id = int(os.path.basename(pathSHM)[6:])
     
     if not os.path.exists(self.pathRequest) or not os.path.exists(self.pathResponse):
-      cPrint.error(f"Error, {os.path.basename(self.pathRequest)} or {os.path.basename(self.pathResponse)} do not exist!")
+      cPrint.error(f"[cMilvian] error, {os.path.basename(self.pathRequest)} or {os.path.basename(self.pathResponse)} do not exist!")
       return
     
     self.responseDaemonStopSignal = threading.Event()
-    cDispatcher.connect((self.id,'gotData'), self.parseData)
+    cDispatcher.connect((self.id, packetSignal.gotData), self.parseData)
     self.responseDaemonThread = tStoppableThread(stopper = self.responseDaemonStopSignal, target = self.responseDaemon, daemon=True)
     self.responseDaemonThread.start()
     
     packet = self.sendCommand(packetCommand.querycharname)
     if not packet.wait(1.0):
-      cPrint.error(f"cMilvian.init: timedout while waiting for charName. Is {os.path.basename(pathSHM)} is defunct?")
-      print(f" ~~~~  {packet}")
+      cPrint.error(f"[cMilvian] timedout while waiting for charName. Is {os.path.basename(pathSHM)} is defunct?")
+      cPrint.error(f" ~~~~  {packet}")
       return
       
     if packet.status != packetStatus.success:
-      cPrint.error(f"cMilvian.init: got status {packet.status} when querying charName on {os.path.basename(pathSHM)}.")
+      cPrint.error(f"[cMilvian] got status {packet.status} when querying charName on {os.path.basename(pathSHM)}.")
       return
     
     self.charName = packet.outData if isinstance(packet.outData,str) else packet.outData.decode('utf-8')
-    cPrint.info(f"cMilvian.init: got charName \"{self.charName}\" for {os.path.basename(pathSHM)}")
-    self.charName = self.charName.lower()
+    self.charName = self.charName.split()[0]
+    cPrint.info(f"[cMilvian] got charName {C_SILVER}\"{self.charName}\"</font> for {os.path.basename(pathSHM)}")
 
   #---------------------------------------------------------------------------------------------------------------
   def close(self):
@@ -155,14 +156,14 @@ class cMilvian():
             lenMessage = cMilvian.readCircularBuffer(mmResponse, readerPos, 4)
             lenMessage = struct.unpack('<I', lenMessage)[0]        
             if lenMessage == 0:
-              cPrint.warning(f"[cMilvian.responseWatcher] seems to have received a message with length=0! Ignoring...")
+              cPrint.warning(f"[cMilvian] seems to have received a message with length=0! Ignoring...")
               continue
             if not(lenMessage == 8 or lenMessage > 12):
-              cPrint.error(f"[cMilvian.responseWatcher] seems to have received a message with length={lenMessage}! Valid lengths are 8 (id and status only) and 13 or more (id, status, payload lenght, + payload)...")
+              cPrint.error(f"[cMilvian] seems to have received a message with length={lenMessage}! Valid lengths are 8 (id and status only) and 13 or more (id, status, payload lenght, + payload)...")
               return False
             
             rawData = cMilvian.readCircularBuffer(mmResponse, readerPos+4, lenMessage)
-            cDispatcher.emit((self.id,'gotData'),rawData)
+            cDispatcher.emit((self.id, packetSignal.gotData),rawData)
             cMilvian.setResponseReaderPos(mmResponse,readerPos+4+lenMessage)
       
       except Exception as e:
@@ -184,8 +185,8 @@ class cMilvian():
   def parseData(self, rawData : bytes):
     id = rawData[0:4]
 
-    if cDispatcher.contains((id,'gotResponse')):
-      cDispatcher.fulfill((id,'gotResponse'), rawData)
+    if cDispatcher.contains((self.id, id, packetSignal.gotResponse)):
+      cDispatcher.emit((self.id, id, packetSignal.gotResponse), rawData)
       return
     
     packet = cMilvianPacket(packetCommand.unrequested, self)
@@ -196,7 +197,7 @@ class cMilvian():
     else:
       packet.outData = None
     packet.outMessage = [packet.status.name, packet.outData.decode('utf-8')]
-    cPrint.info(f"{packet}")
+    cPrint.info(f"[cMilvian.parseData] Unhandled packet: {packet}")
 
   #---------------------------------------------------------------------------------------------------------------
   @staticmethod
@@ -284,7 +285,7 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   def sendRequest(self, packet: cMilvianPacket) -> cMilvianPacket:
-    cDispatcher.fate((packet.id,'gotResponse'), lambda data, p=packet: p.parseRawData(data))
+    cDispatcher.fate((self.id, packet.id, packetSignal.gotResponse), lambda data, p=packet: p.parseRawData(data))
     message = packet.pack()
     with open(self.pathRequest, 'r+b') as fdSHMI:
       shmI = mmap.mmap(fdSHMI.fileno(), 0, access=mmap.ACCESS_WRITE)
@@ -309,7 +310,7 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   @staticmethod
-  def getFromDir(path=None, getUnknown=False, purgeUnknown=False) -> list:
+  def getFromDir(path=None, getUnknown=False, purgeUnknown=False) -> dict:
     if not path: path = cMilvian.bridgePath
     files = [f for f in os.listdir(path) if f.startswith("bridge")]
     filesO = [os.path.join(path, f) for f in files if f.endswith("O")]
@@ -319,7 +320,7 @@ class cMilvian():
       m = cMilvian(f)
       if m.charName:
         characters[m.charName] = m
-        cPrint.info(f" [*] cMilvian: found {os.path.basename(f)} for character \"{m.charName}\"")
+        # cPrint.info(f" [*] cMilvian: found {os.path.basename(f)} for character \"{m.charName}\"")
       elif getUnknown:
         i = 1
         while f"NA{i}" in characters: i += 1

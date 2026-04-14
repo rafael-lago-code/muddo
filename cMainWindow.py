@@ -28,7 +28,7 @@ from cConsole import cConsole
 from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
-from cInventory import cStorageManager
+from cStorage import cStorageManager
 from cDDO import cDDO
 from widgets.cOrb import cOrb
 from helpers.util import *
@@ -122,7 +122,7 @@ class cMainWindow(QMainWindow):
     self.macros.initialize()
     self.news.initialize()
     self.patch.initialize()
-    self.storageManager.initialize()
+    self.storageManager.initialize(self.macros.daemon)
   
     cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()))
 

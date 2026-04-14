@@ -18,10 +18,11 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox
+from PyQt6.QtWidgets import QComboBox, QTabWidget, QWidget, QCheckBox, QGroupBox, QGridLayout, QTextEdit
 from widgets.cOrb import cOrbSmall
 from helpers.util import *
 from widgets.cToggler import cToggler
+from types import SimpleNamespace
 from cProfil import cProfil
 import os, json, glob
 from typing import TYPE_CHECKING
@@ -33,6 +34,13 @@ class cSettings(cToggler):
   def __init__(self, main : cMainWindow):
     self.widgetID = "settings"
     super().__init__("&Settings", P_ICON_GEARSTACK)
+    self.tabWidget = QTabWidget(self)
+    # self.tabWidget.setTabPosition(QTabWidget.TabPosition.East)
+    self.tabs = SimpleNamespace(x=QWidget(),
+                                milvian=QWidget(),
+                                toolbar=QWidget(),
+                                launcher=QWidget())
+    
     self.toggler.setToolTip("Toggle Settings UI")
     self.main = main
     self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
@@ -50,14 +58,82 @@ class cSettings(cToggler):
     self.btnRemoveProfile = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
     self.btnReload = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
 
-    # g = QGridLayout()
+    # Launcher Settings
+    # -----------------------------
+    # TODO modernize this part.
+    # This is currently quite confusing. Because the user may change profile on-the-go (which changes 
+    # all settings, each profile is stored in a separate "layer" and hidden according to which profile is 
+    # currently active. I'll need to rethink this later on
     self.hiddenLayer = QVBoxLayout()
-    # g.addLayout(newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload, "__stretch__"]))
-    # g.addLayout(newHLayout(["Profile: ", self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload]),  0, 0, 1, 4)
-    # g.addLayout(self.hiddenLayer, 1, 0, 1, 4)
-    self.setLayout(newVLayout([newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload, "__stretch__"]),
+    self.tabs.launcher.setLayout(newVLayout([newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnSave, self.btnRemoveProfile, self.btnReload, "__stretch__"]),
                                self.hiddenLayer,
                                "__stretch__"]))
+    self.tabWidget.addTab(self.tabs.launcher, "Launcher")
+
+    # X Settings
+    # TODO
+    # -----------------------------
+    self.x = SimpleNamespace(rememberPos=QCheckBox("Position"),
+                             rememberSize=QCheckBox("Size"),
+                             rememberDesktop=QCheckBox("Virtual desktop"),
+                             audio=QComboBox(),
+                             border=QComboBox(),
+                             log=QComboBox(),
+                             blackScreenFix=QCheckBox("Try to fix blackscreen bug at startup"),
+                             rememberMUDDOPos=QCheckBox("Position"),
+                             rememberMUDDOSize=QCheckBox("Size"),
+                             rememberMUDDODesktop=QCheckBox("Virtual desktop"),
+                             MUDDOLog=QComboBox(),
+                             )
+    g1w = QGroupBox(self.tabs.x, title="Game Client")
+    g2w = QGroupBox(self.tabs.x, title="μDDO")
+    g1l = QGridLayout()
+    g1l.addWidget(QLabel("Remember..."),  g1l.rowCount(),   0, 1, 2)
+    g1l.addWidget(self.x.rememberPos,     g1l.rowCount(),   0, 1, 2)
+    g1l.addWidget(self.x.rememberSize,    g1l.rowCount(),   0, 1, 2)
+    g1l.addWidget(self.x.rememberDesktop, g1l.rowCount(),   0, 1, 2)
+    g1l.addWidget(QLabel("Border:"),      g1l.rowCount(),   0, 1, 1)
+    g1l.addWidget(self.x.border,          g1l.rowCount()-1, 1, 1, 1)
+    g1l.addWidget(QLabel("Audio:"),       g1l.rowCount(),   0, 1, 1)
+    g1l.addWidget(self.x.audio,           g1l.rowCount()-1, 1, 1, 1)
+    g1l.addWidget(QLabel("Log:"),         g1l.rowCount(),   0, 1, 1)
+    g1l.addWidget(self.x.log,             g1l.rowCount()-1, 1, 1, 1)
+    g1l.addWidget(self.x.blackScreenFix,  g1l.rowCount(),   0, 1, 2)
+    g1w.setLayout(g1l)
+    g2l = QGridLayout()
+    g2l.addWidget(QLabel("Remember..."),       g2l.rowCount(),   0, 1, 2)
+    g2l.addWidget(self.x.rememberMUDDOPos,     g2l.rowCount(),   0, 1, 2)
+    g2l.addWidget(self.x.rememberMUDDOSize,    g2l.rowCount(),   0, 1, 2)
+    g2l.addWidget(self.x.rememberMUDDODesktop, g2l.rowCount(),   0, 1, 2)
+    g2l.addWidget(QLabel(""),                  g2l.rowCount(),   0, 1, 2)
+    g2l.addWidget(QLabel(""),                  g2l.rowCount(),   0, 1, 2)
+    g2l.addWidget(QLabel("Log:"),              g2l.rowCount(),   0, 1, 2)
+    g2l.addWidget(self.x.MUDDOLog,             g2l.rowCount()-1, 1, 1, 1)
+    g2l.addWidget(QLabel(""),                  g2l.rowCount(),   0, 1, 2)
+    g2w.setLayout(g2l)
+
+    self.x.border.addItems(["Remember", "Always borderless", "Never borderless"])
+    self.x.audio.addItems(["Remember", "Always muted", "Never muted"])
+    self.x.log.addItems(["Remember", "Always shown", "Never shown"])
+    self.x.MUDDOLog.addItems(["Remember", "Always shown", "Never shown"])
+
+    self.tabs.x.setLayout(newHLayout([g1w, g2w]))
+    self.tabWidget.addTab(self.tabs.x, "X && Pipewire")
+
+    # Milvian Settings
+    # TODO
+    # -----------------------------
+    self.tabWidget.addTab(self.tabs.milvian, "Milvian")
+    self.milvianSHMPath = QTextEdit()
+    self.tabs.milvian.setLayout(newHLayout(["Milvian's SHM Path:", self.milvianSHMPath]))
+
+    # Toolbar Settings
+    # TODO
+    # -----------------------------
+    self.tabWidget.addTab(self.tabs.toolbar, "Toolbar")
+    self.tabs.toolbar.setLayout(newHLayout(["TODO"]))
+
+    self.setLayout(newVLayout([self.tabWidget]))
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):

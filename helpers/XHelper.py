@@ -16,6 +16,7 @@
 #
 from PyQt6.QtCore import QObject, pyqtSignal
 from Xlib import X, display
+import Xlib.error
 import time, re, threading, json, subprocess
 from helpers.tStoppableThread import tStoppableThread
 from helpers.cPrint import cPrint
@@ -103,6 +104,7 @@ def _buildModifiers():
 #                                            X H E L P E R
 #                                  
 #   TODO MAKE THIS STATIC!!! Need to remove __init__ and put it somewhere else
+#   TODO get rid of Qt requirement (i.e. pyqtSignal) and use cDispatcher instead
 #---------------------------------------------------------------------------------------------------------------
 class XHelper(QObject):
   sigGotWinID = pyqtSignal((int,list))
@@ -120,6 +122,7 @@ class XHelper(QObject):
     self.netWMName = self.disp.intern_atom('_NET_WM_NAME')
     self.WMName = self.disp.intern_atom('WM_NAME')
     self.utf8String = self.disp.intern_atom('UTF8_STRING')
+    self.disp.set_error_handler(lambda d, e: None)
 
   #----------------------------------------------------------------------------------------------------------
   def getKeySym(self, key : str) -> int:
@@ -147,7 +150,7 @@ class XHelper(QObject):
         time.sleep(P_DEFAULT_SLEEP)
         continue
       else:
-        self.info(f"[XHelper.getWinID] no window found {f'(timeout={timeout})' if timeout>0.0 else ''}")
+        cPrint.info(f"[XHelper.getWinID] no window found {f'(timeout={timeout})' if timeout>0.0 else ''}")
         return None
       
   #----------------------------------------------------------------------------------------------------------
@@ -157,7 +160,7 @@ class XHelper(QObject):
     clientList = self.root.get_full_property(self.netClientList, X.AnyPropertyType)
 
     if not clientList:
-      self.error("[XHelper.tryWinID] no windows founds at all!")
+      cPrint.error("[XHelper.tryWinID] no windows founds at all!")
       return None
 
     for winID in clientList.value:
@@ -275,7 +278,7 @@ class XHelper(QObject):
         print(f"Warning: MOTIF hints has {len(values)} values (expected 5)")
         return {'raw': values}
     else:
-      self.error(f"[xHelper.getWindowHint] window {winID} has no MOTIF WM hints property")
+      cPrint.error(f"[xHelper.getWindowHint] window {winID} has no MOTIF WM hints property")
       return None
       
   #----------------------------------------------------------------------------------------------------------
@@ -453,18 +456,18 @@ class XHelper(QObject):
         grabbed[(modmask | X.Button3Mask, keycode)] = callback
         self.root.grab_key( keycode, modmask | X.Button3Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
         grabbed[(modmask | X.Button3Mask | X.LockMask, keycode)] = callback
-        self.debug(f"[XHelper.getShortcutsDaemon:Debug] registered \"{keystring}\"")
+        cPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] registered \"{keystring}\"")
       except Exception as e:
-        self.error(f"[XHelper.getShortcutsDaemon:Error]: failed to grab \"{keystring}\"\n{e}")
+        cPrint.error(f"[XHelper.getShortcutsDaemon:Error]: failed to grab \"{keystring}\"\n{e}")
     
     if not grabbed:
-      self.debug(f"[XHelper.getShortcutsDaemon:Debug] no hotkeys passed!")
+      cPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] no hotkeys passed!")
       return
     
     daemonStopSignal = threading.Event()
     
     def daemonLoop():
-      self.debug(f"[XHelper.getShortcutsDaemon:Debug] daemon started running")
+      cPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] daemon started running")
       self.root.change_attributes(event_mask=X.KeyPressMask)
       
       # try:

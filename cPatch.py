@@ -22,14 +22,16 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QLabel, QTextEdit
+from PyQt6.QtWidgets import QLabel, QTextEdit, QComboBox
 from PyQt6.QtCore import QRunnable, pyqtSignal, QThreadPool
 from widgets.cToggler import cToggler
-from widgets.cButton import cButton
+from widgets.cOrb import cOrb, cOrbSmall
 import subprocess
 from typing import TYPE_CHECKING
+import threading
 from datetime import datetime
 from helpers.util import *
+from helpers.cPrint import cPrint
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
@@ -43,7 +45,6 @@ class cPatch(cToggler):
     self.widgetID = "patch"
     super().__init__("Patch", P_ICON_DOWNLOAD)
     self.toggler.setToolTip("Patch Client<br><b><i>Last update: NA</i></b>")
-    self.btnPatch = cButton("Patch Now", P_ICON_DOWNLOAD)
     self.main = main
     self.console = main.console
     self.timestamp = QLabel("Last patch: <?>")
@@ -53,16 +54,24 @@ class cPatch(cToggler):
     self.log.setReadOnly(True)
     self.log.setAcceptRichText(True)
 
+    self.btnPatch = cOrbSmall(icon=P_ICON_DOWNLOAD, tooltip="Quick patch.<br>Ctrl+click: calls the original launcher to start the full patch. Use this when the quick patch fails (e.g. the very first patching after installing the game")
+    self.comboPatchWhen = QComboBox()
+    self.comboPatchWhen.setEnabled(False)
+    self.comboPatchWhen.addItem('Never (WIP)')
+    self.comboPatchWhen.addItem('Weekly, after maintenance')
+    self.comboPatchWhen.addItem('Always')
+
     self.fileCount = 0
     self.byteCount = 0
     self.readFiles = 0
     self.readBytes = 0
     
-    self.setLayout(newVLayout([self.log, newHLayout([self.timestamp, self.btnPatch]), "__stretch__"]))
+    self.setLayout(newVLayout([self.log, newHLayout([self.btnPatch, "__stretch__", "Auto patch:", self.comboPatchWhen, "__stretch__", self.timestamp]), "__stretch__"]))
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     self.btnPatch.clicked.connect(self.patch)
+    self.btnPatch.ctrlClicked.connect(self.fullPatch)
     self.sigPatchInfo.connect(self.log.append)
     self.sigPatchDone.connect(self.updateTimestamp)
 
@@ -82,12 +91,67 @@ class cPatch(cToggler):
     self.toggler.setToolTip(f"Patch Client<br><b><i>Last update: {tstamp}</i></b>")
   
   #----------------------------------------------------------------------------------------------------------
+  def getLogFilename(self):
+    return f"{P_DEFAULT_LOGSDIR}/fullpatcher.txt"
+  
+  #----------------------------------------------------------------------------------------------------------
   def patch(self):
     self.log.clear()
     self.log.setVisible(True)
     proc = tPatcher(self, self.main)
     QThreadPool.globalInstance().start(proc)
 
+  #----------------------------------------------------------------------------------------------------------
+  def fullPatch(self):
+    # if self.status == aProcessItem.P_STATUS_RUNNING: return
+    t = threading.Thread(target=self.fullLauncherThread, daemon=True)
+    t.start()
+    cPrint.info(f"Starting {C_SILVER}full launcher</font> for patching...")
+
+  #----------------------------------------------------------------------------------------------------------
+  # TODO - add this to process manager 
+  def fullLauncherThread(self):
+    # self.sigChangeRequest.emit(self.P_STATUS_AUTHENTICATING)
+
+    cmd = (
+        f'cd "{self.main.profile().gameDir.text()}" && '
+        f'STEAM_ROOT="{self.main.profile().steamRoot.text()}" '
+        f'PROTON_LOG=1 '
+        f'STEAM_COMPAT_DATA_PATH="{self.main.profile().compatData.text()}" '
+        f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.main.profile().compatData.text()}" '
+        f'"{self.main.profile().protonExec.text()}" run "DNDLauncher.exe"'
+    )
+    print(cmd)
+
+    logFile = open(self.getLogFilename(), "w")
+    proc = subprocess.Popen(
+        cmd,
+        shell=True,                     # Needed for env var prefix + cd + &&
+        stdout=logFile,
+        stderr=subprocess.STDOUT,       # Merge stderr → stdout → log
+        start_new_session=True,         # New session → survives Python exit
+        close_fds=True,
+        env=os.environ.copy(),          # Inherit + your vars are in cmd
+    )
+    if proc:
+      # self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
+      exitCode = proc.wait()
+    else:
+      cPrint.info("cPatch.fullLauncherThread.run: Error launching, check logs for details!")
+      exitCode = 1
+
+    # this locks until the launcher process ends, and it is intentional!
+    # If it does end, then it was closed by the user (or some error...)
+    # if exitCode==137:
+    #   self.sigChangeRequest.emit(self.P_STATUS_KILLED)
+    # elif exitCode in (1,2,126,127):
+    #   self.sigChangeRequest.emit(self.P_STATUS_ERROR)
+    # else:
+    #   self.sigChangeRequest.emit(self.P_STATUS_TERMINATED)
+
+
+#----------------------------------------------------------------------------------------------------------
+# TODO reimplement this using threading
 #----------------------------------------------------------------------------------------------------------
 class tPatcher(QRunnable):
   def __init__(self, patchWidget : cPatch, main : cMainWindow):

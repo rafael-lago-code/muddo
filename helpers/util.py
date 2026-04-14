@@ -27,7 +27,7 @@ import ssl
 import json
 
 C_SILVER = "<font style=\"color:#828282\">"
-C_RED = "<font style=\"color:#ff5555\">"
+C_RED = "<font style=\"color:#ff6969\">"
 C_ORANGE = "<font style=\"color:#ffa744\">"
 C_GREEN = "<font style=\"color:#6aff83\">"
 C_BLUE = "<font style=\"color:#43b7ff\">" 
@@ -90,6 +90,8 @@ P_ICON_DOWNLOAD  = "edit-download"
 P_ICON_CONSOLE   = "console"
 P_ICON_LOGIN     = "login"
 P_ICON_GEARLOOP  = "gear-loop"
+P_ICON_LIGHTNING = "lightning"
+P_ICON_DRAGON    = "dragon"
 P_ICON_GEARHIER  = "gears-hierarchy"
 P_ICON_GEARSTACK = "gears-stack"
 P_ICON_BACKPACK  = "backpack"

@@ -48,7 +48,7 @@ class cDDO(aProcessItem):
     super().__init__()
     self.auth : tAuthenticator = None
     self.world = world
-    self.key = username
+    self.widgetID = username
     # cDDO freezes profile and uses that one until the process is cleaned
     # The reason is that changing profiles during runtime cannot change the already
     # running instances
@@ -288,19 +288,18 @@ class cDDO(aProcessItem):
           username = ((os.path.basename(a)).replace("GLSAuthServer_","")).replace(".xml","")
           break
     if not username:
-      cDDO.printDebug(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
+      cPrint.debug(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
       return None
     
     for w in main.credentials.listWorlds.worlds.values():
       if w.loginServer == loginServer:
         world = w
     if not world:
-      cDDO.printDebug(f" Trying to match orphan process failed; loginServer={loginServer} doesn't match any world")
+      cPrint.debug(f" Trying to match orphan process failed; loginServer={loginServer} doesn't match any world")
       return None
 
     # missing profile info, what to do?
     orphan = cDDO(main, username, world)
-    orphan.printInfo = lambda x : None    # Just to prevent it from printing standard messages while building
     orphan.auth = tAuthenticator(orphan)
     orphan.auth.subscription = auth
     orphan.auth.status = tAuthenticator.P_STATUS_DONE

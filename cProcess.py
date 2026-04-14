@@ -59,10 +59,10 @@ class cProcessManager(cToggler):
                      newHeaderLabel("World"), newHeaderLabel("Profile"), "Username"]))
 
     self.btnStartAll   = cOrbSmall(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
-    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL,     tooltip="Left click: terminates all running processes<br>Ctrl+Left click or Right click: force termination (SIGKILL) all processes")
+    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL,     tooltip="Terminates all running processes<br>Ctrl+click: force termination (SIGKILL) all processes")
     self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
     self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
-    self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEAR,     tooltip="Clear all processes<br>Ctrl+Left click or Right click: kill and clear all processes")
+    self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEAR,     tooltip="Clear all processes<br>Ctrl+click: kill and clear all processes")
     self.btnAudioAll    = cOrbSmall(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
     self.btnLogAll     = cOrbSmall(icon=P_ICON_NOTES,     tooltip="Toggles logs on/off for all processes")
     self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/chain.png'), tooltip="Attempts to find running instances of DDO and capture them"\
@@ -73,15 +73,12 @@ class cProcessManager(cToggler):
     self.btnStartAll.clicked.connect(self.startAll)
     self.btnKillAll.clicked.connect(self.terminateAll)
     self.btnKillAll.ctrlClicked.connect(lambda : self.terminateAll(force=True))
-    self.btnKillAll.rightClicked.connect(lambda : self.terminateAll(force=True))
     self.btnSaveAll.clicked.connect(self.saveWindowAll)
     self.btnRestoreAll.clicked.connect(self.restoreWindowAll)
     self.btnCleanAll.clicked.connect(self.cleanAll)
     self.btnCleanAll.ctrlClicked.connect(lambda : self.cleanAll(True))
-    self.btnCleanAll.rightClicked.connect(lambda : self.cleanAll(True))
     self.btnAudioAll.clicked.connect(self.toggleAudioAll)
     self.btnAudioAll.ctrlClicked.connect(self.audioMuteAll)
-    self.btnAudioAll.rightClicked.connect(self.audioMuteAll)
 
     justSpace = QLabel(" ")
     justSpace.setMinimumWidth(2)
@@ -97,15 +94,15 @@ class cProcessManager(cToggler):
       try:
         item.terminate()
       except Exception as e:
-        cPrint.error(f"cProcessManager.cleanItem: error killing \"{item.key}\"", e)
+        cPrint.error(f"cProcessManager.cleanItem: error killing \"{item.widgetID}\"", e)
     elif item.status == item.P_STATUS_RUNNING:
       return
     
     try:
       self.layout().removeWidget(item)
-      del self.items[item.key]
+      del self.items[item.widgetID]
     except Exception as e:
-      cPrint.error(f"cProcessManager.cleanItem: unknown error removing item \"{item.key}\"", e)
+      cPrint.error(f"cProcessManager.cleanItem: unknown error removing item \"{item.widgetID}\"", e)
 
     item.hide()
     self.main.processManager.resetColour()
@@ -162,7 +159,7 @@ class cProcessManager(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def itemExists(self, p : aProcessItem):
     for key, proc in self.items.items():
-      if key == p.key: return True
+      if key == p.widgetID: return True
       if proc == p: return True
     return False
 
@@ -173,7 +170,7 @@ class cProcessManager(cToggler):
     self.btnSaveAll.setEnabled(True)
     self.btnRestoreAll.setEnabled(True)
     self.btnCleanAll.setEnabled(True)
-    self.items[p.key] = p
+    self.items[p.widgetID] = p
     self.setColour(p)
     self.content.addWidget(p)
     p.show()
@@ -267,7 +264,7 @@ class aProcessItem(QWidget):
   #----------------------------------------------------------------------------------------------------------
   def __init__(self):
     super().__init__()
-    self.key = ""
+    self.widgetID = ""
     self.status     = self.P_STATUS_UNKNOWN
     self.pid        = newProcessField("", 50)
     self.winID      = newProcessField("")

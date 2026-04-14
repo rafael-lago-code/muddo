@@ -25,6 +25,16 @@ import sys
 
 if __name__ == '__main__':
   app = QApplication(sys.argv)
+  app.setStyleSheet("""
+    *::item:selected {
+        background-color: #541308;
+        color: white;
+    }
+    * {
+        selection-background-color: #541308;
+        selection-color: white;
+    }
+  """)
   window = cMainWindow()
   window.initialize()
   window.show()

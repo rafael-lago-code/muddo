@@ -62,13 +62,29 @@ class cDispatcher():
   def connect(cls, eventKey, callback):
     if not cls._isInitialized: cDispatcher.start()
     cls.eventHandlers[eventKey] = callback
+
+    # if the same eventKey and same callback are in fateHandlers, remove it 
+    if cls.fateHandlers.get(eventKey) == callback: cDispatcher.disfate(eventKey)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def disconnect(cls, eventKey):
+    if eventKey in cls.eventHandlers.keys(): del cls.eventHandlers[eventKey]
   
   #----------------------------------------------------------------------------------------------------------
   # Similar to connect, but function will only be called once and then deleted
   @classmethod
   def fate(cls, eventKey, callback):
     if not cls._isInitialized: cDispatcher.start()
-    cls.eventHandlers[eventKey] = callback
+    cls.fateHandlers[eventKey] = callback
+
+    # if the same eventKey and same callback are in eventHandlers, remove it 
+    if cls.eventHandlers.get(eventKey) == callback: cDispatcher.disconnect(eventKey)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def disfate(cls, eventKey):
+    if eventKey in cls.fateHandlers.keys(): del cls.fateHandlers[eventKey]
 
   #----------------------------------------------------------------------------------------------------------
   # Similar to emit + daemonLoop, doesn't need the daemon
@@ -79,7 +95,7 @@ class cDispatcher():
       callback = cls.eventHandlers[eventKey]
       del cls.eventHandlers[eventKey]
       callback(data)
-    elif eventKey in cls.fateHandlers.keys(): 
+    if eventKey in cls.fateHandlers.keys(): 
       callback = cls.fateHandlers[eventKey]
       del cls.fateHandlers[eventKey]
       callback(data)
@@ -108,16 +124,16 @@ class cDispatcher():
         data = cls.eventsData[e]
         if e in cls.eventHandlers:
           cls.eventHandlers[e](data)
-        elif e in cls.fateHandlers:
+        if e in cls.fateHandlers:
           handler = cls.fateHandlers[e]
           del cls.fateHandlers[e]
           handler(data)
       except queue.Empty:
         time.sleep(0.005)
         continue
-      except Exception as e:
+      except Exception as ex:
         import traceback
-        cPrint.error(f"cDispatcher.daemonLoop: unknown error while processing {e}\n{traceback.format_exc()}", e)
+        cPrint.error(f"cDispatcher.daemonLoop: unknown error while processing {ex}\n{traceback.format_exc()}", ex)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod

@@ -34,9 +34,10 @@ import glob
 #----------------------------------------------------------------------------------------------------------
 class cDungeonHelper(aProcessItem):
   dhExec = "DungeonHelper.exe"
+  widgetID = "dh"
+
   def __init__(self, main : cMainWindow):
     super().__init__()
-    self.key = "dh"    
     self.profileID.setText("")
     self.worldname.setText("")
     self.username.setText("Dungeon Helper")

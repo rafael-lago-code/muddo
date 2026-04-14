@@ -58,6 +58,12 @@ class packetStatus(Enum):
   waiting = struct.pack('<I', 40)
   error   = struct.pack('<I', 255)
 
+class packetSignal(Enum):
+  gotData      = struct.pack('<I', 0)
+  gotResponse  = struct.pack('<I', 1)
+  running      = struct.pack('<I', 2)
+  statusUpdate = struct.pack('<I', 3)
+
 #---------------------------------------------------------------------------------------------------------------
 #
 #
@@ -107,7 +113,6 @@ class cMilvianPacket():
     if isinstance(self.command, packetCommand):
       if self.command == packetCommand.querycharname:
         self.outData = self.outData.decode('utf-8')
-      cPrint.info(self)
     else:
       cPrint.error(f"[cMilvianPacket.parseData] unknown packet received = {self})")
       return

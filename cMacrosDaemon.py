@@ -30,16 +30,14 @@ if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 from cMilvian import cMilvian
 
-P_POST_FOCUS_DELAY = "delay_0.01"
-
 #----------------------------------------------------------------------------------------------------------
 class cMacrosDaemon(aProcessItem):
+  widgetID = "Macros Daemon"
+  process = None
+  bridges = {}
+
   def __init__(self, main : cMainWindow):
     super().__init__()
-    self.key = "Macros Daemon"
-    self.process = None
-    self.milvianProc = None
-
     self.orb = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
                            tooltip="Toggle on/off all shortcuts from all active sets" \
                            "<br><b>Ctrl+Click</b> to purge all shortcuts and restart daemon<br><b><i>Right-click for more options</i></b>")
@@ -65,19 +63,41 @@ class cMacrosDaemon(aProcessItem):
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnClear.setEnabled(True)
+  
+  #----------------------------------------------------------------------------------------------------------
+  def isInitialized(self):
+    return len(self.bridges)>0
+
+  #----------------------------------------------------------------------------------------------------------
+  def initialize(self) -> bool:
+    if self.isInitialized(): return True
+    
+    self.bridges = cMilvian.getFromDir(purgeUnknown=False)
+    if not self.isInitialized():
+      self.main.console.warning("[cMacrosDaemon.initialize] failed to initialize cMacrosDaemon")
+      return False
+    else:
+      return True
+    
+  #----------------------------------------------------------------------------------------------------------
+  def getBridges(self) -> list:
+    if not self.isInitialized():  self.initialize()
+    if not self.isInitialized():
+      self.main.console.warning("[cMacrosDaemon.getBridges] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
+      return {}
+    else:
+      return self.bridges
 
   #----------------------------------------------------------------------------------------------------------
   def convert(self, consolidated : dict) -> dict:
-    parsed = {}
-    if not self.milvianProc: self.milvianProc = cMilvian.getFromDir(purgeUnknown=False)
-    if len(self.milvianProc) == 0:
-      self.main.console.warning("Attempted to start Macro Daemon, but no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
-      return {}
+    bridges = self.getBridges()
+    if not bridges: return {}
 
+    parsed = {}
     # first, get rid of "alls" and "selfs":
     for trigger in consolidated.keys():
       if "all" in consolidated[trigger].keys():
-        for c in self.milvianProc.keys():
+        for c in bridges.keys():
           if c in consolidated[trigger].keys():
             consolidated[trigger][c] += consolidated[trigger]["all"]
           else:
@@ -88,11 +108,11 @@ class cMacrosDaemon(aProcessItem):
     for trigger in consolidated.keys():
       parsed[trigger] = []
       for target in consolidated[trigger].keys():
-        if target not in self.milvianProc.keys(): continue
+        if target not in bridges.keys(): continue
         if not consolidated[trigger][target]: continue
         action = consolidated[trigger][target]
         if not isinstance(action, list): action = list(action)
-        item = lambda t=target,a=action: self.milvianProc[t].sendList(a)
+        item = lambda t=target,a=action: bridges[t].sendList(a)
         item.char = target
         item.cmd = action
         parsed[trigger].append(item)
@@ -134,7 +154,13 @@ class cMacrosDaemon(aProcessItem):
       cPrint.warning(" Attempting to launch Macros Daemon when one is already running."+
                                 " Try right-click->kill to cleanup state.")
     else:
-      parsed = self.convert(self.main.macros.consolidateActiveMacros())
+      consolidatedMacros = self.main.macros.consolidateActiveMacros()
+      toolbarMacros = {k: consolidatedMacros.pop(k) for k in list(consolidatedMacros) if k.startswith('toolbar')}
+      if toolbarMacros:
+        cPrint.info(f"cMacrosDaemon found {len(toolbarMacros.keys())} toolbar macros")
+        cPrint.info(f"@TODO Implement toolbarMacros!")
+
+      parsed = self.convert(consolidatedMacros)
       if not parsed:
         cPrint.warning(" Attempting to launch Macros Daemon but no macros found." \
         " Make you have macro sets selected and that the relevant accounts are online before starting" \
@@ -171,11 +197,11 @@ class cMacrosDaemon(aProcessItem):
     if force: self.cleanup()
     self.setStatus(self.P_STATUS_KILLED)
     self.process = None
-    allk = list(self.milvianProc.keys())
+    allk = list(self.bridges.keys())
     for k in allk:
-      self.milvianProc[k].close()
-      del self.milvianProc[k]
-    self.milvianProc = None
+      self.bridges[k].close()
+      del self.bridges[k]
+    self.bridges = {}
     # if remove: self.clear()
 
   #----------------------------------------------------------------------------------------------------------
