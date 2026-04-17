@@ -22,359 +22,77 @@
 #
 #
 from __future__ import annotations
-from io import BufferedReader
+import glob
 import threading
-from PyQt6.QtWidgets import QAbstractItemView, QCheckBox, QLineEdit, QTableWidget, QTableWidgetItem, QHeaderView
+from types import SimpleNamespace
+from PyQt6.QtWidgets import QCheckBox, QDialog, QLineEdit, QListWidgetItem, QMenu, QListWidget, QTextEdit
+from PyQt6.QtGui import QAction, QCursor
 from PyQt6.QtCore import Qt, pyqtSignal
-from widgets.cOrb import cOrbSmall, cOrb
+from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
 from helpers.util import *
 from widgets.cToggler import cToggler
+from widgets.cCheckCombo import cCheckCombo
+from widgets.cItemsTable import *
 from helpers.cMilvianPacket import cMilvianPacket, packetCommand, packetStatus, packetSignal
 from helpers.cDispatcher import cDispatcher
 from helpers.cPrint import cPrint
-from PIL import Image
 import time, struct, mmap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMacrosDaemon import cMacrosDaemon
    from cMilvian import cMilvian
 
-P_ITEM_COLUMNS = ["Name", "Owner", "Type", "Equips To", "Binding", "👤", "🔒"]
-P_ITEM_UKNOWN_ICON = None
-
-# Augments logic is based on which colors they accept
-#----------------------------------------------------------------
-#  1<<0 = 1:  colorless
-#  1<<1 = 2:  red
-#  1<<2 = 4:  yellow
-#  1<<3 = 8:  blue
-#  1<<4 = 16: orange
-#  1<<5 = 32: purple
-#  1<<6 = 64: green
-#  1<<30    : sun
-#  1<<31    : moon
-#  So an orange slot = (orange | red | yellow | colorless) = 1 + 2 + 4 + 16 = 23
-P_ITEM_AUGMENTS_NAME = {1:     "Colorless",
-                        3:     "Red",
-                        5:     "Yellow",
-                        9:     "Blue",
-                        23:    "Orange",
-                        43:    "Purple",
-                        77:    "Green",
-                        1<<21: "Sentient",
-                        1<<30: "Sun",
-                        1<<31: "Moon"}
-P_ITEM_AUGMENTS_ICON = {1:     "⚪",  # ◆
-                        3:     "🛑",  # 🟥 🔴
-                        5:     "🟨",  # 🟡
-                        9:     "🔷",  # 🔵 🟦
-                        23:    "🔶",  # 🟧 🟠
-                        43:    "🟣",  # 🟪
-                        77:    "🟩",  # 🟢
-                        1<<21: "💎",   # More or less arbitrary choice, I hope it doesn't conflict with anything in the future
-                        1<<30: "☀️",
-                        1<<31: "🌙"}
-P_ITEM_BINDING_NAME = {0: "∞",
-                       1: "?1?",
-                       2: "BtC",
-                       3: "BtA",
-                       4: "BtCoE",
-                       5: "BtAoE",
-                       6: "BtC" # kinda bugged, it is bound to character on acquire and on equip
-}
-
-
-P_ITEM_EQUIPPED_SLOT_BASE = 3*0x40000000-1 # don't ask, I don't know
-P_ITEM_EQUIPPED_SLOT = {
-      1<<1 : "Goggles",
-      1<<2 : "Cloak",
-      1<<3 : "Ring (Right)",
-      1<<4 : "Bracers",
-      1<<5 : "Ring (Left)",
-      1<<6 : "Helm",
-      1<<7 : "Armor",
-      1<<8 : "Trinket",
-      1<<9 : "Necklace",
-      1<<10: "Gloves",
-      1<<11: "Belt",
-      1<<12: "Boot",
-      1<<13: "Main Weapon",
-      1<<14: "Secondary Weapon",
-      1<<15: "Arrow",
-      1<<16: "Quiver",
-      1<<17: "Runearm",
-      1<<18: "Cosmetic Weapon1?",
-      1<<19: "Cosmetic Weapon2",
-      1<<20: "?1<<20?",
-      1<<21: "Cosmetic Armor",
-      1<<22: "Cosmetic Helmet",
-      1<<23: "?1<<23?",
-      1<<24: "Cosmetic Cloak",
-      3229614081: "Pet Armor",
-      3229614082: "Pet Collar",
-      3254779905: "?3254779905?",
-    }
-
-P_STATUS_UNKNOWN = 0
-P_STATUS_IDLE    = 1
-P_STATUS_BUSY_REFRESH  = 2
-P_STATUS_BUSY_DISSOLVE = 3
-P_STATUS_BUSY_SELL     = 4
-P_STATUS_BUSY_TRADE    = 5
-P_STATUS_BUSY_STORE    = 6
-
-#----------------------------------------
-class itemData(QTableWidgetItem):
-    _id = 0
-    _name = ""
-    _ownerID = 0
-    _ownerName = ""
-    _container = ""
-    _weenieID = 0
-    _type = ""
-    _quantity = 0
-    _qualifier = ""
-    _valueCopper = 0
-    _hardness = 0
-    _durability = 0
-    _iconId = 0
-    _icon = None
-    _description = ""
-    _minLevel = 0
-    _material = 0
-    _isTrash = 0
-    _isLocked = 0
-    _isMinorArtifact = 0
-    _setBonus1 = 0
-    _setBonus2 = 0
-    _currentSlot = 0
-    _binding = 0
-    _equipsTo = ""
-    _augments = []
-    _effects = {}
-
-    #----------------------------------------------------------------------------------------------------------
-    @staticmethod
-    def readString(f) -> str:
-      count = int.from_bytes(f.read(2), byteorder='little', signed=False)
-      return f.read(count).decode('utf-8')
-
-    #----------------------------------------------------------------------------------------------------------
-    @staticmethod
-    def readIcon(f) -> QImage:
-      import numpy as np
-      # bg_color=(210, 180, 140)
-      bg_color=(74, 119, 157)
-      count = int.from_bytes(f.read(2), byteorder='little', signed=False) # don't need, but it is saved there
-      rawData = f.read(count)
-      total_pixels = count // 4         # 4 bytes/channels per pixel
-      width = int(total_pixels ** 0.5)  # Square root
-      height = width                    # should be 36 for the normal icon
-      
-      arr = np.frombuffer(rawData, dtype=np.uint8).reshape(height, width, 4).copy()
-      arr[:, :, [0, 2]] = arr[:, :, [2, 0]] # inverts red and blue channels
-      bg_arr = np.full((height, width, 4), [*bg_color, 255], dtype=np.uint8)
-      alpha = arr[:, :, 3:4] / 255.0        # Normalize alpha to 0-1
-      result = (bg_arr[:, :, :3] * (1 - alpha) + arr[:, :, :3] * alpha).astype(np.uint8)
-      result = np.dstack([result, np.full((height, width), 255, dtype=np.uint8)])
-
-      # img = Image.frombytes('RGBA', (width, height), rawData)
-      qimage = QImage(result, width, height, QImage.Format.Format_RGBA8888)
-      return qimage
-
-    #----------------------------------------------------------------------------------------------------------
-    def __init__(self):
-        global P_ITEM_UKNOWN_ICON
-        P_ITEM_UKNOWN_ICON = getIcon(P_MUDDO_DIR+'/images/ddo_themes/skill_icons/item_placeholder.png')
-        super().__init__()
-
-    #----------------------------------------------------------------------------------------------------------
-    def digest(self):
-      self.setText(f"{self._name} {" ".join(self.augments(iconsOnly=True))}")
-      self.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-      ttip = ""
-      if self._description: ttip += f"<i>\"{self._description.replace('\n','<br>')}\"</i><br><br>"
-      if self._qualifier: ttip += f"<b>Qualifier:</b> {self._qualifier}<br>"
-      if self._quantity and self._quantity>1: ttip += f"<b>Quantity:</b> {self._quantity}<br>"
-      if self._minLevel: ttip += f"<b>Minimum Level:</b> {self._minLevel}<br>"
-      if self._augments: ttip += f"<b>Augments:</b><br> ● {'<br> ● '.join(self.augments())} <br>"
-      if self._effects: ttip += "<b>Effects:</b><br>" + "<br>".join([f" ● {k}: {v}" for k,v in self._effects.items()]) + "<br>"
-      if self._material: ttip += f"<b>Material:</b> {self._material}<br>"
-      if self._hardness: ttip += f"<b>Hardness:</b> {self._hardness}<br>"
-      if self._valueCopper: ttip += f"<b>Value:</b> {self._valueCopper}CC<br>"
-      if ttip == "": ttip = f"<i>(no description)</i>"
-      self.setIcon(self.icon())
-      self.setToolTip(ttip)
-      self.setData(Qt.ItemDataRole.UserRole, self._name)
-    
-#----------------------------------------------------------------------------------------------------------
-    def icon(self) -> QIcon:
-      if self._icon:
-        return QIcon(QPixmap(self._icon))
-      else:
-        return P_ITEM_UKNOWN_ICON
-
-    #----------------------------------------------------------------------------------------------------------
-    def slot(self):
-      if int(self._currentSlot) >= P_ITEM_EQUIPPED_SLOT_BASE:
-        return P_ITEM_EQUIPPED_SLOT.get(int(self._currentSlot)-P_ITEM_EQUIPPED_SLOT_BASE, f"?{self._currentSlot-P_ITEM_EQUIPPED_SLOT_BASE}?")
-      else:
-        # Tab / Row / Col
-        return (self._currentSlot//20, (self._currentSlot % 20) // 5, (self._currentSlot % 20) % 5)
-
-    #----------------------------------------------------------------------------------------------------------
-    def binding(self):
-      return P_ITEM_BINDING_NAME.get(self._binding, f"?{self._binding}?")
-    
-    #----------------------------------------------------------------------------------------------------------
-    def augments(self, textOnly=False, iconsOnly=False):
-      copyVals = self._augments.copy()
-      text=[]
-      icons=[]
-      while copyVals:
-        v = copyVals.pop(-1)
-        if v == 0: pass
-        elif v in P_ITEM_AUGMENTS_NAME:
-          text  += [P_ITEM_AUGMENTS_NAME[v]] if textOnly else [f"{P_ITEM_AUGMENTS_NAME[v]} {P_ITEM_AUGMENTS_ICON[v]} "]
-          icons += [P_ITEM_AUGMENTS_ICON[v]]
-        else:
-          text  += [f"?{v}?"]
-          icons += [f"?{v}?"]
-      return icons if iconsOnly else text
-    
-    #----------------------------------------------------------------------------------------------------------
-    def readFromBin(self, file : BufferedReader):
-      self._id          = int.from_bytes(file.read(8), byteorder='little', signed=False)
-      self._name        = itemData.readString(file) # f.read(count).decode('utf-8')
-      self._ownerID     = int.from_bytes(file.read(8), byteorder='little', signed=False)
-      self._ownerName   = itemData.readString(file)
-      self._container   = itemData.readString(file)
-      self._weenieID    = int.from_bytes(file.read(8), byteorder='little', signed=False)
-      self._type        = itemData.readString(file)
-      self._quantity    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._qualifier   = itemData.readString(file)
-      self._valueCopper = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._hardness    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._durability  = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._iconId      = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._icon        = itemData.readIcon(file)
-      self._description = itemData.readString(file)
-      self._minLevel    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._material    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._isTrash     = int.from_bytes(file.read(1), byteorder='little', signed=False)
-      self._isLocked    = int.from_bytes(file.read(1), byteorder='little', signed=False)
-      self._isMinorArtifact = int.from_bytes(file.read(1), byteorder='little', signed=False)
-      self._setBonus1   = itemData.readString(file)
-      self._setBonus2   = itemData.readString(file)
-      self._currentSlot = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._binding     = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._equipsTo    = itemData.readString(file)
-
-      self._augments = []
-      self._effects  = {}
-      
-      count = int.from_bytes(file.read(2), byteorder='little', signed=False)
-      for _ in range(count):
-        self._augments.append(int.from_bytes(file.read(4), byteorder='little', signed=False))
-
-      count = int.from_bytes(file.read(2), byteorder='little', signed=False)
-      for _ in range(count):
-        countKey = int.from_bytes(file.read(2), byteorder='little', signed=False)
-        key = file.read(countKey).decode('utf-8')
-        countVal = int.from_bytes(file.read(2), byteorder='little', signed=False)
-        self._effects[key] = file.read(countVal).decode('utf-8')
-      return self
 
 #---------------------------------------------------------------------------------------------------------------
 #
 #
-#                                            I T E M   T A B L E
+#                                         F I L T E R   I T E M 
 #
 #                                  
 #---------------------------------------------------------------------------------------------------------------
-class cItemsTable(QTableWidget):
-  itemsById = {}
-  staleData = {}
-
-  def __init__(self, parent):
-    super().__init__(0, 7, parent)
-    self.setColumnWidth(0, 300)
-    self.setColumnWidth(1, 100)
-    self.setColumnWidth(2, 100)
-    self.setColumnWidth(3, 100)
-    self.setColumnWidth(4, 50)
-    self.setColumnWidth(5, 10)
-    self.setColumnWidth(6, 10)
-    self.setHorizontalHeaderLabels(P_ITEM_COLUMNS)
-    self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-    self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-    self.setIconSize(QtCore.QSize(36,36))
-    self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+class cFilterItem(QListWidgetItem):
+  def __init__(self, name : str, content : str):
+    super().__init__()
+    self.name = name
+    self.setText(name)
+    self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
+    self.content = content
 
   #----------------------------------------------------------------------------------------------------------
-  def getColumnWidget(self, item, col: str) -> QTableWidgetItem:
-    if col == "Name": return item
-
-    if col == "Owner":
-      return newCell(item._ownerName)
-    elif col == "Type":
-      return newCell(item._type)
-    elif col == "Equips To":
-      return newCell(item._equipsTo)
-    elif col == "Binding":
-      return newCell(item.binding())
-    elif col == "👤":
-      text = item.slot()
-      cell = newCell("" if isinstance(text, tuple) else "✓")
-      ttip = ""
-      if isinstance(text, tuple):
-        ttip = f"<b>In Backpack</b><br> ● Tab {text[0]}<br> ● Row {text[1]}<br> ● Col {text[2]}"
-      else:
-        ttip = f"<b>Equipped</b><br> ● {text}"
-      cell.setToolTip(ttip)
-      cell.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-      return cell
-    elif col == "🔒":
-      return newCell("✓" if item._isLocked == 1 else "", 1 if item._isLocked == 1 else 0)
-    else:
-      return newCell(f"Unknown Column <{col}>")
-  
-  #----------------------------------------------------------------------------------------------------------
-  def append(self, item : itemData):
-    self.setSortingEnabled(False)
-
-    if item._id in self.itemsById:
-      oldItem = self.itemsById[item._id]
-      crow = oldItem.row()
-      try: self.staleData[item._ownerName].remove(oldItem)
-      except: pass
-    else:
-      crow = self.rowCount()
-      self.insertRow(crow)
-
-    for i, col in enumerate(P_ITEM_COLUMNS):
-        self.setItem(crow, i, self.getColumnWidget(item, col))
-    self.itemsById[item._id] = item
-
-    self.setSortingEnabled(True)
-  
-  #----------------------------------------------------------------------------------------------------------
-  def purgeStale(self, charName : str):
-    npurged = 0
-    for item in list(self.staleData[charName]):
-      try: del self.itemsById[item._id]
-      except: pass
-      self.removeRow(item.row())
-      npurged += 1
-    self.staleData[charName] = []
-    if (npurged): cPrint.info(f"[cItemsTable] purged {npurged} stale items from {C_ORANGE}{charName}</font>")
+  def setActive(self, val : bool ):
+    pass
 
   #----------------------------------------------------------------------------------------------------------
-  def purgeAll(self):
-    self.setRowCount(0)
-    self.itemsById = {}
-    self.staleData = {}
+  def rename(self):
+    oldFilename = P_DEFAULT_FILTERSDIR + os.sep + self.name + P_DEFAULT_FILTEREXT
+    newFilename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
+    os.rename(oldFilename, newFilename)
+    self.name = self.text()
+    
+  #----------------------------------------------------------------------------------------------------------
+  def sync(self, content):
+    self.content = content
 
+  #----------------------------------------------------------------------------------------------------------
+  def display(self):
+    pass
+
+  #----------------------------------------------------------------------------------------------------------
+  def save(self):
+    filename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
+    os.makedirs(P_DEFAULT_FILTERSDIR, exist_ok=True)
+    with open(filename, 'w') as f:
+      f.write(self.content)
+
+  #----------------------------------------------------------------------------------------------------------
+  def load(self):
+    filename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
+    try:
+      with open(filename,"r") as f:
+        self.content = f.read()
+    except Exception as e:
+      cPrint.error(f"{C_RED}WARNING:</font> error loading filter from \"{filename}\"",e)
+      self.content = ""
 
 
 #---------------------------------------------------------------------------------------------------------------
@@ -385,12 +103,13 @@ class cItemsTable(QTableWidget):
 #                                  
 #---------------------------------------------------------------------------------------------------------------
 class cStorageManager(cToggler):
-  sigAppendItem  = pyqtSignal(itemData)
+  sigAppendItem  = pyqtSignal(cItemData)
   sigPurgeStale  = pyqtSignal(str)
   sigSetStatus = pyqtSignal(object,int)
   widgetID = "StorageManager"
   daemon : cMacrosDaemon = None
-  status = {}
+  status : dict = {}
+  allFilterScripts : dict = {}
 
   def __init__(self, main):
     self.main = main
@@ -399,36 +118,102 @@ class cStorageManager(cToggler):
     self.table = cItemsTable(self)
     
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
-    self.btnRefresh  = cOrb("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
-    self.btnDissolve = cOrb("Dissolve",    icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_deconst.png'),
-                            tooltip="Dissolve all selected items (Item Deconstruction station must be selected). <br><b>Ctrl+Click</b> to skip confirmation<b>.")
-    self.btnSell     = cOrb("Sell",        icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_vendor.png'),
-                            tooltip="Sell all selected items to the currently open vendor. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnTrade    = cOrb("Trade",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_trade.png'),
-                            tooltip="Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnStore    = cOrb("Store",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_bank.png'),
-                            tooltip="Store selected items in the currently open bank/chest. <br><b><i>Right-click for more options</i></b>")
+    self.btnRefresh   = cOrb("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
+    self.btnFeedJewel = cOrb("Feed\nJewel", icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_dissolve_lean.svg'),
+                             tooltip="Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
+    self.btnDissolve  = cOrb("Dissolve",    icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_dissolve_lean.svg'),
+                             tooltip="Dissolve all selected items. Item Deconstruction UI must be open. <br><b>Ctrl+Click</b> to skip confirmation<b>.")
+    self.btnSell      = cOrb("Sell",        icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_vendor_lean.svg'),
+                             tooltip="Sell all selected items to the currently open vendor UI. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
+    self.btnTrade     = cOrb("Trade",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_trade_lean.svg'),
+                             tooltip="Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
+    self.btnStore     = cOrb("Store",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_bank_lean.svg'),
+                             tooltip="Store selected items in the currently open bank/chest UI. <br><b><i>Right-click for more options</i></b>")
+
+    self.filterCB = SimpleNamespace()
+    for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Name", "Description"]:
+      setattr(self.filterCB, f.lower(), cOrbCheck(f))
+    self.filterCB.aug0  = cOrbCheck('0')
+    self.filterCB.aug1  = cOrbCheck('1')
+    self.filterCB.aug2  = cOrbCheck('2')
+    self.filterCB.aug3p = cOrbCheck('3+')
+
+    for cb in self.filterCB.__dict__.keys():
+      getattr(self.filterCB, cb).setChecked(True)
+      getattr(self.filterCB, cb).stateChanged.connect(self.applyFilters)
+    
+    self.filterQualifier = cCheckCombo("Qualifier")
+    for q in ["Named", "Vendor", "Random", "Raid"]:
+      self.filterQualifier.addCheckItem(q)
+
+    self.filterAugments = cCheckCombo("Augments")
+    for q in P_ITEM_AUGMENTS_NAME.values():
+      self.filterAugments.addCheckItem(q)
+
+    self.filterOwner = cCheckCombo("Owner")
+    self.filterType  = cCheckCombo("Type")
+    self.filterText = QLineEdit()
+    
+    advFilters = newVFrame([newHLayout(["Filter by...", self.filterText]),
+                            newHLayout(["__stretch__", self.filterCB.name, self.filterCB.description, "__stretch__"]),
+                            "__line__",
+                            newHLayout([self.filterCB.equipped, self.filterCB.bound, self.filterCB.locked]), 
+                            newHLayout([self.filterCB.unequipped, self.filterCB.unbound, self.filterCB.unlocked]),
+                            newHFrame(["Augments Count:", self.filterCB.aug0, self.filterCB.aug1, self.filterCB.aug2, self.filterCB.aug3p]),
+                            newHLayout([self.filterQualifier, self.filterAugments, self.filterOwner, self.filterType])])
+
+    self.filterScriptList      = QListWidget()
+    self.filterScriptLabel     = QLabel("Selected Filter Script:")
+    self.filterBtnNewScript    = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new filter script with the text currently in the editor")
+    self.filterBtnSaveScript   = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected filter script\nCtrl+Left click to save all")
+    self.filterBtnDelScript    = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected filter script - this action cannot be undone!")
+    self.filterBtnReloadScript = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected script from file\nCtrl+Left click to reload all")
+    self.filterBtnApplyScript  = cOrbSmall(icon=P_ICON_FILTER, tooltip="Apply current filter")
+    self.filterBtnHelp         = cOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how script work here (lol)")
+    self.filterScriptEdit      = QTextEdit()
+    filtersContainer = newHSplitter([newHFrame([newVLayout(["Saved Filters:", self.filterScriptList]),
+                                  newVFrame(["__stretch__",self.filterBtnApplyScript, self.filterBtnNewScript, self.filterBtnSaveScript,self.filterBtnDelScript, self.filterBtnReloadScript, self.filterBtnHelp, "__stretch__"])]),
+                                  newVFrame([self.filterScriptLabel, self.filterScriptEdit]), advFilters])
+    filtersContainer.setSizes([300,700,100])
+
+
+    self.filterQualifier.changed.connect(self.applyFilters)
+    self.filterOwner.changed.connect(self.applyFilters)
+    self.filterType.changed.connect(self.applyFilters)
+    self.filterText.textEdited.connect(self.applyFilters)
 
     self.btnRefresh.clicked.connect(lambda : self.requestRefreshStorage(False))
     self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
-
     self.btnDissolve.clicked.connect(self.requestRefreshStorage)
+    self.btnFeedJewel.clicked.connect(self.requestFeedJewel)
+    self.btnFeedJewel.ctrlClicked.connect(lambda : self.requestFeedJewel(force=True))
     self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
 
+    self.filterScriptList.itemChanged.connect(self.renameFilterScript)
+    self.filterBtnApplyScript.clicked.connect(self.applyScriptFilters)
+    self.filterBtnNewScript.clicked.connect(self.newFilterScript)
+    self.filterBtnSaveScript.clicked.connect(self.saveFilterScript)
+    self.filterBtnSaveScript.ctrlClicked.connect(self.saveAllFilterScripts)
+    self.filterBtnReloadScript.clicked.connect(self.reloadFilterScript)
+    self.filterBtnReloadScript.ctrlClicked.connect(self.reloadAllFilterScripts)
+    self.filterBtnDelScript.clicked.connect(self.deleteFilterScript)
+    self.filterBtnHelp.clicked.connect(self.showHelpWindow)
+
+    self.filterScriptList.itemSelectionChanged.connect(self.setActiveFilterScript)
+    self.filterScriptEdit.textChanged.connect(self.syncFilterScript)
+
+    # self.setListWidget.itemChanged.connect(self.updateMacroSetFile)
+    # self.setListWidget.itemSelectionChanged.connect(self.updateTable)
 
     self.sigAppendItem.connect(self.table.append)
-    self.sigPurgeStale.connect(self.table.purgeStale)
+    self.sigAppendItem.connect(self.applyFilters)
+    self.sigAppendItem.connect(self.updateDynamicFilters)
+    self.sigPurgeStale.connect(self.table.clearStale)
     self.sigSetStatus.connect(self.setStatus)
-
-    # self.btnLoad.clicked.connect(self.loadStorageData)
-    self.filterBy = QLineEdit()
-    self.filterBy.textEdited.connect(self.applyFilters)
-    self.filterByName = QCheckBox("Name")
-    self.filterByName.setChecked(True)
-    self.filterByDescription = QCheckBox("Description")
-    self.filterByDescription.setChecked(True)
-    self.setLayout(newVLayout([self.table, newHLayout(["Filter by...", self.filterBy, self.filterByName, self.filterByDescription]),
-                               newHLayout([self.btnRefresh, self.btnStore, self.btnTrade, self.btnSell, self.btnDissolve])]))
+    allSplitters = newVSplitter([self.table, filtersContainer])
+    allSplitters.setSizes([400,100])
+   
+    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnStore, self.btnTrade, self.btnSell, self.btnDissolve, self.btnFeedJewel])]))
   
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, bridge, newStatus):
@@ -481,6 +266,92 @@ class cStorageManager(cToggler):
   def initialize(self, daemon : cMacrosDaemon):
     self.daemon = daemon
     self.table.staleData = {}
+
+    allFiles = glob.glob(os.path.join(P_DEFAULT_FILTERSDIR, "*"+P_DEFAULT_FILTEREXT))
+    for n in allFiles:
+      name = os.path.splitext(os.path.basename(n))[0]
+      self.appendFilterScript(cFilterItem(name, ""))
+
+  #----------------------------------------------------------------------------------------------------------
+  def newFilterScript(self):
+    i = 1
+    while f"NewSet{i}" in self.allFilterScripts:
+      i += 1
+    newFilter = cFilterItem(f"NewSet{i}", "")
+    newFilter.save()
+    self.appendFilterScript(newFilter)
+
+  #----------------------------------------------------------------------------------------------------------
+  def appendFilterScript(self, filter : cFilterItem):
+    if filter.name in self.allFilterScripts: return
+    filter.load()
+    self.allFilterScripts[filter.name] = filter
+    self.filterScriptList.addItem(filter)
+
+  #----------------------------------------------------------------------------------------------------------
+  def renameFilterScript(self, item : cFilterItem):
+    oldName = item.name
+    item.rename()
+    self.allFilterScripts[item.name] = item
+    del self.allFilterScripts[oldName]
+    
+  #----------------------------------------------------------------------------------------------------------
+  def setActiveFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    if len(cfilter)>0:
+      self.filterScriptEdit.setText(cfilter[0].content)
+    else:
+      self.filterScriptEdit.setText("")
+
+  #----------------------------------------------------------------------------------------------------------
+  def saveFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    if len(cfilter)>0: cfilter[0].save()
+
+  #----------------------------------------------------------------------------------------------------------
+  def saveAllFilterScripts(self):
+    for f in self.allFilterScripts.values():
+      f.save()
+
+  #----------------------------------------------------------------------------------------------------------
+  def syncFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    if len(cfilter)>0: cfilter[0].sync(self.filterScriptEdit.toPlainText())
+
+  #----------------------------------------------------------------------------------------------------------
+  def reloadFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    if len(cfilter)>0:
+      cfilter[0].load()
+    self.setActiveFilterScript()
+
+  #----------------------------------------------------------------------------------------------------------
+  def reloadAllFilterScripts(self):
+    for f in self.allFilterScripts.values():
+      f.load()
+    self.setActiveFilterScript()
+
+  #----------------------------------------------------------------------------------------------------------
+  def deleteFilterScript(self):
+    filter = self.filterScriptList.selectedItems()
+    if not filter: return
+    cPrint.info(f"Removing filter script \"{C_SILVER}{filter[0].text()}</font>\"...")
+    del self.allFilterScripts[filter[0].text()]
+    try:
+      os.remove(P_DEFAULT_MACRODIR+os.sep+filter[0].text()+P_DEFAULT_MACROEXT)
+    except:
+      pass
+    self.filterScriptList.takeItem(self.filterScriptList.row(filter[0]))
+    del filter[0]
+
+  #----------------------------------------------------------------------------------------------------------
+  def updateDynamicFilters(self, item: cItemData):
+    if item._ownerName:
+      self.filterOwner.addCheckItem(item._ownerName)
+    if item._type:
+      self.filterType.addCheckItem(item._type)
+    # if item._qualifier:
+    #   self.filterQualifier.addCheckItem(item._qualifier)
   
   #----------------------------------------------------------------------------------------------------------
   def requestRefreshStorage(self, detailed: bool = False):
@@ -512,32 +383,164 @@ class cStorageManager(cToggler):
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   #----------------------------------------------------------------------------------------------------------
-  def requestDeconstruct(self):
+  def requestDeconstruct(self, force=False):
+    # force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
     pass
 
   #----------------------------------------------------------------------------------------------------------
-  def requestStore(self):
+  def requestStore(self, force=False):
+    # force ignores checks if item is storeable e.g. bound items
     pass
 
   #----------------------------------------------------------------------------------------------------------
-  def requestTrade(self):
+  def requestTrade(self, force=False):
+    # force ignores checks if item is tradeable e.g. bound items
     pass
 
   #----------------------------------------------------------------------------------------------------------
   def requestSell(self, sellGems : bool = True, repair : bool = False):
     pass
-   
+
+  #----------------------------------------------------------------------------------------------------------
+  def requestFeedJewel(self, force=False):
+    # force ignores checks if item is feedable e.g. random loot
+    pass
   
   #----------------------------------------------------------------------------------------------------------
-  def applyFilters(self):
-    filterText = self.filterBy.text().lower().strip()
+  def applyScriptFilters(self, item : cItemData = None):
+    scriptText = self.filterScriptEdit.toPlainText().lower()
+    scriptText = " ".join(scriptText.strip().split())
+    safeContext = {
+      "__builtins__": {},
 
-    for row in range(self.table.rowCount()):
-      target = ""
-      if self.filterByName.isChecked(): target += self.table.item(row, 0)._name.lower() + " "
-      if self.filterByDescription.isChecked(): target += self.table.item(row, 0).toolTip().lower() + " "
+      # Common functions
+      "len": len,
+      "any": any,
+      "all": all,
+      "true": True,
+      "false": False,
+      "str": str,
+      "int": int,
+      "float": float,
 
-      self.table.setRowHidden(row, not (filterText=="" or filterText in target))
+      # String helpers (very useful for items)
+      "startswith": lambda s, prefix: str(s).startswith(str(prefix)),
+      "endswith":   lambda s, suffix: str(s).endswith(str(suffix)),
+      "contains":   lambda s, sub: str(sub) in str(s),
+      # "lower": lambda x: str(x).lower() if x is not None else "",
+      # "upper": lambda x: str(x).upper() if x is not None else "",
+      # "startswith": lambda s, prefix: str(s).lower().startswith(str(prefix).lower()),
+      # "endswith":   lambda s, suffix: str(s).lower().endswith(str(suffix).lower()),
+      # "contains":   lambda s, sub: str(sub).lower() in str(s).lower(),   # bonus: allows "contains"
+    }
+
+    def _filterItem(item : cItemData):
+      if len(scriptText)==0: 
+        self.table.setRowHidden(row, False)
+        return
+      
+      try:
+        itemContext = {
+          "id"              : item._id               ,    
+          "name"            : item._name.lower()     ,
+          "ownerid"         : item._ownerID          ,
+          "ownername"       : item._ownerName.lower(),
+          "container"       : item._container      ,
+          "weenieid"        : item._weenieID       ,
+          "type"            : item._type.lower()   ,
+          "quantity"        : item._quantity       ,
+          "qualifier"       : item._qualifier.lower(),
+          "valuecopper"     : item._valueCopper    ,
+          "hardness"        : item._hardness       ,
+          "durability"      : item._durability     ,
+          "iconid"          : item._iconId         ,
+          "icon"            : item._icon           ,
+          "description"     : item._description.lower(),
+          "minlevel"        : item._minLevel       ,
+          "material"        : item._material       ,
+          "istrash"         : item._isTrash        ,
+          "islocked"        : item._isLocked       ,
+          "isminorartifact" : item._isMinorArtifact,
+          "setbonus1"       : item._setBonus1.lower(),
+          "setbonus2"       : item._setBonus2.lower(),
+          "currentslot"     : item._currentSlot    ,
+          "binding"         : "unbound" if item._binding==0 else item.binding(),
+          "equipsto"        : item._equipsTo.lower(),
+          "augments"        : [a.lower() for a in item.augments()],
+          "effects"         : {k.lower(): v.lower() for k, v in item._effects.items()},
+          "slot"            : item.slot(),
+          "effectname"      : [k.lower() for k in item._effects.keys()],
+          "effectdesc"      : [v.lower() for v in item._effects.values()],
+          "effectfull"      : " ".join([k.lower() + " " + v.lower() for k, v in item._effects.items()]),
+          "text"            : item.toolTip().lower().replace("<br>","").replace("<b>","").replace("</b>","").replace("<i>","").replace("</i>","")
+        }
+        itemContext.update(safeContext)
+        result = eval(scriptText, itemContext)
+        self.table.setRowHidden(row, not result)
+        return bool(result)
+      except Exception as e: raise(e)
+        
+    try:
+      if isinstance(item, cItemData):
+        row = item.row()
+        _filterItem(item)
+      else:
+        for row in range(self.table.rowCount()):
+          _filterItem(self.table.item(row, 0))
+    except Exception as e:
+      cPrint.error("[cStorage]: error while evaluating filter script:",e)
+
+  
+  #----------------------------------------------------------------------------------------------------------
+  def applyFilters(self, item : cItemData = None):
+    filterText = self.filterText.text().lower().strip()
+    checkedOwners = self.filterOwner.getChecked()
+    checkedTypes  = self.filterType.getChecked()
+    checkedQuals  = self.filterQualifier.getChecked()
+    checkedAugs   = self.filterAugments.getChecked()
+
+    def _filterItem(item : cItemData):
+      textTarget = ""
+      if self.filterCB.name.isChecked(): textTarget += item._name.lower() + " "
+      if self.filterCB.description.isChecked(): textTarget += item.toolTip().lower() + " "
+
+      if not (filterText=="" or filterText in textTarget): return self.table.setRowHidden(row, True)
+
+      isEquipped = isinstance(item.slot(), str)
+      if not self.filterCB.equipped.isChecked()   and     isEquipped: return self.table.setRowHidden(row, True)
+      if not self.filterCB.unequipped.isChecked() and not isEquipped: return self.table.setRowHidden(row, True)
+
+      if not self.filterCB.bound.isChecked()   and item._binding>0:  return self.table.setRowHidden(row, True)
+      if not self.filterCB.unbound.isChecked() and item._binding==0: return self.table.setRowHidden(row, True)
+      
+      if not self.filterCB.locked.isChecked()   and item._isLocked==1: return self.table.setRowHidden(row, True)
+      if not self.filterCB.unlocked.isChecked() and item._isLocked==0: return self.table.setRowHidden(row, True)
+
+      itemAugs = item.augments(textOnly=True)
+      for a in list(itemAugs):
+        if a not in checkedAugs: itemAugs.pop(itemAugs.index(a))
+      if len(itemAugs) == 0 and not self.filterCB.aug0.isChecked():  return self.table.setRowHidden(row, True)
+      if len(itemAugs) == 1 and not self.filterCB.aug1.isChecked():  return self.table.setRowHidden(row, True)
+      if len(itemAugs) == 2 and not self.filterCB.aug2.isChecked():  return self.table.setRowHidden(row, True)
+      if len(itemAugs) >= 3 and not self.filterCB.aug3p.isChecked(): return self.table.setRowHidden(row, True)
+
+      if item._qualifier not in checkedQuals:  return self.table.setRowHidden(row, True)
+      if item._ownerName not in checkedOwners: return self.table.setRowHidden(row, True)
+      if item._type      not in checkedTypes:  return self.table.setRowHidden(row, True)
+      hasAug = False
+      for a in itemAugs:
+        hasAug = hasAug or (a in checkedAugs)
+      if not hasAug: self.table.setRowHidden(row, True)
+
+      self.table.setRowHidden(row, False)
+
+    if isinstance(item, cItemData):
+      row = item.row()
+      _filterItem(item)
+    else:
+      for row in range(self.table.rowCount()):
+        _filterItem(self.table.item(row, 0))
+        
 
   #----------------------------------------------------------------------------------------------------------
   def refreshStorage(self, bridge : cMilvian):
@@ -561,7 +564,7 @@ class cStorageManager(cToggler):
         while True:
           itemAvail = struct.unpack('<I', favail[8:12])[0]
           if itemAvail > itemsCount:
-            item = itemData()
+            item = cItemData()
             item.readFromBin(f)
             itemsCount += 1
             item.digest()
@@ -570,9 +573,107 @@ class cStorageManager(cToggler):
             time.sleep(0.05)
           if itemsCount>=nItems: break
       self.sigSetStatus.emit(bridge, P_STATUS_IDLE)
-      self.table.purgeStale(bridge.charName)
+      self.table.clearStale(bridge.charName)
 
     self.setStatus(bridge, P_STATUS_BUSY_REFRESH)
     t = threading.Thread(target=_refreshStorageThread, args=(self, bridge), daemon=True)
     t.start()
   
+  #----------------------------------------------------------------------------------------------------------
+  def showRefreshMenu(self):
+    menu = QMenu(self)
+    actRefresh  = QAction("Refresh",           self)
+    actDetailed = QAction("Refresh (Detailed)", self)
+    actPurge    = QAction("Purge All",          self)
+    actCancel   = QAction("Cancel",             self)
+    actCancel.setEnabled(False) # TODO implement
+    actRefresh.triggered.connect(lambda: self.requestRefreshStorage(False))
+    actDetailed.triggered.connect(lambda: self.requestRefreshStorage(True))
+    actPurge.triggered.connect(self.table.clearAll)
+    menu.addAction(actRefresh)
+    menu.addAction(actDetailed)
+    menu.addSeparator()
+    menu.addAction(actPurge)
+    menu.addSeparator()
+    menu.addAction(actCancel)
+    menu.exec(QCursor.pos())
+  
+  #----------------------------------------------------------------------------------------------------------
+  def showHelpWindow(self):
+    dlg = QDialog(self)
+    dlg.setWindowTitle("Shortcuts Help")
+    layout = QVBoxLayout(dlg)
+    text = QTextEdit()
+    text.setReadOnly(True)
+    help_text = f"""
+    <h2>How to Use</h2>
+    <br>You can save useful scripts and recall them again later. This is only available for text filters, not for the checkboxes.
+    <br>
+    <br> Filter scripts are evaluated as basic Python scripts. They must return a bool (True or False). 
+    Everything is case insenstitive for the sake of simplicity. Example:
+    <br>        (name.startswith("potion") and qualifier == "vendor")
+    <br><h2>Valid identifiers:</h2>
+    <br> ● id: int             
+    <br> ● name: str
+    <br> ● ownerid: int
+    <br> ● ownername: str   
+    <br> ● container: str 
+    <br> ● weenieid: id
+    <br> ● type: str   
+    <br> ● quantity: int      
+    <br> ● qualifier: str  
+    <br> ● valuecopper: int 
+    <br> ● hardness: str
+    <br> ● durability: int  
+    <br> ● iconid: int
+    <br> ● icon: an image, don't use this    
+    <br> ● description: str
+    <br> ● minlevel: int
+    <br> ● material: str  
+    <br> ● istrash: bool  
+    <br> ● islocked: bool  
+    <br> ● isminorartifact: bool
+    <br> ● setbonus1: str
+    <br> ● setbonus2: str 
+    <br> ● currentslot: int
+    <br> ● binding: str ("unbound", "BtC", "BtCoE", etc)
+    <br> ● equipsto: str   
+    <br> ● augments: list
+    <br> ● effects: dictionary[effectName] = effectDesc
+    <br> ● slot: str
+    <br> ● effectname: list
+    <br> ● effectdesc: list
+    <br> ● effectfull: [effectName + effectDesc]
+    <br> ● text: the full text displayed in the tooltip - includes name, descritpion, material, qualifier, effects  
+    <br><h2>Valid Python functions:</h2>
+    <br> ● len()
+    <br> ● any()
+    <br> ● all()
+    <br> ● str()
+    <br> ● int()
+    <br> ● float()
+    <br> ● startswith()
+    <br> ● endswith()
+    <br> ● contains: (an alias; A contains B translates to B in A)
+    <h2>Buttons</h2>
+    <br> ● <b>Apply filter:</b> click this to apply the filter whose text is being displayed (regardless if it is saved or not)
+    <br> ● <b>New filter:</b> creates a new filter with the text currently being displayed in the text box
+    <br> ● <b>Save filter:</b> filters are not saved automatically by construction. Click this to save the current filter into a file
+    <br> ● <b>Delete filter:</b> removes the filter and its file from the disk. This action cannot be undone!
+    <br> ● <b>Reload filter:</b> discard changes and reload the last saved values for this filter
+    <h2>Tips</h2>
+    <br> ● To disable filtering, just clear the text box (ctrl+a, del) and click "apply"
+    <br> ● It helps to have a filter for dissolving, one for selling, one for feeding, etc
+    <br> ● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all filters
+    <br> ● Use descriptive names for filters for easier management.
+    <br> ● All filters are stored as text files in {P_DEFAULT_FILTERSDIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
+    <br> ● Scripts execution use some "safe context", so security issues should not be an issue™
+
+    <br>If you need further support, good luck.
+    """
+    text.setHtml(help_text)
+
+    layout.addWidget(text)
+    dlg.setLayout(layout)
+    dlg.resize(400, 300)
+    dlg.exec()

@@ -43,17 +43,19 @@ class cMacrosDaemon(aProcessItem):
                            "<br><b>Ctrl+Click</b> to purge all shortcuts and restart daemon<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
     # self.orbToggler.setMenu(QMenu("Macros Daemon", self.orbToggler))
-    self.actionToggle  = self.orb.menu.addAction("Launch Daemon")
-    self.actionRestart = self.orb.menu.addAction("Restart Daemon")
-    self.actionKill    = self.orb.menu.addAction("Kill Daemon")
-    self.actionConf    = self.orb.menu.addAction("Show/Hide setting UI")
+    self.menuActionToggle  = self.orb.menu.addAction("Launch Daemon")
+    self.menuActionRestart = self.orb.menu.addAction("Restart Daemon")
+    self.menuActionKill    = self.orb.menu.addAction("Kill Daemon")
+    self.menuActionPurge   = self.orb.menu.addAction("Purge defunct bridges")
+    self.menuActionConf    = self.orb.menu.addAction("Show/Hide setting UI")
 
     self.orb.clicked.connect(self.toggle)
     self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
-    self.actionToggle.triggered.connect(self.toggle)
-    self.actionRestart.triggered.connect(self.restart)
-    self.actionKill.triggered.connect(lambda : self.terminate(force=True))
-    self.actionConf.triggered.connect(lambda : main.macros.toggle())
+    self.menuActionToggle.triggered.connect(self.toggle)
+    self.menuActionRestart.triggered.connect(self.restart)
+    self.menuActionKill.triggered.connect(lambda : self.terminate(force=True))
+    self.menuActionConf.triggered.connect(lambda : main.macros.toggle())
+    self.menuActionPurge.triggered.connect(lambda : cMilvian.getFromDir(purgeUnknown=True))
     
     self.profileID.setText("")
     self.worldname.setText("")
@@ -74,7 +76,7 @@ class cMacrosDaemon(aProcessItem):
     
     self.bridges = cMilvian.getFromDir(purgeUnknown=False)
     if not self.isInitialized():
-      self.main.console.warning("[cMacrosDaemon.initialize] failed to initialize cMacrosDaemon")
+      self.main.console.warning("[cMacrosDaemon] failed to initialize cMacrosDaemon")
       return False
     else:
       return True
@@ -83,7 +85,7 @@ class cMacrosDaemon(aProcessItem):
   def getBridges(self) -> list:
     if not self.isInitialized():  self.initialize()
     if not self.isInitialized():
-      self.main.console.warning("[cMacrosDaemon.getBridges] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
+      cPrint.warning("[cMacrosDaemon] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
       return {}
     else:
       return self.bridges
@@ -128,8 +130,8 @@ class cMacrosDaemon(aProcessItem):
       if not parsed[trigger]:
         del parsed[trigger]
 
-    self.main.console.debugMessage(f"  Shortcuts converted to commands:")
-    self.main.console.debugMessage(f"--------------------------------------------------------")
+    cPrint.debug(f"  Shortcuts converted to commands:")
+    cPrint.debug(f"--------------------------------------------------------")
     for trigger in parsed.keys():
       dbgList = []
       for i in parsed[trigger]:
@@ -137,8 +139,8 @@ class cMacrosDaemon(aProcessItem):
           dbgList.append(f"{i.char}:{i.cmd}")
         else:
           dbgList.append(i)
-      self.main.console.debugMessage(f"  {trigger} : {dbgList}")
-    self.main.console.debugMessage(f"--------------------------------------------------------")
+      cPrint.debug(f"  {trigger} : {dbgList}")
+    cPrint.debug(f"--------------------------------------------------------")
     return parsed
 
   #----------------------------------------------------------------------------------------------------------
@@ -185,10 +187,10 @@ class cMacrosDaemon(aProcessItem):
     self.btnAudio.setEnabled(False)
     if status == aProcessItem.P_STATUS_RUNNING:
       self.orb.setChecked(True)
-      self.actionToggle.setText("Stop")
+      self.menuActionToggle.setText("Stop")
     else:
       self.orb.setChecked(False)
-      self.actionToggle.setText("Launch")
+      self.menuActionToggle.setText("Launch")
 
   #----------------------------------------------------------------------------------------------------------
   def terminate(self, force=False, remove=False):

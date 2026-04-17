@@ -18,9 +18,10 @@
 #
 #
 import os
-from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout, \
+from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout, QSplitter, \
                             QVBoxLayout, QLayout, QFrame
 from PyQt6.QtGui import QIcon, QPixmap, QImage
+from PyQt6.QtCore import Qt
 from PyQt6 import QtCore
 from http.client import HTTPConnection, HTTPSConnection
 import ssl
@@ -35,7 +36,10 @@ C_BLUE = "<font style=\"color:#43b7ff\">"
 # P_DEFAULT_WORKDIR    = os.environ['HOME'] + "/.local/share/muDDO"
 P_MUDDO_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 P_DEFAULT_CONFIGDIR  = os.environ['HOME'] + "/.config/muDDO"
-P_DEFAULT_MACRODIR   = P_DEFAULT_CONFIGDIR + "/macros/"
+P_DEFAULT_MACRODIR   = P_DEFAULT_CONFIGDIR + "/macros"
+P_DEFAULT_MACROEXT = ".macro"
+P_DEFAULT_FILTERSDIR   = P_DEFAULT_CONFIGDIR + "/filters"
+P_DEFAULT_FILTEREXT = ".filter"
 P_DEFAULT_WORKDIR    = P_DEFAULT_CONFIGDIR
 P_DEFAULT_CONFIGFILE = P_DEFAULT_CONFIGDIR + "/settings.json"
 
@@ -57,7 +61,8 @@ P_ICON_SAVEAS    = "document-save-as"
 P_ICON_ADD       = "list-add"
 P_ICON_REMOVE    = "list-remove"
 P_ICON_REFRESH   = "view-refresh"
-P_ICON_QUESTION  = "dontknow"
+P_ICON_CHECKMARK = "checkmark"
+P_ICON_QUESTION  = "question"
 P_ICON_MUTE      = "audio-volume-muted"
 P_ICON_UNMUTE    = "audio-on"
 P_ICON_PLAY      = "media-playback-start"
@@ -195,11 +200,41 @@ def newVFrame(objects : list) -> QHBoxLayout:
   return f
 
 #------------------------------------------------------------------------------------
+def newVSplitter(objects : list) -> QSplitter:
+  f = QSplitter(Qt.Orientation.Vertical)
+  appendWidget(f, objects)
+  return f
+
+#------------------------------------------------------------------------------------
+def newHSplitter(objects : list) -> QSplitter:
+  f = QSplitter(Qt.Orientation.Horizontal)
+  appendWidget(f, objects)
+  return f
+
+#------------------------------------------------------------------------------------
+def appendWidget(container, objects : list) -> QLayout:
+  for v in objects:
+    if isinstance(v,str):
+      container.addWidget(QLabel(v))
+    else:
+      container.addWidget(v)
+  return container
+
+#------------------------------------------------------------------------------------
 def stackToLayout(layout : QLayout, objects : list) -> QLayout:
   for v in objects:
     if isinstance(v,str):
       if v == "__stretch__":
         layout.addStretch()
+      elif v == "__separator__" or v == "__line__":
+        t = QFrame()
+        t.setFixedHeight(2)
+        if isinstance(layout, QHBoxLayout):
+          t.setFrameShape(QFrame.Shape.VLine)
+        else:
+           t.setFrameShape(QFrame.Shape.HLine)
+        t.setFrameShadow(QFrame.Shadow.Sunken)
+        layout.addWidget(t)
       else:
         layout.addWidget(QLabel(v))
     elif issubclass(v.__class__,QLayout):

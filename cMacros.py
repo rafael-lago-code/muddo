@@ -18,11 +18,12 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QAbstractItemView, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit
+from PyQt6.QtWidgets import QAbstractItemView, QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit
+from helpers.cPrint import cPrint
 from helpers.util import *
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbSmall
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel
+from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel, QDialog
 from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 import glob, re, os
@@ -30,8 +31,6 @@ from typing import TYPE_CHECKING
 from cMacrosDaemon import cMacrosDaemon
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
-
-P_DEFAULT_MACROEXT = ".macro"
 
 def aliasRegex(alias: str) -> str:
   if not alias: return re.escape(alias)
@@ -142,7 +141,7 @@ class cMacroItem(QListWidgetItem):
       with open(filename,"r") as f:
         self.data = json.load(f)
     except Exception as e:
-      self.parent.main.console.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
+      cPrint.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
       self.data = []
 
   #----------------------------------------------------------------------------------------------------------
@@ -208,12 +207,12 @@ class cMacros(cToggler):
     self.daemon = cMacrosDaemon(self.main)
     
     self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
-    self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click or Right click to save all")
+    self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click to save all")
     self.btnDeleteSet   = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
-    self.btnReloadSet   = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click or Right click to reload all")
+    self.btnReloadSet   = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click to reload all")
     self.btnAddEntry    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new macro to the currently selected set")
     self.btnRemoveEntry = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected macro from the currently selected set")
-    # self.btnHelp        = cOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how macros work here (lol)")
+    self.btnHelp        = cOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how macros work here (lol)")
 
     self.btnAddAlias    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
     self.btnRemoveAlias = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
@@ -254,7 +253,7 @@ class cMacros(cToggler):
     _bottomSplitter.addWidget(newVFrame([ "Sets:", 
                               newHLayout([self.setListWidget,
                                 newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, 
-                                  self.btnSaveSet, self.btnReloadSet, "__stretch__"])])]))
+                                  self.btnSaveSet, self.btnReloadSet, self.btnHelp, "__stretch__"])])]))
     _bottomSplitter.addWidget(newVFrame([self.activeSetLabel, 
                          newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry, 
                                      self.btnRemoveEntry, "__stretch__"])])]))
@@ -270,8 +269,8 @@ class cMacros(cToggler):
 
     self.btnNewSet.clicked.connect(self.newMacroSet)
     self.btnDeleteSet.clicked.connect(self.deleteMacroSet)
-    # self.btnHelp.clicked.connect(self.showHelpWindow)
-    self.setListWidget.itemChanged.connect(self.updateMacroSetFile)
+    self.btnHelp.clicked.connect(self.showHelpWindow)
+    self.setListWidget.itemChanged.connect(self.renameMacroSetFile)
     self.setListWidget.itemSelectionChanged.connect(self.updateTable)
     self.table.cellChanged.connect(self.syncTable2Data)
 
@@ -285,10 +284,8 @@ class cMacros(cToggler):
     self.btnRemoveEntry.clicked.connect(self.removeMacroEntry)
     self.btnSaveSet.clicked.connect(self.saveSelectedMacroSet)
     self.btnSaveSet.ctrlClicked.connect(self.saveAllMacroSet)
-    self.btnSaveSet.rightClicked.connect(self.saveAllMacroSet)
     self.btnReloadSet.clicked.connect(self.reloadSelectedMacroSet)
     self.btnReloadSet.ctrlClicked.connect(self.reloadAllMacroSet)
-    self.btnReloadSet.rightClicked.connect(self.reloadAllMacroSet)
 
     self.reloadAlias()
 
@@ -392,7 +389,7 @@ class cMacros(cToggler):
     if os.path.exists(filename):
       self.allMacroItems[name].load()
     else:
-      self.main.console.info(f"New macro set being created in \"{C_SILVER}{P_DEFAULT_MACRODIR}</font>\"...")
+      cPrint.info(f"New macro set being created in \"{C_SILVER}{P_DEFAULT_MACRODIR}</font>\"...")
       self.allMacroItems[name].save()
 
   #----------------------------------------------------------------------------------------------------------
@@ -417,51 +414,51 @@ class cMacros(cToggler):
       else:
         sset.setActive(False)
 
-  # #----------------------------------------------------------------------------------------------------------
-  # def showHelpWindow(self):
-  #   dlg = QDialog(self)
-  #   dlg.setWindowTitle("Shortcuts Help")
-  #   layout = QVBoxLayout(dlg)
-  #   text = QTextEdit()
-  #   text.setReadOnly(True)
-  #   help_text = f"""
-  #   <h2>How to Use</h2>
-  #   <br>You'll be working with "sets" of shorcuts. Each set can have its own collection of shortcuts and you can toggle each set on/off (inactive/active). Shortcuts between sets can overlap - this is intentional.
-  #   <br>
-  #   <br>1. <b>Create a Set:</b> click the \"New Set\" button ("Document" icon). A new line will appear in the list with a placeholder name, like NewSet1. The list is modifiable, just double click any entry to rename it. The new set will be inactive by default. Click the checkmark box on the left of NewSet1 name to toggle it on/off
-  #   <br>2. <b>Select NewSet1</b>: click your NewSet1, then the table display will show an empty set of shortcuts
-  #   <br>3. <b>Add Shortcuts:</b> click "+" button to define a new shortcut. A new, empty row will be added to the table. Edit this new row as needed (currently you have to enter shortcuts as text, e.g. "ctrl+m")
-  #   <br>4. <b>Launch Shortcuts Daemon:</b> press the "Play" button to enable all shortcuts from all active sets. If it is already running, press "Stop" and then "Play" again to refresh it
+  #----------------------------------------------------------------------------------------------------------
+  def showHelpWindow(self):
+    dlg = QDialog(self)
+    dlg.setWindowTitle("Shortcuts Help")
+    layout = QVBoxLayout(dlg)
+    text = QTextEdit()
+    text.setReadOnly(True)
+    help_text = f"""
+    <h2>How to Use</h2>
+    <br>You'll be working with "sets" of shorcuts. Each set can have its own collection of shortcuts and you can toggle each set on/off (inactive/active). Shortcuts between sets can overlap - this is intentional.
+    <br>
+    <br> 1. <b>Create a Set:</b> click the \"New Set\" button ("Document" icon). A new line will appear in the list with a placeholder name, like NewSet1. The list is modifiable, just double click any entry to rename it. The new set will be inactive by default. Click the checkmark box on the left of NewSet1 name to toggle it on/off
+    <br> 2. <b>Select NewSet1</b>: click your NewSet1, then the table display will show an empty set of shortcuts
+    <br> 3. <b>Add Shortcuts:</b> click "+" button to define a new shortcut. A new, empty row will be added to the table. Edit this new row as needed (currently you have to enter shortcuts as text, e.g. "ctrl+m")
+    <br> 4. <b>Launch Shortcuts Daemon:</b> press the "Play" button to enable all shortcuts from all active sets. If it is already running, press "Stop" and then "Play" again to refresh it
 
-  #   <h2>Features</h2>
-  #   <br>● <b>Save set:</b> once you're satisfied with your configuration, select it from the list and press the "Save Set" button
-  #   <br>● <b>Delete sets</b>: to delete a full set, select it from the list and press the "Trash" icon button. This action cannot be undone!
-  #   <br>● <b>Active sets</b>: you can have many active sets at the same time, and there is no check if they have overlapping shortcuts. This is intentional. The daemon will execute ALL actions from ALL active sets whenever the shortcut is pressed. Be responsible!
-  #   <br>● <b>Sets configuration</b>: the "profile" saves the last active sets of shortcuts and reloads then when relaunching the application. It saves automatically if you exit the application normally, or you can manually go to "Settings" click "Save" to save the currently active profile
-  #   <br>● <b>Edit shortcuts</b>: just modify them directly in the table. The changes only take effect after you restart the shortcuts daemon
-  #   <br>● <b>Delete shortcuts</b>: to delete a single shortcut, select it from the table and press the "-" button. You can reload previously saved sets to undo this action.
+    <h2>Buttons</h2>
+    <br> ● <b>Save set:</b> once you're satisfied with your configuration, select it from the list and press the "Save Set" button
+    <br> ● <b>Delete sets</b>: to delete a full set, select it from the list and press the "Trash" icon button. This action cannot be undone!
+    <br> ● <b>Active sets</b>: you can have many active sets at the same time, and there is no check if they have overlapping shortcuts. This is intentional. The daemon will execute ALL actions from ALL active sets whenever the shortcut is pressed. Be responsible!
+    <br> ● <b>Sets configuration</b>: the "profile" saves the last active sets of shortcuts and reloads then when relaunching the application. It saves automatically if you exit the application normally, or you can manually go to "Settings" click "Save" to save the currently active profile
+    <br> ● <b>Edit shortcuts</b>: just modify them directly in the table. The changes only take effect after you restart the shortcuts daemon
+    <br> ● <b>Delete shortcuts</b>: to delete a single shortcut, select it from the table and press the "-" button. You can reload previously saved sets to undo this action.
 
-  #   <h2>Tips</h2>
-  #   <br>● Changes take effect only after restarting the Daemon!!
-  #   <br>● It helps to have a "set" per class/character, e.g. a "healer" set. Toggle the set inactive/active if the healer account is online or not.
-  #   <br>● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all sets.
-  #   <br>● Use descriptive names for sets and shortcuts for easier management.
-  #   <br>● All sets are stored as text files in {P_DEFAULT_SHORTCUTDIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
+    <h2>Tips</h2>
+    <br> ● Changes take effect only after restarting the Daemon!!
+    <br> ● It helps to have a "set" per class/character, e.g. a "healer" set. Toggle the set inactive/active if the healer account is online or not.
+    <br> ● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all sets.
+    <br> ● Use descriptive names for sets and shortcuts for easier management.
+    <br> ● All sets are stored as text files in {P_DEFAULT_MACRODIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
 
-  #   <br>If you need further support, look for help.
-  #   """
-  #   text.setHtml(help_text)
+    <br>If you need further support, look for help.
+    """
+    text.setHtml(help_text)
 
-  #   layout.addWidget(text)
-  #   dlg.setLayout(layout)
-  #   dlg.resize(400, 300)
-  #   dlg.exec()
+    layout.addWidget(text)
+    dlg.setLayout(layout)
+    dlg.resize(400, 300)
+    dlg.exec()
 
   #----------------------------------------------------------------------------------------------------------
   def deleteMacroSet(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
-    self.main.console.info(f"Removing macro set \"{C_SILVER}{sset[0].text()}</font>\"...")
+    cPrint.info(f"Removing macro set \"{C_SILVER}{sset[0].text()}</font>\"...")
     del self.allMacroItems[sset[0].text()]
     try:
       os.remove(P_DEFAULT_MACRODIR+os.sep+sset[0].text()+P_DEFAULT_MACROEXT)
@@ -479,13 +476,13 @@ class cMacros(cToggler):
     for name in allActive:
       consolidated = self.allMacroItems[name].consolidate(consolidated, aliases)
 
-    self.main.console.debugMessage(f"--------------------------------------------------------")
-    self.main.console.debugMessage(f"  Consolidated macros (all active sets)")
-    self.main.console.debugMessage(f"--------------------------------------------------------")
+    cPrint.debug(f"--------------------------------------------------------")
+    cPrint.debug(f"  Consolidated macros (all active sets)")
+    cPrint.debug(f"--------------------------------------------------------")
     for hk in consolidated.keys():
-      self.main.console.debugMessage(f"  {hk}:")
+      cPrint.debug(f"  {hk}:")
       for target in consolidated[hk].keys():
-        self.main.console.debugMessage(f"     {target}: {consolidated[hk][target]}")
+        cPrint.debug(f"     {target}: {consolidated[hk][target]}")
     return consolidated
 
   #----------------------------------------------------------------------------------------------------------
@@ -521,10 +518,10 @@ class cMacros(cToggler):
     self.updateTable()
 
   #----------------------------------------------------------------------------------------------------------
-  def updateMacroSetFile(self, sset : cMacroItem):
+  def renameMacroSetFile(self, sset : cMacroItem):
     key = next((k for k, v in self.allMacroItems.items() if v is sset), None)
     if key != sset.text():
-      self.main.console.info(f"Renaming macro set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
+      cPrint.info(f"Renaming macro set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
       os.rename(P_DEFAULT_MACRODIR+os.sep+key+P_DEFAULT_MACROEXT, P_DEFAULT_MACRODIR+os.sep+sset.text()+P_DEFAULT_MACROEXT, )
       self.allMacroItems[sset.text()] = sset
       del self.allMacroItems[key]

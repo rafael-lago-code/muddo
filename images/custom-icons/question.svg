@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   viewBox="0 0 24 24"
+   version="1.1"
+   id="svg8"
+   sodipodi:docname="question.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview10"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="21.395834"
+     inkscape:cx="11.661149"
+     inkscape:cy="10.072054"
+     inkscape:window-width="1444"
+     inkscape:window-height="1236"
+     inkscape:window-x="2340"
+     inkscape:window-y="155"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="g6" />
+  <defs
+     id="defs3051">
+    <style
+       type="text/css"
+       id="current-color-scheme">
+      .ColorScheme-Text {
+        color:#eff0f1;
+      }
+      </style>
+  </defs>
+  <g
+     transform="translate(1,1)"
+     id="g6">
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:33.4866px;font-family:eufm10;-inkscape-font-specification:'eufm10, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;text-align:center;text-anchor:middle;display:inline;fill:#ffffff;fill-opacity:1;stroke:#efefef;stroke-width:1.59999999;stroke-linecap:square;stroke-dasharray:none;stroke-opacity:1"
+       x="9.7296658"
+       y="23.440891"
+       id="text5867-2-4-7-4-6"
+       transform="scale(1.0810282,0.92504526)"><tspan
+         sodipodi:role="line"
+         id="tspan5865-5-4-8-7-88"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:33.4866px;font-family:eufm10;-inkscape-font-specification:'eufm10, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#ffffff;fill-opacity:1;stroke:#efefef;stroke-width:1.59999999;stroke-dasharray:none;stroke-opacity:1"
+         x="9.7296658"
+         y="23.440891">?</tspan></text>
+  </g>
+</svg>

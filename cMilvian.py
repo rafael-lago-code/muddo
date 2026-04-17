@@ -319,7 +319,7 @@ class cMilvian():
     for f in filesO:
       m = cMilvian(f)
       if m.charName:
-        characters[m.charName] = m
+        characters[m.charName.lower()] = m
         # cPrint.info(f" [*] cMilvian: found {os.path.basename(f)} for character \"{m.charName}\"")
       elif getUnknown:
         i = 1

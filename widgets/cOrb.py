@@ -21,7 +21,7 @@ from helpers.util import *
 from PyQt6.QtWidgets import QPushButton, QSizePolicy, QToolTip, QApplication
 from PyQt6.QtGui import QPainter, QPixmap, QColor, QFont, QMouseEvent, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QEvent
-from PyQt6.QtWidgets import QMenu
+from PyQt6.QtWidgets import QMenu, QWidget
 from helpers import cEffects
 
 P_STATUS_NORMAL=0
@@ -107,7 +107,11 @@ class cOrbTheme_RedSmall(cOrbTheme_RedMedium):
   orbSize = QtCore.QSize(32,32)
   iconSize = QtCore.QSize(20,20)
 
-#------------------------------------------------------------------------------------------------------------
+#-------------------------------------------------------------------------------------------------------------
+#
+#                                              O R B S M A L L
+#
+#-------------------------------------------------------------------------------------------------------------
 class cOrb(QPushButton):
   ctrlClicked = pyqtSignal(QMouseEvent)
   rightClicked = pyqtSignal(QMouseEvent)
@@ -336,6 +340,10 @@ class cOrb(QPushButton):
     self.update()  # Trigger repaint
 
 #-------------------------------------------------------------------------------------------------------------
+#
+#                                              O R B S M A L L
+#
+#-------------------------------------------------------------------------------------------------------------
 class cOrbSmall(cOrb):
   theme = None
 
@@ -347,3 +355,52 @@ class cOrbSmall(cOrb):
   
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
+
+
+#-------------------------------------------------------------------------------------------------------------
+#
+#                                              O R B C H E C K
+#
+#-------------------------------------------------------------------------------------------------------------
+class cOrbCheck(QWidget):
+  orb : cOrbSmall = None
+  label : QLabel  = None
+
+  @classmethod
+  def getTheme(self):
+    if self.orb.theme is None:
+      self.orb.theme = cOrbTheme_RedSmall()
+    return self.orb.theme
+  
+  def __init__(self, title = None, enabled = True, tooltip = "", *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.orb = cOrbSmall("")
+    self.label = QLabel(title)
+    self.orb.setCheckable(True)
+    self.orb.setChecked(True)
+
+    self.setText    = self.label.setText
+    self.setChecked = self.orb.setChecked
+    self.isChecked  = self.orb.isChecked
+    self.stateChanged = self.orb.clicked
+    self.clicked = self.orb.clicked
+    self.setEnabled(enabled)
+    self.setToolTip(tooltip)
+    self.setLayout(newHLayout([self.orb, self.label]))
+
+    self.updateStatus()
+    self.stateChanged.connect(self.updateStatus)
+  
+  def updateStatus(self):
+    if self.orb.isChecked():
+      self.orb.setIcon(getIcon(P_ICON_CHECKMARK))
+    else:
+      self.orb.setIcon(QIcon())
+  
+  def setEnabled(self, a0):
+    self.orb.setEnabled(a0)
+    self.label.setEnabled(a0)
+    super().setEnabled(a0)
+
+  # def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
+    # super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
