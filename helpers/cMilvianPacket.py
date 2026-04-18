@@ -45,6 +45,8 @@ class packetCommand(Enum):
   queryinventory = struct.pack('<I', 8)
   debug          = struct.pack('<I', 7)
   misc           = struct.pack('<I', 9)
+  debugId        = struct.pack('<I', 10)
+  dissolveItems  = struct.pack('<I', 20)
   debugCircular  = struct.pack('<I', 90)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)

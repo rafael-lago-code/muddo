@@ -140,7 +140,7 @@ class cStorageManager(cToggler):
 
     for cb in self.filterCB.__dict__.keys():
       getattr(self.filterCB, cb).setChecked(True)
-      getattr(self.filterCB, cb).stateChanged.connect(self.applyFilters)
+      getattr(self.filterCB, cb).stateChanged.connect(self.applyCheckFilters)
     
     self.filterQualifier = cCheckCombo("Qualifier")
     for q in ["Named", "Vendor", "Random", "Raid"]:
@@ -177,17 +177,16 @@ class cStorageManager(cToggler):
     filtersContainer.setSizes([300,700,100])
 
 
-    self.filterQualifier.changed.connect(self.applyFilters)
-    self.filterOwner.changed.connect(self.applyFilters)
-    self.filterType.changed.connect(self.applyFilters)
-    self.filterText.textEdited.connect(self.applyFilters)
+    self.filterQualifier.changed.connect(self.applyCheckFilters)
+    self.filterOwner.changed.connect(self.applyCheckFilters)
+    self.filterType.changed.connect(self.applyCheckFilters)
+    self.filterText.textEdited.connect(self.applyCheckFilters)
 
     self.btnRefresh.clicked.connect(lambda : self.requestRefreshStorage(False))
     self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
-    self.btnDissolve.clicked.connect(self.requestRefreshStorage)
+    self.btnDissolve.clicked.connect(self.requestDissolve)
     self.btnFeedJewel.clicked.connect(self.requestFeedJewel)
     self.btnFeedJewel.ctrlClicked.connect(lambda : self.requestFeedJewel(force=True))
-    self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
 
     self.filterScriptList.itemChanged.connect(self.renameFilterScript)
     self.filterBtnApplyScript.clicked.connect(self.applyScriptFilters)
@@ -206,7 +205,7 @@ class cStorageManager(cToggler):
     # self.setListWidget.itemSelectionChanged.connect(self.updateTable)
 
     self.sigAppendItem.connect(self.table.append)
-    self.sigAppendItem.connect(self.applyFilters)
+    self.sigAppendItem.connect(self.applyCheckFilters)
     self.sigAppendItem.connect(self.updateDynamicFilters)
     self.sigPurgeStale.connect(self.table.clearStale)
     self.sigSetStatus.connect(self.setStatus)
@@ -346,8 +345,8 @@ class cStorageManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def updateDynamicFilters(self, item: cItemData):
-    if item._ownerName:
-      self.filterOwner.addCheckItem(item._ownerName)
+    if item.owner():
+      self.filterOwner.addCheckItem(item.owner())
     if item._type:
       self.filterType.addCheckItem(item._type)
     # if item._qualifier:
@@ -383,9 +382,43 @@ class cStorageManager(cToggler):
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   #----------------------------------------------------------------------------------------------------------
-  def requestDeconstruct(self, force=False):
-    # force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
-    pass
+  def getSelectedIDs(self) -> list:
+    selectedItems = {b : [] for b in self.daemon.getBridges().keys()}
+    for item in self.table.selectedItems():
+      if item.column()==0:
+        item : cItemData
+        if item.isSelected() and not self.table.isRowHidden(item.row()):
+          selectedItems[item.owner().lower()].append(item)
+    return selectedItems
+
+  #----------------------------------------------------------------------------------------------------------
+  def requestDissolve(self, force=False):
+    # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
+    selectedItems = self.getSelectedIDs()
+    if not selectedItems: return
+    packets = {}
+    bridges : cMilvian = self.daemon.getBridges()
+    for c in selectedItems.keys():
+      inData = struct.pack('<?',True)  # sendStatus flag, requests frequent status update always
+      inData += struct.pack('<I',len(selectedItems[c]))
+      for item in list(selectedItems[c]):
+        inData += struct.pack('<Q',item._id)
+      p = cMilvianPacket(packetCommand.dissolveItems, bridges[c], inData)
+      packets[c] = p
+      bridges[c].sendRequest(packets[c])
+      cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageDissolveUpdate(p, data))
+  
+  #----------------------------------------------------------------------------------------------------------
+  def storageDissolveUpdate(self, packet : cMilvianPacket, rawData : bytes):
+    packet.status = packetStatus(rawData[4:8])
+    packet.outData = rawData[12:]
+    if packet.status == packetStatus.success:
+      cPrint.info(f"[cStorage] Finished dissolving requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+    else:
+      dissolved = packet.outData[0]
+      iID = struct.unpack('<Q',packet.outData[1:9])[0]
+      cPrint.info(f"[cStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
 
   #----------------------------------------------------------------------------------------------------------
   def requestStore(self, force=False):
@@ -444,7 +477,7 @@ class cStorageManager(cToggler):
           "id"              : item._id               ,    
           "name"            : item._name.lower()     ,
           "ownerid"         : item._ownerID          ,
-          "ownername"       : item._ownerName.lower(),
+          "owner"           : item.owner().lower(),
           "container"       : item._container      ,
           "weenieid"        : item._weenieID       ,
           "type"            : item._type.lower()   ,
@@ -464,6 +497,7 @@ class cStorageManager(cToggler):
           "setbonus1"       : item._setBonus1.lower(),
           "setbonus2"       : item._setBonus2.lower(),
           "currentslot"     : item._currentSlot    ,
+          "isequipped"      : isinstance(item.slot(), str),
           "binding"         : "unbound" if item._binding==0 else item.binding(),
           "equipsto"        : item._equipsTo.lower(),
           "augments"        : [a.lower() for a in item.augments()],
@@ -492,12 +526,12 @@ class cStorageManager(cToggler):
 
   
   #----------------------------------------------------------------------------------------------------------
-  def applyFilters(self, item : cItemData = None):
+  def applyCheckFilters(self, item : cItemData = None):
     filterText = self.filterText.text().lower().strip()
-    checkedOwners = self.filterOwner.getChecked()
-    checkedTypes  = self.filterType.getChecked()
-    checkedQuals  = self.filterQualifier.getChecked()
-    checkedAugs   = self.filterAugments.getChecked()
+    checkedOwners = (q.lower() for q in self.filterOwner.getChecked())
+    checkedTypes  = (q.lower() for q in self.filterType.getChecked())
+    checkedQuals  = (q.lower() for q in self.filterQualifier.getChecked())
+    checkedAugs   = (q.lower() for q in self.filterAugments.getChecked())
 
     def _filterItem(item : cItemData):
       textTarget = ""
@@ -524,9 +558,9 @@ class cStorageManager(cToggler):
       if len(itemAugs) == 2 and not self.filterCB.aug2.isChecked():  return self.table.setRowHidden(row, True)
       if len(itemAugs) >= 3 and not self.filterCB.aug3p.isChecked(): return self.table.setRowHidden(row, True)
 
-      if item._qualifier not in checkedQuals:  return self.table.setRowHidden(row, True)
-      if item._ownerName not in checkedOwners: return self.table.setRowHidden(row, True)
-      if item._type      not in checkedTypes:  return self.table.setRowHidden(row, True)
+      if item._qualifier.lower() not in checkedQuals:  return self.table.setRowHidden(row, True)
+      if item.owner().lower()    not in checkedOwners: return self.table.setRowHidden(row, True)
+      if item._type.lower()      not in checkedTypes:  return self.table.setRowHidden(row, True)
       hasAug = False
       for a in itemAugs:
         hasAug = hasAug or (a in checkedAugs)
@@ -616,7 +650,7 @@ class cStorageManager(cToggler):
     <br> ● id: int             
     <br> ● name: str
     <br> ● ownerid: int
-    <br> ● ownername: str   
+    <br> ● owner: str   
     <br> ● container: str 
     <br> ● weenieid: id
     <br> ● type: str   

@@ -217,6 +217,10 @@ class cItemData(QTableWidgetItem):
         return (self._currentSlot//20, (self._currentSlot % 20) // 5, (self._currentSlot % 20) % 5)
 
     #----------------------------------------------------------------------------------------------------------
+    def owner(self):
+      return self._ownerName.split()[0]
+
+    #----------------------------------------------------------------------------------------------------------
     def binding(self):
       return P_ITEM_BINDING_NAME.get(self._binding, f"?{self._binding}?")
     
@@ -310,7 +314,7 @@ class cItemsTable(QTableWidget):
     if col == "Name": return item
 
     if col == "Owner":
-      return newCell(item._ownerName)
+      return newCell(item.owner())
     elif col == "Type":
       return newCell(item._type)
     elif col == "Equips To":
@@ -340,7 +344,7 @@ class cItemsTable(QTableWidget):
     if item._id in self.itemsById:
       oldItem = self.itemsById[item._id]
       crow = oldItem.row()
-      try: self.staleData[item._ownerName].remove(oldItem)
+      try: self.staleData[item.owner()].remove(oldItem)
       except: pass
     else:
       crow = self.rowCount()
