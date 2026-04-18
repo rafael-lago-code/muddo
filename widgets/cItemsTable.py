@@ -159,12 +159,13 @@ class cItemData(QTableWidgetItem):
       import numpy as np
       # bg_color=(210, 180, 140)
       bg_color=(74, 119, 157)
-      count = int.from_bytes(f.read(2), byteorder='little', signed=False) # don't need, but it is saved there
+      width  = int.from_bytes(f.read(4), byteorder='little', signed=False)
+      height = int.from_bytes(f.read(4), byteorder='little', signed=False)
+      count  = int.from_bytes(f.read(4), byteorder='little', signed=False)
       rawData = f.read(count)
-      total_pixels = count // 4         # 4 bytes/channels per pixel
-      width = int(total_pixels ** 0.5)  # Square root
-      height = width                    # should be 36 for the normal icon
-      
+      if width == 0 or height == 0 or count != width*height*4:
+        return None
+
       arr = np.frombuffer(rawData, dtype=np.uint8).reshape(height, width, 4).copy()
       arr[:, :, [0, 2]] = arr[:, :, [2, 0]] # inverts red and blue channels
       bg_arr = np.full((height, width, 4), [*bg_color, 255], dtype=np.uint8)

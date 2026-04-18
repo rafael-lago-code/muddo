@@ -26,7 +26,7 @@ import glob
 import threading
 from types import SimpleNamespace
 from PyQt6.QtWidgets import QCheckBox, QDialog, QLineEdit, QListWidgetItem, QMenu, QListWidget, QTextEdit
-from PyQt6.QtGui import QAction, QCursor
+from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
 from helpers.util import *
@@ -116,10 +116,11 @@ class cStorageManager(cToggler):
     super().__init__("Storage\nManager", P_ICON_CHEST)
     self.toggler.setToolTip("Toggle StorageManager UI<br><b><i>NOT IMPLEMENTED</i></b>")
     self.table = cItemsTable(self)
+    self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
     
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
     self.btnRefresh   = cOrb("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
-    self.btnFeedJewel = cOrb("Feed\nJewel", icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_dissolve_lean.svg'),
+    self.btnFeedJewel = cOrb("Feed\nJewel", icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_feed_jewel.svg'),
                              tooltip="Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
     self.btnDissolve  = cOrb("Dissolve",    icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_dissolve_lean.svg'),
                              tooltip="Dissolve all selected items. Item Deconstruction UI must be open. <br><b>Ctrl+Click</b> to skip confirmation<b>.")
@@ -140,35 +141,37 @@ class cStorageManager(cToggler):
 
     for cb in self.filterCB.__dict__.keys():
       getattr(self.filterCB, cb).setChecked(True)
-      getattr(self.filterCB, cb).stateChanged.connect(self.applyCheckFilters)
+      getattr(self.filterCB, cb).stateChanged.connect(self.applyFilters)
     
     self.filterQualifier = cCheckCombo("Qualifier")
-    for q in ["Named", "Vendor", "Random", "Raid"]:
+    for q in ["<Empty>", "Named", "Vendor", "Random", "Raid"]:
       self.filterQualifier.addCheckItem(q)
 
     self.filterAugments = cCheckCombo("Augments")
-    for q in P_ITEM_AUGMENTS_NAME.values():
-      self.filterAugments.addCheckItem(q)
+    for n,i in zip(P_ITEM_AUGMENTS_NAME.values(), P_ITEM_AUGMENTS_ICON.values()):
+      self.filterAugments.addCheckItem(f"{n} {i}")
 
     self.filterOwner = cCheckCombo("Owner")
     self.filterType  = cCheckCombo("Type")
     self.filterText = QLineEdit()
+    self.filterClearSelection  = cOrbSmall(icon=P_ICON_CLEAR, tooltip="Clear whole selection")
     
     advFilters = newVFrame([newHLayout(["Filter by...", self.filterText]),
-                            newHLayout(["__stretch__", self.filterCB.name, self.filterCB.description, "__stretch__"]),
+                            newHLayout(["__stretch__", self.filterCB.name, self.filterCB.description, self.filterClearSelection, "Clear selection", "__stretch__"]),
                             "__line__",
-                            newHLayout([self.filterCB.equipped, self.filterCB.bound, self.filterCB.locked]), 
-                            newHLayout([self.filterCB.unequipped, self.filterCB.unbound, self.filterCB.unlocked]),
+                            newHLayout([self.filterCB.equipped,   self.filterCB.locked  , self.filterCB.bound  ]), 
+                            newHLayout([self.filterCB.unequipped, self.filterCB.unlocked, self.filterCB.unbound]),
                             newHFrame(["Augments Count:", self.filterCB.aug0, self.filterCB.aug1, self.filterCB.aug2, self.filterCB.aug3p]),
-                            newHLayout([self.filterQualifier, self.filterAugments, self.filterOwner, self.filterType])])
+                            newHLayout([self.filterQualifier, self.filterType]),
+                            newHLayout([self.filterAugments, self.filterOwner, ])])
 
     self.filterScriptList      = QListWidget()
     self.filterScriptLabel     = QLabel("Selected Filter Script:")
     self.filterBtnNewScript    = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new filter script with the text currently in the editor")
-    self.filterBtnSaveScript   = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected filter script\nCtrl+Left click to save all")
+    self.filterBtnSaveScript   = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected filter script. Ctrl+S while editing to save it.\nCtrl+Left click to save all")
     self.filterBtnDelScript    = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected filter script - this action cannot be undone!")
     self.filterBtnReloadScript = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected script from file\nCtrl+Left click to reload all")
-    self.filterBtnApplyScript  = cOrbSmall(icon=P_ICON_FILTER, tooltip="Apply current filter")
+    self.filterBtnApplyScript  = cOrbSmall(icon=P_ICON_FILTER, tooltip="Apply current filter. Ctrl+Enter while editing to save it.")
     self.filterBtnHelp         = cOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how script work here (lol)")
     self.filterScriptEdit      = QTextEdit()
     filtersContainer = newHSplitter([newHFrame([newVLayout(["Saved Filters:", self.filterScriptList]),
@@ -176,11 +179,12 @@ class cStorageManager(cToggler):
                                   newVFrame([self.filterScriptLabel, self.filterScriptEdit]), advFilters])
     filtersContainer.setSizes([300,700,100])
 
-
-    self.filterQualifier.changed.connect(self.applyCheckFilters)
-    self.filterOwner.changed.connect(self.applyCheckFilters)
-    self.filterType.changed.connect(self.applyCheckFilters)
-    self.filterText.textEdited.connect(self.applyCheckFilters)
+    self.filterClearSelection.clicked.connect(self.table.clearSelection)
+    self.filterQualifier.changed.connect(self.applyFilters)
+    self.filterOwner.changed.connect(self.applyFilters)
+    self.filterType.changed.connect(self.applyFilters)
+    self.filterAugments.changed.connect(self.applyFilters)
+    self.filterText.textEdited.connect(self.applyFilters)
 
     self.btnRefresh.clicked.connect(lambda : self.requestRefreshStorage(False))
     self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
@@ -189,7 +193,7 @@ class cStorageManager(cToggler):
     self.btnFeedJewel.ctrlClicked.connect(lambda : self.requestFeedJewel(force=True))
 
     self.filterScriptList.itemChanged.connect(self.renameFilterScript)
-    self.filterBtnApplyScript.clicked.connect(self.applyScriptFilters)
+    self.filterBtnApplyScript.clicked.connect(self.applyFilters)
     self.filterBtnNewScript.clicked.connect(self.newFilterScript)
     self.filterBtnSaveScript.clicked.connect(self.saveFilterScript)
     self.filterBtnSaveScript.ctrlClicked.connect(self.saveAllFilterScripts)
@@ -201,16 +205,23 @@ class cStorageManager(cToggler):
     self.filterScriptList.itemSelectionChanged.connect(self.setActiveFilterScript)
     self.filterScriptEdit.textChanged.connect(self.syncFilterScript)
 
+    for seq, slot in [("Ctrl+S",      self.saveFilterScript),
+                      ("Ctrl+Return", self.applyFilters),
+                      ("Ctrl+Enter",  self.applyFilters)]:
+      sc = QShortcut(QKeySequence(seq), self.filterScriptEdit)
+      sc.setContext(Qt.ShortcutContext.WidgetShortcut)
+      sc.activated.connect(slot)
+
     # self.setListWidget.itemChanged.connect(self.updateMacroSetFile)
     # self.setListWidget.itemSelectionChanged.connect(self.updateTable)
 
     self.sigAppendItem.connect(self.table.append)
-    self.sigAppendItem.connect(self.applyCheckFilters)
     self.sigAppendItem.connect(self.updateDynamicFilters)
+    self.sigAppendItem.connect(self.applyFilters)
     self.sigPurgeStale.connect(self.table.clearStale)
     self.sigSetStatus.connect(self.setStatus)
     allSplitters = newVSplitter([self.table, filtersContainer])
-    allSplitters.setSizes([400,100])
+    allSplitters.setSizes([800,100])
    
     self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnStore, self.btnTrade, self.btnSell, self.btnDissolve, self.btnFeedJewel])]))
   
@@ -266,10 +277,17 @@ class cStorageManager(cToggler):
     self.daemon = daemon
     self.table.staleData = {}
 
+    noneItem = cFilterItem("<None>", "")
+    noneItem.setFlags(noneItem.flags() & ~Qt.ItemFlag.ItemIsEditable)
+    self.filterScriptList.addItem(noneItem)
+
     allFiles = glob.glob(os.path.join(P_DEFAULT_FILTERSDIR, "*"+P_DEFAULT_FILTEREXT))
     for n in allFiles:
       name = os.path.splitext(os.path.basename(n))[0]
+      if name == "<None>": continue
       self.appendFilterScript(cFilterItem(name, ""))
+
+    self.filterScriptList.setCurrentItem(noneItem)
 
   #----------------------------------------------------------------------------------------------------------
   def newFilterScript(self):
@@ -289,6 +307,7 @@ class cStorageManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def renameFilterScript(self, item : cFilterItem):
+    if item.name == "<None>": return
     oldName = item.name
     item.rename()
     self.allFilterScripts[item.name] = item
@@ -297,15 +316,17 @@ class cStorageManager(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def setActiveFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
-    if len(cfilter)>0:
-      self.filterScriptEdit.setText(cfilter[0].content)
-    else:
-      self.filterScriptEdit.setText("")
+    isEditable = bool(cfilter) and cfilter[0].name != "<None>"
+    self.filterScriptEdit.setEnabled(isEditable)
+    self.filterBtnApplyScript.setEnabled(isEditable)
+    self.filterBtnDelScript.setEnabled(isEditable)
+    self.filterScriptEdit.setText(cfilter[0].content if isEditable else "")
+    self.applyFilters()
 
   #----------------------------------------------------------------------------------------------------------
   def saveFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
-    if len(cfilter)>0: cfilter[0].save()
+    if len(cfilter)>0 and cfilter[0].name != "<None>": cfilter[0].save()
 
   #----------------------------------------------------------------------------------------------------------
   def saveAllFilterScripts(self):
@@ -315,12 +336,13 @@ class cStorageManager(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def syncFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
-    if len(cfilter)>0: cfilter[0].sync(self.filterScriptEdit.toPlainText())
+    if len(cfilter)>0 and cfilter[0].name != "<None>":
+      cfilter[0].sync(self.filterScriptEdit.toPlainText())
 
   #----------------------------------------------------------------------------------------------------------
   def reloadFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
-    if len(cfilter)>0:
+    if len(cfilter)>0 and cfilter[0].name != "<None>":
       cfilter[0].load()
     self.setActiveFilterScript()
 
@@ -332,16 +354,19 @@ class cStorageManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def deleteFilterScript(self):
-    filter = self.filterScriptList.selectedItems()
-    if not filter: return
-    cPrint.info(f"Removing filter script \"{C_SILVER}{filter[0].text()}</font>\"...")
-    del self.allFilterScripts[filter[0].text()]
+    selected = self.filterScriptList.selectedItems()
+    if not selected: return
+    filter : cFilterItem = selected[0]
+    cPrint.info(f"Removing filter script \"{C_SILVER}{filter.name}</font>\"...")
+    self.allFilterScripts.pop(filter.name, None)
+    filename = P_DEFAULT_FILTERSDIR + os.sep + filter.name + P_DEFAULT_FILTEREXT
     try:
-      os.remove(P_DEFAULT_MACRODIR+os.sep+filter[0].text()+P_DEFAULT_MACROEXT)
-    except:
+      os.remove(filename)
+    except FileNotFoundError:
       pass
-    self.filterScriptList.takeItem(self.filterScriptList.row(filter[0]))
-    del filter[0]
+    except OSError as e:
+      cPrint.error(f"[cStorage] failed to remove filter file \"{filename}\":", e)
+    self.filterScriptList.takeItem(self.filterScriptList.row(filter))
 
   #----------------------------------------------------------------------------------------------------------
   def updateDynamicFilters(self, item: cItemData):
@@ -349,8 +374,8 @@ class cStorageManager(cToggler):
       self.filterOwner.addCheckItem(item.owner())
     if item._type:
       self.filterType.addCheckItem(item._type)
-    # if item._qualifier:
-    #   self.filterQualifier.addCheckItem(item._qualifier)
+    if item._qualifier:
+      self.filterQualifier.addCheckItem(item._qualifier)
   
   #----------------------------------------------------------------------------------------------------------
   def requestRefreshStorage(self, detailed: bool = False):
@@ -399,7 +424,8 @@ class cStorageManager(cToggler):
     packets = {}
     bridges : cMilvian = self.daemon.getBridges()
     for c in selectedItems.keys():
-      inData = struct.pack('<?',True)  # sendStatus flag, requests frequent status update always
+      inData = struct.pack('<?',True)  # sendStatus flag, requests frequent status update always for now
+      inData += struct.pack('<I',3)    # number of retries
       inData += struct.pack('<I',len(selectedItems[c]))
       for item in list(selectedItems[c]):
         inData += struct.pack('<Q',item._id)
@@ -440,7 +466,7 @@ class cStorageManager(cToggler):
     pass
   
   #----------------------------------------------------------------------------------------------------------
-  def applyScriptFilters(self, item : cItemData = None):
+  def applyFilters(self, item : cItemData = None):
     scriptText = self.filterScriptEdit.toPlainText().lower()
     scriptText = " ".join(scriptText.strip().split())
     safeContext = {
@@ -457,83 +483,64 @@ class cStorageManager(cToggler):
       "float": float,
 
       # String helpers (very useful for items)
-      "startswith": lambda s, prefix: str(s).startswith(str(prefix)),
-      "endswith":   lambda s, suffix: str(s).endswith(str(suffix)),
+      "startswith": lambda s, prefix: str(s).startswith(prefix if isinstance(prefix, tuple) else str(prefix)),
+      "endswith":   lambda s, suffix: str(s).endswith(suffix if isinstance(suffix, tuple) else str(suffix)),
       "contains":   lambda s, sub: str(sub) in str(s),
-      # "lower": lambda x: str(x).lower() if x is not None else "",
-      # "upper": lambda x: str(x).upper() if x is not None else "",
-      # "startswith": lambda s, prefix: str(s).lower().startswith(str(prefix).lower()),
-      # "endswith":   lambda s, suffix: str(s).lower().endswith(str(suffix).lower()),
-      # "contains":   lambda s, sub: str(sub).lower() in str(s).lower(),   # bonus: allows "contains"
     }
 
-    def _filterItem(item : cItemData):
-      if len(scriptText)==0: 
-        self.table.setRowHidden(row, False)
-        return
-      
-      try:
-        itemContext = {
-          "id"              : item._id               ,    
-          "name"            : item._name.lower()     ,
-          "ownerid"         : item._ownerID          ,
-          "owner"           : item.owner().lower(),
-          "container"       : item._container      ,
-          "weenieid"        : item._weenieID       ,
-          "type"            : item._type.lower()   ,
-          "quantity"        : item._quantity       ,
-          "qualifier"       : item._qualifier.lower(),
-          "valuecopper"     : item._valueCopper    ,
-          "hardness"        : item._hardness       ,
-          "durability"      : item._durability     ,
-          "iconid"          : item._iconId         ,
-          "icon"            : item._icon           ,
-          "description"     : item._description.lower(),
-          "minlevel"        : item._minLevel       ,
-          "material"        : item._material       ,
-          "istrash"         : item._isTrash        ,
-          "islocked"        : item._isLocked       ,
-          "isminorartifact" : item._isMinorArtifact,
-          "setbonus1"       : item._setBonus1.lower(),
-          "setbonus2"       : item._setBonus2.lower(),
-          "currentslot"     : item._currentSlot    ,
-          "isequipped"      : isinstance(item.slot(), str),
-          "binding"         : "unbound" if item._binding==0 else item.binding(),
-          "equipsto"        : item._equipsTo.lower(),
-          "augments"        : [a.lower() for a in item.augments()],
-          "effects"         : {k.lower(): v.lower() for k, v in item._effects.items()},
-          "slot"            : item.slot(),
-          "effectname"      : [k.lower() for k in item._effects.keys()],
-          "effectdesc"      : [v.lower() for v in item._effects.values()],
-          "effectfull"      : " ".join([k.lower() + " " + v.lower() for k, v in item._effects.items()]),
-          "text"            : item.toolTip().lower().replace("<br>","").replace("<b>","").replace("</b>","").replace("<i>","").replace("</i>","")
-        }
-        itemContext.update(safeContext)
-        result = eval(scriptText, itemContext)
-        self.table.setRowHidden(row, not result)
-        return bool(result)
-      except Exception as e: raise(e)
-        
-    try:
-      if isinstance(item, cItemData):
-        row = item.row()
-        _filterItem(item)
-      else:
-        for row in range(self.table.rowCount()):
-          _filterItem(self.table.item(row, 0))
-    except Exception as e:
-      cPrint.error("[cStorage]: error while evaluating filter script:",e)
-
-  
-  #----------------------------------------------------------------------------------------------------------
-  def applyCheckFilters(self, item : cItemData = None):
     filterText = self.filterText.text().lower().strip()
-    checkedOwners = (q.lower() for q in self.filterOwner.getChecked())
-    checkedTypes  = (q.lower() for q in self.filterType.getChecked())
-    checkedQuals  = (q.lower() for q in self.filterQualifier.getChecked())
-    checkedAugs   = (q.lower() for q in self.filterAugments.getChecked())
+    checkedOwners = [q.lower() for q in self.filterOwner.getChecked()]
+    checkedTypes  = [q.lower() for q in self.filterType.getChecked()]
+    checkedQuals  = [q.lower() for q in self.filterQualifier.getChecked()]
+    checkedAugs   = [q.lower() for q in self.filterAugments.getChecked()]
 
     def _filterItem(item : cItemData):
+      # --- script filter (runs first)
+      if len(scriptText) > 0:
+        try:
+          itemContext = {
+            "id"              : item._id               ,
+            "name"            : item._name.lower()     ,
+            "ownerid"         : item._ownerID          ,
+            "owner"           : item.owner().lower(),
+            "container"       : item._container      ,
+            "weenieid"        : item._weenieID       ,
+            "type"            : item._type.lower()   ,
+            "quantity"        : item._quantity       ,
+            "qualifier"       : item._qualifier.lower(),
+            "valuecopper"     : item._valueCopper    ,
+            "hardness"        : item._hardness       ,
+            "durability"      : item._durability     ,
+            "iconid"          : item._iconId         ,
+            "icon"            : item._icon           ,
+            "description"     : item._description.lower(),
+            "minlevel"        : item._minLevel       ,
+            "material"        : item._material       ,
+            "istrash"         : item._isTrash        ,
+            "islocked"        : item._isLocked       ,
+            "isminorartifact" : item._isMinorArtifact,
+            "setbonus1"       : item._setBonus1.lower(),
+            "setbonus2"       : item._setBonus2.lower(),
+            "currentslot"     : item._currentSlot    ,
+            "isequipped"      : isinstance(item.slot(), str),
+            "binding"         : "unbound" if item._binding==0 else item.binding(),
+            "equipsto"        : item._equipsTo.lower(),
+            "augments"        : [a.lower() for a in item.augments()],
+            "effects"         : {k.lower(): v.lower() for k, v in item._effects.items()},
+            "slot"            : item.slot(),
+            "effectname"      : [k.lower() for k in item._effects.keys()],
+            "effectdesc"      : [v.lower() for v in item._effects.values()],
+            "effectfull"      : " ".join([k.lower() + " " + v.lower() for k, v in item._effects.items()]),
+            "text"            : item.toolTip().lower().replace("<br>","").replace("<b>","").replace("</b>","").replace("<i>","").replace("</i>","")
+          }
+          itemContext.update(safeContext)
+          if not bool(eval(scriptText, itemContext)):
+            return self.table.setRowHidden(row, True)
+        except Exception as e:
+          cPrint.error("[cStorage]: error while evaluating filter script:",e)
+          return
+
+      # --- checkbox filter (runs after script passes)
       textTarget = ""
       if self.filterCB.name.isChecked(): textTarget += item._name.lower() + " "
       if self.filterCB.description.isChecked(): textTarget += item.toolTip().lower() + " "
@@ -546,25 +553,24 @@ class cStorageManager(cToggler):
 
       if not self.filterCB.bound.isChecked()   and item._binding>0:  return self.table.setRowHidden(row, True)
       if not self.filterCB.unbound.isChecked() and item._binding==0: return self.table.setRowHidden(row, True)
-      
+
       if not self.filterCB.locked.isChecked()   and item._isLocked==1: return self.table.setRowHidden(row, True)
       if not self.filterCB.unlocked.isChecked() and item._isLocked==0: return self.table.setRowHidden(row, True)
 
-      itemAugs = item.augments(textOnly=True)
-      for a in list(itemAugs):
-        if a not in checkedAugs: itemAugs.pop(itemAugs.index(a))
+      itemAugs = [a for a in item.augments(textOnly=True) if a.lower() in checkedAugs]
       if len(itemAugs) == 0 and not self.filterCB.aug0.isChecked():  return self.table.setRowHidden(row, True)
       if len(itemAugs) == 1 and not self.filterCB.aug1.isChecked():  return self.table.setRowHidden(row, True)
       if len(itemAugs) == 2 and not self.filterCB.aug2.isChecked():  return self.table.setRowHidden(row, True)
       if len(itemAugs) >= 3 and not self.filterCB.aug3p.isChecked(): return self.table.setRowHidden(row, True)
 
-      if item._qualifier.lower() not in checkedQuals:  return self.table.setRowHidden(row, True)
+      qualKey = item._qualifier.lower() if item._qualifier else "<empty>"
+      if qualKey not in checkedQuals: return self.table.setRowHidden(row, True)
       if item.owner().lower()    not in checkedOwners: return self.table.setRowHidden(row, True)
       if item._type.lower()      not in checkedTypes:  return self.table.setRowHidden(row, True)
-      hasAug = False
-      for a in itemAugs:
-        hasAug = hasAug or (a in checkedAugs)
-      if not hasAug: self.table.setRowHidden(row, True)
+      # hasAug = False
+      # for a in itemAugs:
+      #   hasAug = hasAug or (a in checkedAugs)
+      # if not hasAug: return self.table.setRowHidden(row, True)
 
       self.table.setRowHidden(row, False)
 
@@ -593,13 +599,17 @@ class cStorageManager(cToggler):
         nItems     = struct.unpack('<I', f.read(4))[0]
         itemAvail  = struct.unpack('<I', f.read(4))[0]
         favail     = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-        
+
         itemsCount = 0
         while True:
           itemAvail = struct.unpack('<I', favail[8:12])[0]
           if itemAvail > itemsCount:
             item = cItemData()
-            item.readFromBin(f)
+            try:
+              item.readFromBin(f)
+            except Exception as e:
+              cPrint.error(f"[cStorage] readFromBin failed at item {itemsCount}/{nItems}:", e)
+              break
             itemsCount += 1
             item.digest()
             self.sigAppendItem.emit(item)
@@ -607,7 +617,7 @@ class cStorageManager(cToggler):
             time.sleep(0.05)
           if itemsCount>=nItems: break
       self.sigSetStatus.emit(bridge, P_STATUS_IDLE)
-      self.table.clearStale(bridge.charName)
+      self.sigPurgeStale.emit(bridge.charName)
 
     self.setStatus(bridge, P_STATUS_BUSY_REFRESH)
     t = threading.Thread(target=_refreshStorageThread, args=(self, bridge), daemon=True)
