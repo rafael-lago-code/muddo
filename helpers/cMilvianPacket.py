@@ -47,6 +47,7 @@ class packetCommand(Enum):
   misc           = struct.pack('<I', 9)
   debugId        = struct.pack('<I', 10)
   dissolveItems  = struct.pack('<I', 20)
+  sellItems      = struct.pack('<I', 21)
   debugCircular  = struct.pack('<I', 90)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)

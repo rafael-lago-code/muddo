@@ -33,6 +33,7 @@ P_STATUS_CCLICK=5
 P_STATUS_CRLICK=6
 P_STATUS_DISBLD=7
 P_STATUS_CHECKD=8
+P_STATUS_CHECKD_HOVERD=9
 
 #-------------------------------------------------------------------------------------------------------------
 class cOrbTheme_RedMedium():
@@ -65,6 +66,7 @@ class cOrbTheme_RedMedium():
       self.bg[P_STATUS_CRLICK] = cEffects.invertPixmap(BG_RED_PIX)
       self.bg[P_STATUS_DISBLD] = cEffects.desaturatePixmap(BG_RED_PIX,1.0)
       self.bg[P_STATUS_CHECKD] = PRESSED_RED
+      self.bg[P_STATUS_CHECKD_HOVERD] = PRESSED_RED
 
       self.fg = {}
       self.fg[P_STATUS_NORMAL] = FG_RED_PIX
@@ -76,6 +78,7 @@ class cOrbTheme_RedMedium():
       self.fg[P_STATUS_CRLICK] = FG_RED_PIX
       self.fg[P_STATUS_DISBLD] = FG_RED_PIX
       self.fg[P_STATUS_CHECKD] = QPixmap()
+      self.fg[P_STATUS_CHECKD_HOVERD] = cEffects.tintPixmap(FG_RED_PIX,(215,120,0),0.3)
 
       self.iconEffect = {}
       self.iconEffect[P_STATUS_NORMAL] = cEffects.cNone()
@@ -87,6 +90,7 @@ class cOrbTheme_RedMedium():
       self.iconEffect[P_STATUS_CRLICK] = cEffects.cNone()
       self.iconEffect[P_STATUS_DISBLD] = cEffects.cGreyscale()
       self.iconEffect[P_STATUS_CHECKD] = cEffects.cTint((215,120,0),0.5)
+      self.iconEffect[P_STATUS_CHECKD_HOVERD] = cEffects.cTint((215,120,0),0.5)
 
       self.textEffect = {}
       self.textEffect[P_STATUS_NORMAL] = cEffects.cNone()
@@ -98,6 +102,7 @@ class cOrbTheme_RedMedium():
       self.textEffect[P_STATUS_CRLICK] = cEffects.cNone()
       self.textEffect[P_STATUS_DISBLD] = cEffects.cGreyscale()
       self.textEffect[P_STATUS_CHECKD] = cEffects.cTint((215,120,0),0.2)
+      self.textEffect[P_STATUS_CHECKD_HOVERD] = cEffects.cTint((215,120,0),0.2)
       
     return self._instance
 
@@ -120,12 +125,12 @@ class cOrb(QPushButton):
   rightReleased = pyqtSignal(QMouseEvent)
   ctrlRightReleased = pyqtSignal(QMouseEvent)
   theme = None
-    
+
   @classmethod
-  def getTheme(self):
-    if self.theme is None:
-      self.theme = cOrbTheme_RedMedium()
-    return self.theme
+  def getTheme(cls):
+    if cls.theme is None:
+      cls.theme = cOrbTheme_RedMedium()
+    return cls.theme
   
   #----------------------------------------------------------------------------------------------------------
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
@@ -189,11 +194,8 @@ class cOrb(QPushButton):
 
   #-------------------------------------------------------------------------------------------------------------
   def setChecked(self, a0):
-    if a0:
-      self.setState(P_STATUS_CHECKD)
-    else:
-      self.normalizeState()
-    return super().setChecked(a0)
+    super().setChecked(a0)
+    self.normalizeState()
 
   #-------------------------------------------------------------------------------------------------------------
   def paintEvent(self, event):
@@ -264,15 +266,16 @@ class cOrb(QPushButton):
   #-------------------------------------------------------------------------------------------------------------
   def enterEvent(self, event):
     if not self.isEnabled(): return
-    if self.isChecked(): return
     self._isHovered = True
     if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier:
       self.setState(P_STATUS_COVERD)
+    elif self.isChecked():
+      self.setState(P_STATUS_CHECKD_HOVERD)
     else:
       self.setState(P_STATUS_HOVERD)
-      if self.toolTip():
-        QToolTip.showText( self.mapToGlobal(self.rect().bottomLeft()),
-                          self.toolTip(), self)
+    if self.toolTip():
+      QToolTip.showText( self.mapToGlobal(self.rect().bottomLeft()),
+                        self.toolTip(), self)
     super().enterEvent(event)
   
   #-------------------------------------------------------------------------------------------------------------
@@ -280,6 +283,8 @@ class cOrb(QPushButton):
     if self.underMouse():
       if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier:
         self.setState(P_STATUS_COVERD)
+      elif self.isChecked():
+        self.setState(P_STATUS_CHECKD_HOVERD)
       else:
         self.setState(P_STATUS_HOVERD)
     return super().mouseMoveEvent(a0)
@@ -328,7 +333,10 @@ class cOrb(QPushButton):
   def normalizeState(self):
     # Sets state to hover or normal or checked
     if self.isChecked():
-      self.setState(P_STATUS_CHECKD)
+      if self._isHovered:
+        self.setState(P_STATUS_CHECKD_HOVERD)
+      else:
+        self.setState(P_STATUS_CHECKD)
     elif self._isHovered:
       self.setState(P_STATUS_HOVERD)
     else:
@@ -348,10 +356,10 @@ class cOrbSmall(cOrb):
   theme = None
 
   @classmethod
-  def getTheme(self):
-    if self.theme is None:
-      self.theme = cOrbTheme_RedSmall()
-    return self.theme
+  def getTheme(cls):
+    if cls.theme is None:
+      cls.theme = cOrbTheme_RedSmall()
+    return cls.theme
   
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
@@ -367,10 +375,10 @@ class cOrbCheck(QWidget):
   label : QLabel  = None
 
   @classmethod
-  def getTheme(self):
-    if self.orb.theme is None:
-      self.orb.theme = cOrbTheme_RedSmall()
-    return self.orb.theme
+  def getTheme(cls):
+    if cls.orb.theme is None:
+      cls.orb.theme = cOrbTheme_RedSmall()
+    return cls.orb.theme
   
   def __init__(self, title = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(*args, **kwargs)
@@ -380,7 +388,6 @@ class cOrbCheck(QWidget):
     self.orb.setChecked(True)
 
     self.setText    = self.label.setText
-    self.setChecked = self.orb.setChecked
     self.isChecked  = self.orb.isChecked
     self.stateChanged = self.orb.clicked
     self.clicked = self.orb.clicked
@@ -401,6 +408,13 @@ class cOrbCheck(QWidget):
     self.orb.setEnabled(a0)
     self.label.setEnabled(a0)
     super().setEnabled(a0)
+
+  def setChecked(self, a0 : bool):
+    if a0:
+      self.orb.setIcon(getIcon(P_ICON_CHECKMARK))
+    else:
+      self.orb.setIcon(QIcon())
+    self.orb.setChecked(a0)
 
   # def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     # super().__init__(title, icon, enabled, tooltip, *args, **kwargs)

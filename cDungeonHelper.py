@@ -47,7 +47,7 @@ class cDungeonHelper(aProcessItem):
     self.btnRestore.setEnabled(False)
     self.btnClear.setEnabled(False)
 
-    self.orb = cOrb("Dungeon\nHelper", getIcon(P_MUDDO_DIR+'/images/DungeonHelperIcon32.png'),
+    self.orb = cOrb("Dungeon\nHelper", getIcon(P_DEFAULT_ICON_PATHS[0]+'/dm_kundarak.svg'),
                     tooltip="Launches Dungeon Helper (it if is installed); activates on all instances" \
                      " of the game for as long as it runs.<br><b>Ctrl+Click to purge any instances and restart Dungeon Helper.<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)

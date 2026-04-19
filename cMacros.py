@@ -28,7 +28,7 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 import glob, re, os
 from typing import TYPE_CHECKING
-from cMacrosDaemon import cMacrosDaemon
+from cMilvianBridge import cMilvianBridge
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
@@ -204,7 +204,7 @@ class cMacros(cToggler):
     self.toActivate = None
     self.main = main
 
-    self.daemon = cMacrosDaemon(self.main)
+    self.daemon = cMilvianBridge(self.main)
     
     self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
     self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click to save all")

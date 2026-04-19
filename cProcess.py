@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
 from widgets.cToggler import cToggler
-from widgets.cOrb import cOrbSmall
+from widgets.cOrb import cOrbCheck, cOrbSmall
 from helpers.util import *
 from widgets.cLog import cLog
 from helpers.cTop import cTop
@@ -40,8 +40,8 @@ class cProcessManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def attachMain(self, main : cMainWindow):
-    self.main = main
+  def attachMain(cls, main : cMainWindow):
+    cls.main = main
     aProcessItem.attachMain(main)
 
   #----------------------------------------------------------------------------------------------------------
@@ -55,24 +55,28 @@ class cProcessManager(cToggler):
     self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
 
     header = QWidget()
-    header.setLayout(newHLayout([newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
+    header.setLayout(newHLayout([newHeaderLabel("", 32), newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
                      newHeaderLabel("World"), newHeaderLabel("Profile"), "Username"]))
 
     self.btnStartAll   = cOrbSmall(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
-    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL,     tooltip="Terminates all running processes<br>Ctrl+click: force termination (SIGKILL) all processes")
-    self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL,   tooltip="Saves all windows positions")
-    self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,      tooltip="Restores all previously saved windows positions")
+    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL,     tooltip="Terminates selected running processes<br>Ctrl+click: force termination (SIGKILL) selected processes")
+    self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL,   tooltip="Saves selected windows positions")
+    self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,      tooltip="Reloads previously saved positions for selected windows")
     self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEAR,     tooltip="Clear all processes<br>Ctrl+click: kill and clear all processes")
     self.btnAudioAll    = cOrbSmall(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
     self.btnLogAll     = cOrbSmall(icon=P_ICON_NOTES,     tooltip="Toggles logs on/off for all processes")
     self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/chain.png'), tooltip="Attempts to find running instances of DDO and capture them"\
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")
+    self.btnSelectAll  = cOrbSmall(icon=P_ICON_CHECKMARK, tooltip="Select/deselect all processes for batch Save/Kill/Reload")
+    self.btnSelectAll.setCheckable(True)
+    self.btnSelectAll.setChecked(True)
     
     self.btnCaptureOrphans.clicked.connect(self.captureOrphan)
+    self.btnSelectAll.clicked.connect(self.applySelectAll)
     self.btnStartAll.clicked.connect(self.startAll)
     self.btnKillAll.clicked.connect(self.terminateAll)
-    self.btnKillAll.ctrlClicked.connect(lambda : self.terminateAll(force=True))
+    self.btnKillAll.ctrlClicked.connect(lambda : self.killAll())
     self.btnSaveAll.clicked.connect(self.saveWindowAll)
     self.btnRestoreAll.clicked.connect(self.restoreWindowAll)
     self.btnCleanAll.clicked.connect(self.cleanAll)
@@ -84,7 +88,7 @@ class cProcessManager(cToggler):
     justSpace.setMinimumWidth(2)
     
     self.content = newVLayout([header])
-    self.setLayout(newVLayout([self.content, newHLayout([self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
+    self.setLayout(newVLayout([self.content, newHLayout([self.btnSelectAll, self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
       self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnCleanAll, self.btnLogAll, self.btnAudioAll, justSpace]),
                     "__stretch__"]))
 
@@ -123,38 +127,45 @@ class cProcessManager(cToggler):
         self.items[u].launch()
 
   #----------------------------------------------------------------------------------------------------------
+  def selectedItems(self):
+    return [p for k, p in self.items.items() if not k.startswith("dh_") and p.btnSelect.isChecked()]
+
+  #----------------------------------------------------------------------------------------------------------
+  def applySelectAll(self):
+    state = self.btnSelectAll.isChecked()
+    for k, p in self.items.items():
+      if k.startswith("dh_"): continue
+      p.btnSelect.setChecked(state)
+
+  #----------------------------------------------------------------------------------------------------------
   def terminateAll(self):
-    allItems = list(self.items.keys())
-    for i in allItems: 
-      if i.startswith("dh_"): continue
-      self.items[i].terminate()
+    for p in self.selectedItems():
+      p.terminate()
 
   #----------------------------------------------------------------------------------------------------------
   def killAll(self):
-    allItems = list(self.items.keys())
-    for i in allItems: 
-      if i.startswith("dh_"): continue
-      self.items[i].kill()
+    for p in self.selectedItems():
+      p.kill()
 
   #----------------------------------------------------------------------------------------------------------
   def toggleAudioAll(self):
     allItems = list(self.items.keys())
-    for i in allItems: 
+    for i in allItems:
       self.items[i].audioToggle()
 
   #----------------------------------------------------------------------------------------------------------
   def audioMuteAll(self):
     allItems = list(self.items.keys())
-    for i in allItems: 
+    for i in allItems:
       self.items[i].audioMute()
-    
+
   #----------------------------------------------------------------------------------------------------------
   def saveWindowAll(self):
-    for u in self.items.keys(): self.items[u].saveWindow()
-  
+    for p in self.selectedItems(): p.saveWindow()
+
   #----------------------------------------------------------------------------------------------------------
   def restoreWindowAll(self):
-    for u in self.items.keys(): self.items[u].restoreWindow()
+    for p in self.selectedItems(): p.restoreWindow()
 
   #----------------------------------------------------------------------------------------------------------
   def itemExists(self, p : aProcessItem):
@@ -257,9 +268,9 @@ class aProcessItem(QWidget):
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def attachMain(self, main : cMainWindow):
-    self.main = main
-    self.profile = main.profile # pointer to the function
+  def attachMain(cls, main : cMainWindow):
+    cls.main = main
+    cls.profile = main.profile # pointer to the function
 
   #----------------------------------------------------------------------------------------------------------
   def __init__(self):
@@ -273,6 +284,7 @@ class aProcessItem(QWidget):
     self.username   = QLabel()
     self.logger     = None
 
+    self.btnSelect  = cOrbCheck(tooltip="Include this process in batch Save/Kill/Reload actions")
     self.btnToggle  = cOrbSmall(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
     self.btnSave    = cOrbSmall(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
     self.btnRestore = cOrbSmall(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")
@@ -280,7 +292,7 @@ class aProcessItem(QWidget):
     self.btnLog     = cOrbSmall(icon=P_ICON_NOTES, tooltip="Toggles follow log")
     self.btnAudio   = cOrbSmall(icon=P_ICON_MUTE,  tooltip="Toggles audio on/off for this process")
 
-    self.btnLog.setCheckable(True)
+    self.btnSelect.setChecked(True)
     self.btnLog.setCheckable(True)
     self.btnToggle.clicked.connect(self.toggle)
     self.btnToggle.rightClicked.connect(lambda : self.toggle(True))
@@ -297,7 +309,7 @@ class aProcessItem(QWidget):
     self.sigGotPID.connect(self.pid.setText)
     self.sigGotWinID.connect(self.winID.setText)
     
-    self.setLayout(newHLayout([self.pid, self.winID, self.worldname, self.profileID, 
+    self.setLayout(newHLayout([self.btnSelect, self.pid, self.winID, self.worldname, self.profileID,
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
                               self.btnClear, self.btnLog, self.btnAudio]))
   

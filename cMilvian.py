@@ -52,21 +52,21 @@ class cMilvian():
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def setup(self, dhpath):
-    # self.setBridgePath(os.path.dirname(dhpath)+"/Milvian/")
-    self.setBridgePath("/dev/shm/Milvian/")
-    self.getInputActions(dhpath)
+  def setup(cls, dhpath):
+    # cls.setBridgePath(os.path.dirname(dhpath)+"/Milvian/")
+    cls.setBridgePath("/dev/shm/Milvian/")
+    cls.getInputActions(dhpath)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def getInputActions(self, dhpath):
-    if self.inputActions: return
+  def getInputActions(cls, dhpath):
+    if cls.inputActions: return
     sys.path.append(dhpath)
     from pythonnet import load
     load("coreclr")
     import clr
     clr.AddReference("VoK.Sdk")
-    clr.AddReference("System.Private.CoreLib") 
+    clr.AddReference("System.Private.CoreLib")
     from VoK.Sdk.Ddo.Enums import InputActions # type: ignore
     from System import Enum as DotNetEnum      # type: ignore
 
@@ -79,24 +79,24 @@ class cMilvian():
     for b in range(10):
       for k in range(10):
         ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
-    self.inputActions = ia
+    cls.inputActions = ia
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def setBridgePath(self, path):
-    self.bridgePath = path
+  def setBridgePath(cls, path):
+    cls.bridgePath = path
 
   #---------------------------------------------------------------------------------------------------------------
   @classmethod
-  def printInputActions(self):
-    if not self.inputActions: self.getInputActions()
-    cPrint.debug(self.inputActions.keys())
+  def printInputActions(cls):
+    if not cls.inputActions: cls.getInputActions()
+    cPrint.debug(cls.inputActions.keys())
 
   #---------------------------------------------------------------------------------------------------------------
   @classmethod
-  def isInputAction(self, cmd: str):
-    if not self.inputActions: self.getInputActions()
-    return cmd in self.inputActions.keys()
+  def isInputAction(cls, cmd: str):
+    if not cls.inputActions: cls.getInputActions()
+    return cmd in cls.inputActions.keys()
 
   #---------------------------------------------------------------------------------------------------------------
   def __init__(self, pathSHM : str):
@@ -211,9 +211,12 @@ class cMilvian():
     return data
 
   #---------------------------------------------------------------------------------------------------------------
-  def newInputActionRequest(self, cmd: str) -> cMilvianPacket:
+  def newInputActionRequest(self, cmd: str, timeout : int = 10000) -> cMilvianPacket:
     cPrint.debug(f"[cMilvian:Debug] {self.charName} - packInputAction({cmd})")
-    return cMilvianPacket(packetCommand.inputaction, self, cMilvian.inputActions[cmd])
+    inData = cMilvian.inputActions[cmd]
+    if timeout > 0: inData += struct.pack('<I',timeout)
+    return cMilvianPacket(packetCommand.inputaction, self, inData)
+    
   
   #---------------------------------------------------------------------------------------------------------------
   def newSleepRequest(self, nsec: float) -> cMilvianPacket:

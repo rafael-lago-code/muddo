@@ -25,7 +25,7 @@ from __future__ import annotations
 import glob
 import threading
 from types import SimpleNamespace
-from PyQt6.QtWidgets import QCheckBox, QDialog, QLineEdit, QListWidgetItem, QMenu, QListWidget, QTextEdit
+from PyQt6.QtWidgets import QCheckBox, QDialog, QGridLayout, QLineEdit, QListWidgetItem, QMenu, QListWidget, QTextEdit
 from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
@@ -39,7 +39,7 @@ from helpers.cPrint import cPrint
 import time, struct, mmap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-   from cMacrosDaemon import cMacrosDaemon
+   from cMilvianBridge import cMilvianBridge
    from cMilvian import cMilvian
 
 
@@ -107,7 +107,7 @@ class cStorageManager(cToggler):
   sigPurgeStale  = pyqtSignal(str)
   sigSetStatus = pyqtSignal(object,int)
   widgetID = "StorageManager"
-  daemon : cMacrosDaemon = None
+  daemon : cMilvianBridge = None
   status : dict = {}
   allFilterScripts : dict = {}
 
@@ -132,7 +132,7 @@ class cStorageManager(cToggler):
                              tooltip="Store selected items in the currently open bank/chest UI. <br><b><i>Right-click for more options</i></b>")
 
     self.filterCB = SimpleNamespace()
-    for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Name", "Description"]:
+    for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Sellable", "Unsellable", "Name", "Description"]:
       setattr(self.filterCB, f.lower(), cOrbCheck(f))
     self.filterCB.aug0  = cOrbCheck('0')
     self.filterCB.aug1  = cOrbCheck('1')
@@ -155,12 +155,30 @@ class cStorageManager(cToggler):
     self.filterType  = cCheckCombo("Type")
     self.filterText = QLineEdit()
     self.filterClearSelection  = cOrbSmall(icon=P_ICON_CLEAR, tooltip="Clear whole selection")
+
+    hline = QFrame()
+    hline.setFixedHeight(2)
+    hline.setFrameShape(QFrame.Shape.HLine)
+    g1 = QGridLayout()
+    g1.addWidget(self.filterCB.name,        0, 0, 1, 1)
+    g1.addWidget(self.filterCB.description, 0, 1, 1, 1)
+    g1.addWidget(newHFrame([self.filterClearSelection,"Clear selection"]), 0, 2, 1, 2, Qt.AlignmentFlag.AlignRight)
+    g1.addWidget(hline,    1, 0, 1, 4)
+    g1.addWidget(self.filterCB.equipped,   2, 0, 1, 1)
+    g1.addWidget(self.filterCB.locked,     2, 1, 1, 1)
+    g1.addWidget(self.filterCB.sellable,   2, 2, 1, 1)
+    g1.addWidget(self.filterCB.bound,      2, 3, 1, 1)
+    g1.addWidget(self.filterCB.unequipped, 3, 0, 1, 1)
+    g1.addWidget(self.filterCB.unlocked,   3, 1, 1, 1)
+    g1.addWidget(self.filterCB.unsellable, 3, 2, 1, 1)
+    g1.addWidget(self.filterCB.unbound,    3, 3, 1, 1)
     
-    advFilters = newVFrame([newHLayout(["Filter by...", self.filterText]),
-                            newHLayout(["__stretch__", self.filterCB.name, self.filterCB.description, self.filterClearSelection, "Clear selection", "__stretch__"]),
-                            "__line__",
-                            newHLayout([self.filterCB.equipped,   self.filterCB.locked  , self.filterCB.bound  ]), 
-                            newHLayout([self.filterCB.unequipped, self.filterCB.unlocked, self.filterCB.unbound]),
+    
+    advFilters = newVFrame([newHLayout(["Filter by...", self.filterText]), g1,
+                            # newHLayout(["__stretch__", self.filterCB.name, self.filterCB.description, "__stretch__", self.filterClearSelection, "Clear selection"]),
+                            # "__line__",
+                            # newHLayout([self.filterCB.equipped,   self.filterCB.locked  , self.filterCB.sellable,   self.filterCB.bound  ]), 
+                            # newHLayout([self.filterCB.unequipped, self.filterCB.unlocked, self.filterCB.unsellable, self.filterCB.unbound]),
                             newHFrame(["Augments Count:", self.filterCB.aug0, self.filterCB.aug1, self.filterCB.aug2, self.filterCB.aug3p]),
                             newHLayout([self.filterQualifier, self.filterType]),
                             newHLayout([self.filterAugments, self.filterOwner, ])])
@@ -188,6 +206,9 @@ class cStorageManager(cToggler):
 
     self.btnRefresh.clicked.connect(lambda : self.requestRefreshStorage(False))
     self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
+    self.btnSell.clicked.connect(self.requestSell)
+    self.btnSell.ctrlClicked.connect(lambda : self.requestSell(True, True))
+    self.btnSell.clicked.connect(self.requestSell)
     self.btnDissolve.clicked.connect(self.requestDissolve)
     self.btnFeedJewel.clicked.connect(self.requestFeedJewel)
     self.btnFeedJewel.ctrlClicked.connect(lambda : self.requestFeedJewel(force=True))
@@ -239,24 +260,28 @@ class cStorageManager(cToggler):
       self.btnSell.setEnabled(False)
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
+      self.btnFeedJewel.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_DISSOLVE:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(True)
       self.btnSell.setEnabled(False)
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
+      self.btnFeedJewel.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_SELL:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(False)
       self.btnSell.setEnabled(True)
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
+      self.btnFeedJewel.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_TRADE:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(False)
       self.btnSell.setEnabled(False)
       self.btnTrade.setEnabled(True)
       self.btnStore.setEnabled(False)
+      self.btnFeedJewel.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_STORE:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(False)
@@ -264,6 +289,15 @@ class cStorageManager(cToggler):
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
       self.btnStore.setEnabled(True)
+      self.btnFeedJewel.setEnabled(False)
+    elif newStatus == P_STATUS_BUSY_FEEDJEWEL:
+      self.btnRefresh.setEnabled(False)
+      self.btnDissolve.setEnabled(False)
+      self.btnSell.setEnabled(False)
+      self.btnTrade.setEnabled(False)
+      self.btnStore.setEnabled(False)
+      self.btnStore.setEnabled(False)
+      self.btnFeedJewel.setEnabled(True)
     elif newStatus == P_STATUS_IDLE:
       self.btnRefresh.setEnabled(True)
       self.btnDissolve.setEnabled(True)
@@ -271,9 +305,10 @@ class cStorageManager(cToggler):
       self.btnTrade.setEnabled(True)
       self.btnStore.setEnabled(True)
       self.btnStore.setEnabled(True)
+      self.btnFeedJewel.setEnabled(True)
 
   #----------------------------------------------------------------------------------------------------------
-  def initialize(self, daemon : cMacrosDaemon):
+  def initialize(self, daemon : cMilvianBridge):
     self.daemon = daemon
     self.table.staleData = {}
 
@@ -458,7 +493,33 @@ class cStorageManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def requestSell(self, sellGems : bool = True, repair : bool = False):
-    pass
+    # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
+    selectedItems = self.getSelectedIDs()
+    if not selectedItems: return
+    packets = {}
+    bridges : cMilvian = self.daemon.getBridges()
+    for c in selectedItems.keys():
+      inData  = struct.pack('<?',True)     # sendStatus flag, requests frequent status update always for now
+      inData += struct.pack('<?',repair)   # repair
+      inData += struct.pack('<?',sellGems) # sellGems
+      inData += struct.pack('<I',len(selectedItems[c]))
+      for item in list(selectedItems[c]):
+        inData += struct.pack('<Q',item._id)
+      p = cMilvianPacket(packetCommand.sellItems, bridges[c], inData)
+      packets[c] = p
+      bridges[c].sendRequest(packets[c])
+      cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageSellUpdate(p, data))
+  
+  #----------------------------------------------------------------------------------------------------------
+  def storageSellUpdate(self, packet : cMilvianPacket, rawData : bytes):
+    packet.status = packetStatus(rawData[4:8])
+    packet.outData = rawData[12:]
+    if packet.status == packetStatus.success:
+      cPrint.info(f"[cStorage] Finished selling requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+    else:
+      iID = struct.unpack('<Q',packet.outData[0:8])[0]
+      cPrint.info(f"[cStorage] sold {C_ORANGE}{iID}</font>")
 
   #----------------------------------------------------------------------------------------------------------
   def requestFeedJewel(self, force=False):
@@ -503,7 +564,7 @@ class cStorageManager(cToggler):
             "name"            : item._name.lower()     ,
             "ownerid"         : item._ownerID          ,
             "owner"           : item.owner().lower(),
-            "container"       : item._container      ,
+            # "container"       : item._container      ,
             "weenieid"        : item._weenieID       ,
             "type"            : item._type.lower()   ,
             "quantity"        : item._quantity       ,
@@ -516,8 +577,9 @@ class cStorageManager(cToggler):
             "description"     : item._description.lower(),
             "minlevel"        : item._minLevel       ,
             "material"        : item._material       ,
-            "istrash"         : item._isTrash        ,
+            "isJunk"          : item._isJunk        ,
             "islocked"        : item._isLocked       ,
+            "issellable"      : item._isSellable     ,
             "isminorartifact" : item._isMinorArtifact,
             "setbonus1"       : item._setBonus1.lower(),
             "setbonus2"       : item._setBonus2.lower(),
@@ -557,6 +619,9 @@ class cStorageManager(cToggler):
       if not self.filterCB.locked.isChecked()   and item._isLocked==1: return self.table.setRowHidden(row, True)
       if not self.filterCB.unlocked.isChecked() and item._isLocked==0: return self.table.setRowHidden(row, True)
 
+      if not self.filterCB.sellable.isChecked()   and item._isSellable==1: return self.table.setRowHidden(row, True)
+      if not self.filterCB.unsellable.isChecked() and item._isSellable==0: return self.table.setRowHidden(row, True)
+
       itemAugs = [a for a in item.augments(textOnly=True) if a.lower() in checkedAugs]
       if len(itemAugs) == 0 and not self.filterCB.aug0.isChecked():  return self.table.setRowHidden(row, True)
       if len(itemAugs) == 1 and not self.filterCB.aug1.isChecked():  return self.table.setRowHidden(row, True)
@@ -567,10 +632,6 @@ class cStorageManager(cToggler):
       if qualKey not in checkedQuals: return self.table.setRowHidden(row, True)
       if item.owner().lower()    not in checkedOwners: return self.table.setRowHidden(row, True)
       if item._type.lower()      not in checkedTypes:  return self.table.setRowHidden(row, True)
-      # hasAug = False
-      # for a in itemAugs:
-      #   hasAug = hasAug or (a in checkedAugs)
-      # if not hasAug: return self.table.setRowHidden(row, True)
 
       self.table.setRowHidden(row, False)
 

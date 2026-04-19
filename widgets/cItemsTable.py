@@ -105,11 +105,12 @@ P_ITEM_EQUIPPED_SLOT = {
 
 P_STATUS_UNKNOWN = 0
 P_STATUS_IDLE    = 1
-P_STATUS_BUSY_REFRESH  = 2
-P_STATUS_BUSY_DISSOLVE = 3
-P_STATUS_BUSY_SELL     = 4
-P_STATUS_BUSY_TRADE    = 5
-P_STATUS_BUSY_STORE    = 6
+P_STATUS_BUSY_REFRESH   = 2
+P_STATUS_BUSY_DISSOLVE  = 3
+P_STATUS_BUSY_SELL      = 4
+P_STATUS_BUSY_TRADE     = 5
+P_STATUS_BUSY_STORE     = 6
+P_STATUS_BUSY_FEEDJEWEL = 7
 
 #---------------------------------------------------------------------------------------------------------------
 #
@@ -136,8 +137,9 @@ class cItemData(QTableWidgetItem):
     _description = ""
     _minLevel = 0
     _material = 0
-    _isTrash = 0
+    _isJunk = 0
     _isLocked = 0
+    _isSellable = 0
     _isMinorArtifact = 0
     _setBonus1 = 0
     _setBonus2 = 0
@@ -197,6 +199,7 @@ class cItemData(QTableWidgetItem):
       if self._material: ttip += f"<b>Material:</b> {self._material}<br>"
       if self._hardness: ttip += f"<b>Hardness:</b> {self._hardness}<br>"
       if self._valueCopper: ttip += f"<b>Value:</b> {self._valueCopper}CC<br>"
+      if self._qualifier: ttip += f"<b>Instance ID:</b> {self._id}<br>"
       if ttip == "": ttip = f"<i>(no description)</i>"
       self.setIcon(self.icon())
       self.setToolTip(ttip)
@@ -247,7 +250,6 @@ class cItemData(QTableWidgetItem):
       self._name        = cItemData.readString(file) # f.read(count).decode('utf-8')
       self._ownerID     = int.from_bytes(file.read(8), byteorder='little', signed=False)
       self._ownerName   = cItemData.readString(file)
-      self._container   = cItemData.readString(file)
       self._weenieID    = int.from_bytes(file.read(8), byteorder='little', signed=False)
       self._type        = cItemData.readString(file)
       self._quantity    = int.from_bytes(file.read(4), byteorder='little', signed=False)
@@ -260,8 +262,9 @@ class cItemData(QTableWidgetItem):
       self._description = cItemData.readString(file)
       self._minLevel    = int.from_bytes(file.read(4), byteorder='little', signed=False)
       self._material    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._isTrash     = int.from_bytes(file.read(1), byteorder='little', signed=False)
+      self._isJunk      = int.from_bytes(file.read(1), byteorder='little', signed=False)
       self._isLocked    = int.from_bytes(file.read(1), byteorder='little', signed=False)
+      self._isSellable  = int.from_bytes(file.read(1), byteorder='little', signed=False)
       self._isMinorArtifact = int.from_bytes(file.read(1), byteorder='little', signed=False)
       self._setBonus1   = cItemData.readString(file)
       self._setBonus2   = cItemData.readString(file)

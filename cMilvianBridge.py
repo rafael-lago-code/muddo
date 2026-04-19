@@ -31,21 +31,21 @@ if TYPE_CHECKING:
 from cMilvian import cMilvian
 
 #----------------------------------------------------------------------------------------------------------
-class cMacrosDaemon(aProcessItem):
+class cMilvianBridge(aProcessItem):
   widgetID = "Macros Daemon"
   process = None
   bridges = {}
 
   def __init__(self, main : cMainWindow):
     super().__init__()
-    self.orb = cOrb("Macros\nDaemon", P_ICON_GEARLOOP,
+    self.orb = cOrb("Milvian\nBridge", P_ICON_GEARLOOP,
                            tooltip="Toggle on/off all shortcuts from all active sets" \
                            "<br><b>Ctrl+Click</b> to purge all shortcuts and restart daemon<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
     # self.orbToggler.setMenu(QMenu("Macros Daemon", self.orbToggler))
-    self.menuActionToggle  = self.orb.menu.addAction("Launch Daemon")
-    self.menuActionRestart = self.orb.menu.addAction("Restart Daemon")
-    self.menuActionKill    = self.orb.menu.addAction("Kill Daemon")
+    self.menuActionToggle  = self.orb.menu.addAction("Launch Bridges")
+    self.menuActionRestart = self.orb.menu.addAction("Restart Bridges")
+    self.menuActionKill    = self.orb.menu.addAction("Kill Bridges")
     self.menuActionPurge   = self.orb.menu.addAction("Purge defunct bridges")
     self.menuActionConf    = self.orb.menu.addAction("Show/Hide setting UI")
 
@@ -76,7 +76,7 @@ class cMacrosDaemon(aProcessItem):
     
     self.bridges = cMilvian.getFromDir(purgeUnknown=False)
     if not self.isInitialized():
-      self.main.console.warning("[cMacrosDaemon] failed to initialize cMacrosDaemon")
+      self.main.console.warning("[cMilvianBridge] failed to initialize cMilvianBridge")
       return False
     else:
       return True
@@ -85,7 +85,7 @@ class cMacrosDaemon(aProcessItem):
   def getBridges(self) -> list:
     if not self.isInitialized():  self.initialize()
     if not self.isInitialized():
-      cPrint.warning("[cMacrosDaemon] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
+      cPrint.warning("[cMilvianBridge] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
       return {}
     else:
       return self.bridges
@@ -153,21 +153,21 @@ class cMacrosDaemon(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
     if self.process:
-      cPrint.warning(" Attempting to launch Macros Daemon when one is already running."+
+      cPrint.warning(" Attempting to launch Milvian Bridge when one is already running."+
                                 " Try right-click->kill to cleanup state.")
     else:
       consolidatedMacros = self.main.macros.consolidateActiveMacros()
       toolbarMacros = {k: consolidatedMacros.pop(k) for k in list(consolidatedMacros) if k.startswith('toolbar')}
       if toolbarMacros:
-        cPrint.info(f"cMacrosDaemon found {len(toolbarMacros.keys())} toolbar macros")
+        cPrint.info(f"cMilvianBridge found {len(toolbarMacros.keys())} toolbar macros")
         cPrint.info(f"@TODO Implement toolbarMacros!")
 
       parsed = self.convert(consolidatedMacros)
       if not parsed:
-        cPrint.warning(" Attempting to launch Macros Daemon but no macros found." \
-        " Make you have macro sets selected and that the relevant accounts are online before starting" \
+        cPrint.warning(" Attempting to launch Milvian Bridge but no macros found." \
+        " Make sure you have macro sets selected and that the relevant accounts are online before starting" \
         " the Macros Daemon")
-        return
+        # return
       else:
         xh = XHelper()
         for hk, script in parsed.items():
