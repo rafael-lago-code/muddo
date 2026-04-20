@@ -110,6 +110,7 @@ class cMainWindow(QMainWindow):
     from cMilvian import cMilvian
     from helpers.cTop import cTop
     from widgets.cLog import cLog
+    from cProfileNew import cProfileNew
     self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     cProcessManager.attachMain(self)
@@ -123,6 +124,9 @@ class cMainWindow(QMainWindow):
     self.news.initialize()
     self.patch.initialize()
     self.storageManager.initialize(self.macros.daemon)
+
+    bla = cProfileNew("tester", self)
+    bla.show()
   
     cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()))
 

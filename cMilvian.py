@@ -99,40 +99,40 @@ class cMilvian():
     return cmd in cls.inputActions.keys()
 
   #---------------------------------------------------------------------------------------------------------------
-  def __init__(self, pathSHM : str):
+  def __init__(self, bridgePath : str):
     super().__init__()
     # pathSHM can be pathSHMI or pathSHMO, doesn't matter
     self.charName = None
     self.knownPackets = {}
 
-    if pathSHM.endswith("I") or pathSHM.endswith("O"):
-      pathSHM = pathSHM[:-1]
-    self.pathResponse = pathSHM+"O"
-    self.pathRequest = pathSHM+"I"
-    self.id = int(os.path.basename(pathSHM)[6:])
-    
+    if bridgePath.endswith("I") or bridgePath.endswith("O"):
+      bridgePath = bridgePath[:-1]
+    self.pathResponse = bridgePath+"O"
+    self.pathRequest = bridgePath+"I"
+    self.id = int(os.path.basename(bridgePath)[6:])
+
     if not os.path.exists(self.pathRequest) or not os.path.exists(self.pathResponse):
       cPrint.error(f"[cMilvian] error, {os.path.basename(self.pathRequest)} or {os.path.basename(self.pathResponse)} do not exist!")
       return
-    
+
     self.responseDaemonStopSignal = threading.Event()
     cDispatcher.connect((self.id, packetSignal.gotData), self.parseData)
     self.responseDaemonThread = tStoppableThread(stopper = self.responseDaemonStopSignal, target = self.responseDaemon, daemon=True)
     self.responseDaemonThread.start()
-    
+
     packet = self.sendCommand(packetCommand.querycharname)
     if not packet.wait(1.0):
-      cPrint.error(f"[cMilvian] timedout while waiting for charName. Is {os.path.basename(pathSHM)} is defunct?")
+      cPrint.error(f"[cMilvian] timedout while waiting for charName. Is {os.path.basename(bridgePath)} is defunct?")
       cPrint.error(f" ~~~~  {packet}")
       return
-      
+
     if packet.status != packetStatus.success:
-      cPrint.error(f"[cMilvian] got status {packet.status} when querying charName on {os.path.basename(pathSHM)}.")
+      cPrint.error(f"[cMilvian] got status {packet.status} when querying charName on {os.path.basename(bridgePath)}.")
       return
-    
+
     self.charName = packet.outData if isinstance(packet.outData,str) else packet.outData.decode('utf-8')
     self.charName = self.charName.split()[0]
-    cPrint.info(f"[cMilvian] got charName {C_SILVER}\"{self.charName}\"</font> for {os.path.basename(pathSHM)}")
+    cPrint.info(f"[cMilvian] got charName {C_SILVER}\"{self.charName}\"</font> for {os.path.basename(bridgePath)}")
 
   #---------------------------------------------------------------------------------------------------------------
   def close(self):
@@ -312,24 +312,38 @@ class cMilvian():
       shmO.close()
 
   #---------------------------------------------------------------------------------------------------------------
-  @staticmethod
-  def getFromDir(path=None, getUnknown=False, purgeUnknown=False) -> dict:
-    if not path: path = cMilvian.bridgePath
+  @classmethod
+  def scanBridges(cls, path=None, getUnknown=False, purgeUnknown=False) -> dict:
+    if not path: path = cls.bridgePath
     files = [f for f in os.listdir(path) if f.startswith("bridge")]
     filesO = [os.path.join(path, f) for f in files if f.endswith("O")]
 
-    characters = {}
+    def _launchInit(bridgePath : str, outDict):
+      outDict[bridgePath] = cMilvian(bridgePath)
+
+    pendingBridges = {}
+    runningThreads = {}
     for f in filesO:
-      m = cMilvian(f)
-      if m.charName:
-        characters[m.charName.lower()] = m
-        # cPrint.info(f" [*] cMilvian: found {os.path.basename(f)} for character \"{m.charName}\"")
-      elif getUnknown:
-        i = 1
-        while f"NA{i}" in characters: i += 1
-        characters[f"NA{i}"] = m
-      elif purgeUnknown:
-        cPrint.info(f" [*] cMilvian: file {os.path.basename(f)} seems to be orphaned. Deleting... ")
-        os.remove(f)
-        os.remove(f[:-1]+"I")
-    return characters 
+      runningThreads[f] = threading.Thread(target=_launchInit, args=(f, pendingBridges), daemon=True)
+      runningThreads[f].start()
+
+    characters = {}
+    while runningThreads:
+      for f, t in list(runningThreads.items()):
+        if t.is_alive(): continue
+        m = pendingBridges.get(f)
+        if isinstance(m, cMilvian) and m.charName:
+          characters[m.charName.lower()] = m
+          # cPrint.info(f" [*] cMilvian: found {os.path.basename(f)} for character \"{m.charName}\"")
+        elif isinstance(m, cMilvian) and getUnknown:
+          i = 1
+          while f"NA{i}" in characters: i += 1
+          characters[f"NA{i}"] = m
+        elif purgeUnknown:
+          cPrint.info(f" [*] cMilvian: file {os.path.basename(f)} seems to be orphaned. Deleting... ")
+          os.remove(f)
+          os.remove(f[:-1]+"I")
+        del runningThreads[f]
+      if runningThreads: time.sleep(0.05)
+
+    return characters

@@ -39,7 +39,7 @@ from helpers.cPrint import cPrint
 import time, struct, mmap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-   from cMilvianBridge import cMilvianBridge
+   from cMacrosDaemon import cMacrosDaemon
    from cMilvian import cMilvian
 
 
@@ -107,7 +107,7 @@ class cStorageManager(cToggler):
   sigPurgeStale  = pyqtSignal(str)
   sigSetStatus = pyqtSignal(object,int)
   widgetID = "StorageManager"
-  daemon : cMilvianBridge = None
+  daemon : cMacrosDaemon = None
   status : dict = {}
   allFilterScripts : dict = {}
 
@@ -308,7 +308,7 @@ class cStorageManager(cToggler):
       self.btnFeedJewel.setEnabled(True)
 
   #----------------------------------------------------------------------------------------------------------
-  def initialize(self, daemon : cMilvianBridge):
+  def initialize(self, daemon : cMacrosDaemon):
     self.daemon = daemon
     self.table.staleData = {}
 

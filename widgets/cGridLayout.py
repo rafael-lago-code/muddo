@@ -34,24 +34,32 @@ class cGridLayout(QGridLayout):
     if not isinstance(items,list): items = [items]
     r = self.lastRow
     c = self.firstColumn
+    ncols = 1
     for i in items: 
-      if isinstance(i,str): i = QLabel(i)
+      if isinstance(i,str) and i==">":
+        ncols += 1
+        continue
+      elif isinstance(i,str):
+        self.addWidget(QLabel(i), r, c, 1, ncols)
+      elif isinstance(i,QLayout):
+        self.addLayout(i, r, c, 1, ncols)
       elif i is not None:
-        self.addWidget(i, r, c)
-      c+=1
+        self.addWidget(i, r, c, 1, ncols)
+      c+=ncols
+      ncols=1
     self.lastRow += 1
   
-  def appendColumn(self, items):
-    if not isinstance(items,list): items = [items]
-    c = self.lastColumn
-    r = self.firstRow
-    for i in items: 
-      if isinstance(i,str):
-        i = QLabel(i)
-      elif i is not None:
-        self.addWidget(i, r, c)
-      r+=1
-    self.lastColumn += 1
+  # def appendColumn(self, items):
+  #   if not isinstance(items,list): items = [items]
+  #   c = self.lastColumn
+  #   r = self.firstRow
+  #   for i in items: 
+  #     if isinstance(i,str):
+  #       i = QLabel(i)
+  #     elif i is not None:
+  #       self.addWidget(i, r, c)
+  #     r+=1
+  #   self.lastColumn += 1
 
 
 

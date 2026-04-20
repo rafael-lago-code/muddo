@@ -82,8 +82,6 @@ class cDungeonHelper(aProcessItem):
                         " Try right-click->kill to cleanup state.")
       return
     self.pid.setText("")
-    for file in glob.glob("/home/steam/prefixes/DDO_Alt/pfx/drive_c/users/holysword/AppData/Roaming/Milvian/bridge*"):
-      os.remove(file)
     cPrint.info(f"Starting {C_SILVER}DungeonHelper.exe</font>...")
     self.show()
     t = threading.Thread(target=self._launchThread, daemon=True)

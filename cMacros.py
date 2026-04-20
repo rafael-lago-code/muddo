@@ -28,61 +28,59 @@ from PyQt6.QtGui import QIcon
 from PyQt6.QtCore import Qt
 import glob, re, os
 from typing import TYPE_CHECKING
-from cMilvianBridge import cMilvianBridge
+from cMacrosDaemon import cMacrosDaemon
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 def aliasRegex(alias: str) -> str:
-  if not alias: return re.escape(alias)
-
-  # Split on $N tokens, keeping them in the result list.
-  # e.g. "tpp$1"   -> ["tpp", "$1", ""]
-  # e.g. "a$1b$2c" -> ["a", "$1", "b", "$2", "c"]
-  parts = re.split(r'(\$\d+)', alias)
-
-  first_literal = parts[0]
-  last_literal  = parts[-1]
-
-  # Left boundary: inspect first real char, or assume word-char when alias starts with $N
-  first_char = first_literal[0] if first_literal else None
-  if first_char is None or first_char.isalnum() or first_char == '_':
-    left = r'\b'
-  else:
-    left = r'(?<!' + re.escape(first_char) + r')'
-
-  # Right boundary: inspect last real char, or assume word-char when alias ends with $N
-  last_char = last_literal[-1] if last_literal else None
-  if last_char is None or last_char.isalnum() or last_char == '_':
-    right = r'\b'
-  else:
-    right = r'(?!' + re.escape(last_char) + r')'
-
-  # Build pattern body: escape literal parts, replace each $N with a capture group
-  body = ''
-  for part in parts:
-    if re.match(r'^\$\d+$', part):
-      body += r'(\w+)'
-    else:
-      body += re.escape(part)
-
+  """Build regex for `alias`. $N tokens (single-digit) match either a word or a {list} expansion.
+  Boundary checks are only enforced on word-like edges — non-word edges (:, !, etc) act as
+  natural boundaries on their own."""
+  body = re.sub(r'\\\$\d', lambda m: r'(\w+|\{[^}]+\})', re.escape(alias))
+  left  = r'(?<![\w$])' if re.match(r'[\w$]', alias[:1])  else ''
+  right = r'(?![\w$])'  if re.match(r'[\w$]', alias[-1:]) else ''
   return left + body + right
 
 
+def _expandList(raw: str) -> list[str]:
+  """Parse '{1-3}' or '{2,3,1}' into a list of strings. Returns [raw] if not a {...} literal."""
+  if not (raw.startswith('{') and raw.endswith('}')): return [raw]
+  out = []
+  for p in raw[1:-1].split(','):
+    p = p.strip()
+    if '-' in p:
+      a, b = p.split('-', 1)
+      out += [str(i) for i in range(int(a), int(b) + 1)]
+    else:
+      out.append(p)
+  return out
+
+
 def aliasReplace(translation: str):
-  """Return a re.sub replacement callable that substitutes $N in translation with group N."""
-  if not re.search(r'\$\d+', translation):
-    return lambda m: translation
-  def repl(m):
-    result = translation
-    for i in range(1, 10):
-      placeholder = f'${i}'
-      if placeholder in result:
-        try:
-          result = result.replace(placeholder, m.group(i))
-        except IndexError:
-          pass
-    return result
+  """re.sub callable. A captured group of the form {1-3} or {a,b,c} expands into a list;
+  multiple list-captures zip (singletons broadcast), yielding space-joined translations."""
+  def repl(m: re.Match) -> str:
+    lists = [_expandList(g) for g in m.groups()]
+    if not lists: return translation
+    n = max(len(l) for l in lists)
+    lists = [l * n if len(l) == 1 else l for l in lists]
+    if any(len(l) != n for l in lists): return m.group(0)
+    parts = []
+    for tup in zip(*lists):
+      s = translation
+      for i, v in enumerate(tup, 1): s = s.replace(f'${i}', v)
+      parts.append(s)
+    return ' '.join(parts)
   return repl
+
+
+def expandBraces(text: str) -> str:
+  """Expand every `prefix{list}` in `text` into space-joined variants.
+  e.g. 'b4k{2-5}' -> 'b4k2 b4k3 b4k4 b4k5'. No-op when no `{...}` remains."""
+  def repl(m: re.Match) -> str:
+    prefix, body = m.group(1), m.group(2)
+    return ' '.join(prefix + item for item in _expandList('{' + body + '}'))
+  return re.sub(r'([^\s{}]*)\{([^}]+)\}', repl, text)
 
 class cMacroItem(QListWidgetItem):
   def __init__(self, parent : cMacros, name : str):
@@ -158,14 +156,26 @@ class cMacroItem(QListWidgetItem):
     #   - sleep_X: wait for X seconds
     #   - anything else: interpreted as key presses
     # Scripts are all started at the same time whenever their shortcut is pressed
+
+    # Discard aliases whose translation references a $N that the alias key doesn't capture.
+    validAliases = {}
+    for k, a in aliases.items():
+      keyIds   = set(re.findall(r'\$(\d)', k))
+      transIds = set(re.findall(r'\$(\d)', a))
+      if not transIds.issubset(keyIds):
+        cPrint.error(f"{C_RED}WARNING:</font> discarding alias \"{k}\" -> \"{a}\" (translation references $N not captured by the key)")
+        continue
+      validAliases[k] = a
+
     for row in self.data:
       hotkey  = row[2]
-      for k,a in aliases.items():
+      for k,a in validAliases.items():
         hotkey = re.sub(aliasRegex(k), aliasReplace(a), hotkey)
       hotkey  = (hotkey.replace(" ", "")).lower()
       scripts = row[3]
-      for k,a in aliases.items():
+      for k,a in validAliases.items():
         scripts = re.sub(aliasRegex(k), aliasReplace(a), scripts)
+      scripts = expandBraces(scripts)
       scripts = [e.strip() for e in (scripts).split(";") if e.strip()]
 
       if hotkey in consolidated.keys():
@@ -204,7 +214,7 @@ class cMacros(cToggler):
     self.toActivate = None
     self.main = main
 
-    self.daemon = cMilvianBridge(self.main)
+    self.daemon = cMacrosDaemon(self.main)
     
     self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
     self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click to save all")

@@ -20,6 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QFileDialog, QCheckBox, QLineEdit, QWidget
 from helpers.util import *
+from helpers.cPrint import cPrint
 from widgets.cOrb import cOrbSmall
 from widgets.cGridLayout import cGridLayout
 import os, subprocess, json
@@ -164,9 +165,9 @@ class cProfil(QWidget):
     try:
       json.dump(values, open(filename,"w"), cls=muJSONEncoder)
     except Exception as e:
-      self.console.error(f"cProfil.save: could not create {filename} to store profile!",e)
+      cPrint.error(f"cProfil.save: could not create {filename} to store profile!",e)
     else:
-      self.console.info(f"Profile saved in {filename}")
+      cPrint.info(f"Profile saved in {filename}")
 
 
   #----------------------------------------------------------------------------------------------------------
@@ -176,9 +177,9 @@ class cProfil(QWidget):
     if os.path.exists(filename):
       with open(filename,"r") as f:
         values = json.load(f)
-      self.console.info(f'Profile loaded from {filename}')
+      cPrint.info(f'Profile loaded from {filename}')
     else:
-      self.console.error(f"cProfil.load: file {filename} not found")
+      cPrint.error(f"cProfil.load: file {filename} not found")
     
     if values:
       try:
@@ -201,7 +202,7 @@ class cProfil(QWidget):
         if 'windowsPreferences' in values.keys(): self.windowsPreferences = values['windowsPreferences']
 
       except Exception as e:
-        self.console.error(f"cProfil.load: error loading profile from {filename}", e)
+        cPrint.error(f"cProfil.load: error loading profile from {filename}", e)
     self.propagate()
   
   #----------------------------------------------------------------------------------------------------------
@@ -217,7 +218,7 @@ class cProfil(QWidget):
   
   #----------------------------------------------------------------------------------------------------------
   def changeLanguage(self):
-    self.console.info(f"{C_RED}[WARNING]</font> Switching languages is not yet supported!!")
+    cPrint.info(f"{C_RED}[WARNING]</font> Switching languages is not yet supported!!")
 
   #----------------------------------------------------------------------------------------------------------
   def findWine(self):
@@ -226,9 +227,9 @@ class cProfil(QWidget):
       if result.stdout:
         result = result.stdout.decode('utf-8').strip()
         self.protonExec.setText(result)
-        self.console.info(f"Setting wine binary to {result}...")
+        cPrint.info(f"Setting wine binary to {result}...")
       else:
-        self.console.info(f"{C_RED}[WARNING]</font> Wine binary not found! Please set it manually...")
+        cPrint.info(f"{C_RED}[WARNING]</font> Wine binary not found! Please set it manually...")
 
   #----------------------------------------------------------------------------------------------------------
   def findDungeonHelper(self):
@@ -239,11 +240,11 @@ class cProfil(QWidget):
           if out:
             out = out.decode('utf-8').strip()
             self.DungeonHelperExec.setText(out)
-            self.console.info(f"Setting DungeonHelper binary to {out}...")
+            cPrint.info(f"Setting DungeonHelper binary to {out}...")
           else:
-            self.console.info(f"{C_RED}[WARNING]</font>  DungeonHelper binary not found! Is it installed? If so, please set it manually...")
+            cPrint.info(f"{C_RED}[WARNING]</font>  DungeonHelper binary not found! Is it installed? If so, please set it manually...")
         except Exception as e:
-          self.console.error("Error looking for DungeonHelper binary", e)
+          cPrint.error("Error looking for DungeonHelper binary", e)
 
   # #----------------------------------------------------------------------------------------------------------
   # def findxdotool(self):
@@ -253,16 +254,16 @@ class cProfil(QWidget):
   #       if result.stdout:
   #         result = result.stdout.decode('utf-8').strip()
   #         self.xdotoolExec.setText(result)
-  #         self.console.info(f"Setting xdotool binary to {result}...")
+  #         cPrint.info(f"Setting xdotool binary to {result}...")
   #       else:
-  #         self.console.info(f"{C_RED}[WARNING]</font> xdotool binary not found! Is it installed? If so, please set it manually...")
+  #         cPrint.info(f"{C_RED}[WARNING]</font> xdotool binary not found! Is it installed? If so, please set it manually...")
   #     except Exception as e:
-  #       self.console.error("Error looking for xdotool binary", e)
+  #       cPrint.error("Error looking for xdotool binary", e)
 
   #----------------------------------------------------------------------------------------------------------
   def findProton(self):
     if self.protonExec.text()=="":
-      self.console.info(f"{C_RED}[WARNING]</font> findProton function not yet implemented!")
+      cPrint.info(f"{C_RED}[WARNING]</font> findProton function not yet implemented!")
   
   #----------------------------------------------------------------------------------------------------------
   def selectDialog(self, target : QLineEdit, title, dir = True):
@@ -271,4 +272,4 @@ class cProfil(QWidget):
     if filename:
       target.setText(filename[0])
     else:
-      self.console.error(f"{C_RED}[WARNING] invalid {title} selected, doing nothing...")
+      cPrint.error(f"{C_RED}[WARNING] invalid {title} selected, doing nothing...")
