@@ -43,6 +43,7 @@ class cMainWindow(QMainWindow):
 
   def __init__(self):
     super().__init__()
+    self._windowState = QSettings(P_DEFAULT_CONF)
     self.setWindowTitle("μDDO")
     self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -166,17 +167,15 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def loadState(self):
-    settings = QSettings(P_DEFAULT_CONF)
-    pos = settings.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
-    size = settings.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
+    pos = self._windowState.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
+    size = self._windowState.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
     self.move(pos)
     self.resize(size)
   
   #----------------------------------------------------------------------------------------------------------
   def saveState(self):
-    settings = QSettings(P_DEFAULT_CONF)
-    settings.setValue(f"μDDO/pos",  self.pos())
-    settings.setValue(f"μDDO/size", self.size())
+    self._windowState.setValue(f"μDDO/pos",  self.pos())
+    self._windowState.setValue(f"μDDO/size", self.size())
   
   #----------------------------------------------------------------------------------------------------------
   def close(self):

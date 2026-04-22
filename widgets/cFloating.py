@@ -30,9 +30,9 @@ class cFloating(QWidget):
   P_SIZE_H = 200
   widgetID = "floatingWidget"
   
-  def __init__(self):
-    super().__init__()
-    self.settings = QSettings(P_DEFAULT_CONF)
+  def __init__(self, parent = None):
+    super().__init__(parent)
+    self._windowState = QSettings(P_DEFAULT_CONF)
     self.setWindowFlags(Qt.WindowType.FramelessWindowHint | 
                         Qt.WindowType.Window | 
                         Qt.WindowType.WindowStaysOnTopHint)
@@ -41,11 +41,11 @@ class cFloating(QWidget):
     self.loadState()
   
   def loadState(self):
-    rect = self.settings.value(f"{self.widgetID}/geometry", self.P_RECT)
+    rect = self._windowState.value(f"{self.widgetID}/geometry", self.P_RECT)
     self.setGeometry(rect)
 
   def saveState(self):
-    self.settings.setValue(f"{self.widgetID}/geometry",  self.geometry())
+    self._windowState.setValue(f"{self.widgetID}/geometry",  self.geometry())
   
   def closeEvent(self, event):
     self.saveState()

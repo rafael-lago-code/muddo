@@ -30,9 +30,9 @@ if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 class cSettings(cToggler):
+  widgetID = "settings"
 
   def __init__(self, main : cMainWindow):
-    self.widgetID = "settings"
     super().__init__("&Settings", P_ICON_GEARSTACK)
     self.tabWidget = QTabWidget(self)
     # self.tabWidget.setTabPosition(QTabWidget.TabPosition.East)
