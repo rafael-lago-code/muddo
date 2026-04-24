@@ -54,10 +54,10 @@ class cMilvian():
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def setup(cls, dhpath):
-    # cls.setBridgePath(os.path.dirname(dhpath)+"/Milvian/")
-    cls.setBridgePath("/dev/shm/Milvian/")
-    cls.getInputActions(dhpath)
+  def setup(cls, dhExec, milvianSHMPath):
+    cls.setBridgePath(milvianSHMPath)
+    cls.getInputActions(os.path.dirname(dhExec))
+    pass
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -321,7 +321,7 @@ class cMilvian():
     return packet
 
   #---------------------------------------------------------------------------------------------------------------
-  def clearO(self):
+  def clearResponses(self):
     cPrint.info(f"[*] cMilvian: clearing {self.pathResponse}")
     with open(self.pathResponse, 'r+b') as fdSHMO:
       shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)

@@ -26,9 +26,9 @@ from helpers.util import *
 class cToggler(cFloating):
 
   def __init__(self, title : str, icon):
-    super().__init__()
     self.toggler = cOrb(title, icon)
     self.toggler.setCheckable(True)
+    super().__init__()
 
     self.toggler.clicked.connect(self.toggle)
     self.setVisible(False)
@@ -39,20 +39,18 @@ class cToggler(cFloating):
     else:
       self.show()
   
-  def show(self):
-    # there is a bug preventing the loading the position of the window, if it
-    # "thinks" that it didn't change, so we need to force some crap here.
-    if self.isVisible(): return
-    self.move(QPoint(10,10))
-    super().show()
-    self.loadState()
-    self.toggler.setChecked(True)
+  # def show(self):
+  #   # there is a bug preventing the loading the position of the window, if it
+  #   # "thinks" that it didn't change, so we need to force some crap here.
+  #   if self.isVisible(): return
+  #   self.move(QPoint(10,10))
+  #   self.loadState()
+  #   self.setVisible(True)
 
-  def hide(self):
-    if not self.isVisible(): return
-    self.saveState()
-    super().hide()
-    self.toggler.setChecked(False)
+  # def hide(self):
+  #   if not self.isVisible(): return
+  #   self.setVisible(False)
+  #   self.saveState()
 
   def setVisible(self, value : bool):
     self.toggler.setChecked(value)

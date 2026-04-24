@@ -20,19 +20,41 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QDialog, QFileDialog, QCheckBox, QGroupBox, QLineEdit, QTabWidget, QWidget
 from PyQt6.QtCore import QSettings
+import cMilvian
 from helpers.util import *
 from helpers.cPrint import cPrint
 from widgets.cFloating import cFloating
 from widgets.cOrb import cOrbSmall
 from widgets.cGridLayout import cGridLayout
 from types import SimpleNamespace
-import os, subprocess, json
+import os, subprocess
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 
 P_SERIALIZABLE = (QLineEdit, QCheckBox, QComboBox)
+
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#
+#                                            P R O F I L E
+#                                  
+#   This is a static class. Don't instantiate it.
+#---------------------------------------------------------------------------------------------------------------
+class cProfile():
+  previous = ""
+  current = ""
+  all = {}
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def switchProfile(cls, name):
+    cls.launcher  = all[name].launcher
+    cls.xsettings = all[name].xsettings
+    cls.plugins   = all[name].plugins
+    cls.session   = all[name].session
 
 #----------------------------------------------------------------------------------------------------------
 def _getValue(w):
@@ -44,11 +66,14 @@ def _getValue(w):
 #----------------------------------------------------------------------------------------------------------
 def _setValue(w, v):
   if isinstance(w, QLineEdit):   w.setText(str(v) if v is not None else "")
-  elif isinstance(w, QCheckBox): w.setChecked(bool(v))
+  elif isinstance(w, QCheckBox):
+    if isinstance(v, str): w.setChecked(v.lower() == "true")
+    else: w.setChecked(bool(v))
   elif isinstance(w, QComboBox):
     idx = w.findText(str(v))
     if idx >= 0: w.setCurrentIndex(idx)
 
+#---------------------------------------------------------------------------------------------------------------
 class dSection():
   def __init__(self):
     allItems = dict(self.__dict__.items())
@@ -57,9 +82,13 @@ class dSection():
       if isinstance(att, QCheckBox): setattr(self, name[1:], att.isChecked)
       if isinstance(att, QComboBox): setattr(self, name[1:], att.currentText)
 
+#---------------------------------------------------------------------------------------------------------------
 class dLauncher(dSection):
   def __init__(self):
-    self._gameExec      = QLineEdit()
+    self.lblBackendExec = QLabel("Proton executable:")
+    self.lblBackendPath = QLabel("STEAM_COMPAT_DATA:")
+    self.lblBackendRoot = QLabel("STEAM_ROOT:")
+    self._gameFullExec  = QLineEdit()
     self._protonExec    = QLineEdit()
     self._compatData    = QLineEdit()
     self._steamRoot     = QLineEdit()
@@ -76,15 +105,54 @@ class dLauncher(dSection):
     self.btnWineExec   = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Select Wine executable.<br><b>Ctrl+Click</b> for attempting to automatically find it.")
     self.btnWinePrefix = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Select WINEPREFIX.<br><b>Ctrl+Click</b> for attempting to automatically find it.")
     self.btnSteamRoot  = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Select STEAM_ROOT.<br><b>Ctrl+Click</b> for attempting to automatically find it.")
-    self.btnGameExec   = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Select Dungeon Helper exec.<br><b>Ctrl+Click</b> for attempting to automatically find it.")
+    self.btnGameExec   = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Select Dungeon Helper exec (usually in <b>x64/dndclient64.exe)</b><br><b>Ctrl+Click</b> for attempting to automatically find it.")
 
     self._backend.setEnabled(False)
+    self.lblBackendPath.setFixedWidth(160)
     self._language.setEnabled(False)
-    self._wineExec.setEnabled(False)
-    self._winePrefix.setEnabled(False)
-    self.btnWineExec.setEnabled(False)
-    self.btnWinePrefix.setEnabled(False)
+    self._backend.currentIndexChanged.connect(self.toggleBackend)
+    self.toggleBackend()
     super().__init__()
+
+  #-------------------------------------------------------------------------------------------------------------  
+  def gamePath(self):
+    fullPath = self._gameFullExec.text()
+    idx = fullPath.find("Dungeons & Dragons Online")
+    return fullPath[:idx+len("Dungeons & Dragons Online")]
+  
+  #-------------------------------------------------------------------------------------------------------------  
+  def gameExec(self):
+    fullPath = self._gameFullExec.text()
+    idx = fullPath.find("Dungeons & Dragons Online")
+    return fullPath[idx+len("Dungeons & Dragons Online")+1:]
+  
+  #-------------------------------------------------------------------------------------------------------------  
+  def command(self) -> str:
+    #TODO implement Wine
+    cmd  = f'STEAM_ROOT="{self.steamRoot()}" PROTON_LOG=1 '
+    cmd += f'STEAM_COMPAT_DATA_PATH="{self.compatData()}" '
+    cmd += f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.compatData()}" '
+    cmd += f'"{self.protonExec()}" run '
+    return cmd
+  
+  #-------------------------------------------------------------------------------------------------------------  
+  def toggleBackend(self):
+    if self._backend.currentText() == "Steam Proton":
+      self.lblBackendExec.setText("Proton executable:")
+      self.lblBackendPath.setText("STEAM_COMPAT_DATA:")
+      protonOn = True
+    else:
+      self.lblBackendExec.setText("Wine executable:")
+      self.lblBackendPath.setText("WINEPREFIX:")
+      protonOn = False
+
+    for w in [self._protonExec, self._compatData, self._steamRoot, self.btnProtonExec, self.btnCompatData, self.btnSteamRoot, self.lblBackendRoot]:
+      w.setEnabled(protonOn)
+      w.setVisible(protonOn)
+    for w in [self._wineExec, self._winePrefix, self.btnWineExec, self.btnWinePrefix]:
+      w.setEnabled(not protonOn)
+      w.setVisible(not protonOn)
+
 
 #---------------------------------------------------------------------------------------------------------------
 class dXSettings(dSection):
@@ -121,16 +189,20 @@ class dXSettings(dSection):
 #---------------------------------------------------------------------------------------------------------------
 class dPlugins(dSection):
   def __init__(self):
-    self._dhExec            = QLineEdit()
-    self._milvianSHMPath    = QLineEdit()                          # not implemented
-    self._useDH             = QCheckBox("enable Dungeon Helper")
-    self._useMilvian        = QCheckBox("enable Milvian Bridge")   # not implemented
+    self._dhExec           = QLineEdit()
+    self._milvianSHMPath   = QLineEdit()                          # not implemented
+    self._useDH            = QCheckBox("enable Dungeon Helper")
+    self._useMilvian       = QCheckBox("enable Milvian Bridge")   # not implemented
     self.btnDHExec         = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select DungeonHelper executable")
     self.btnMilvianSHMPath = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually set path for Milvian Bridges")
 
     self._useMilvian.setEnabled(False)
     self._milvianSHMPath.setEnabled(False)
     self.btnMilvianSHMPath.setEnabled(False)
+    # self._useMilvian.stateChanged.connect(self._milvianSHMPath.setEnabled)
+    # self._useMilvian.stateChanged.connect(self.btnMilvianSHMPath.setEnabled)
+    self._useDH.stateChanged.connect(self._dhExec.setEnabled)
+    self._useDH.stateChanged.connect(self.btnDHExec.setEnabled)
     super().__init__()
 
 #---------------------------------------------------------------------------------------------------------------
@@ -140,7 +212,6 @@ class dSession(dSection):
     self.accounts    = []
     self.macroSets   = []
     self.windowsInfo = {}
-    self.DDOInfo     = []
     super().__init__()
 
 #---------------------------------------------------------------------------------------------------------------
@@ -150,20 +221,20 @@ class dSession(dSection):
 #
 #
 #---------------------------------------------------------------------------------------------------------------
-class cProfileNew(cFloating):
+class cSettingsProfile(QWidget):
   widgetID = "profile"
 
   def __init__(self, name : str, parent):
     super().__init__(parent)
     self.tab  = QTabWidget(self)
     self.name = name
-    self.filename = os.path.join(P_DEFAULT_CONFIGDIR, f"newprofile_{self.name}.conf")
     self.launcher = dLauncher()
     self.xsettings= dXSettings()
     self.plugins  = dPlugins()
     self.session  = dSession()
-    self.state = QSettings(self.filename)
-
+    self.state = QSettings(f"muDDO/newprofile_{self.name}")
+    self.confFile = self.state.fileName()
+    
     # Collects all saveable widgets (future-proof)
     self.sections = {}
     for sname, sobj in self.__dict__.items():
@@ -175,17 +246,17 @@ class cProfileNew(cFloating):
         self.sections[sname][name] = wobj
 
     self.initializeLayout()
-    self.loadFromFile()
-    self.connectSignals()
+    self.load()
+    self.wireInternal()
 
   #----------------------------------------------------------------------------------------------------------
   def initializeLayout(self):
-    self.setFixedSize(800,800)
+    # self.setFixedSize(800,800)
     glauncher = cGridLayout()
-    glauncher.appendRow([self.launcher._backend,    "Proton executable:", self.launcher._protonExec, self.launcher.btnProtonExec])
-    glauncher.appendRow([self.launcher._language,   "STEAM_COMPAT_DATA:", self.launcher._compatData, self.launcher.btnCompatData])
-    glauncher.appendRow([self.launcher._useDebug,   "STEAM_ROOT:",        self.launcher._steamRoot,  self.launcher.btnSteamRoot])
-    glauncher.appendRow([self.launcher._useHighRes, "Game executable:",   self.launcher._gameExec,   self.launcher.btnGameExec])
+    glauncher.appendRow([self.launcher._backend,    newVLayout([self.launcher.lblBackendExec]), newVLayout([self.launcher._protonExec, self.launcher._wineExec]),   newVLayout([self.launcher.btnProtonExec, self.launcher.btnWineExec])])
+    glauncher.appendRow([self.launcher._language,   newVLayout([self.launcher.lblBackendPath]), newVLayout([self.launcher._compatData, self.launcher._winePrefix]), newVLayout([self.launcher.btnCompatData, self.launcher.btnWinePrefix])])
+    glauncher.appendRow([self.launcher._useDebug,   self.launcher.lblBackendRoot, self.launcher._steamRoot,  self.launcher.btnSteamRoot])
+    glauncher.appendRow([self.launcher._useHighRes, "Game executable:",   self.launcher._gameFullExec,   self.launcher.btnGameExec])
 
     gxl = cGridLayout()
     gxl.appendRow([self.xsettings._position, self.xsettings._size, self.xsettings._desktop])
@@ -215,13 +286,13 @@ class cProfileNew(cFloating):
     self.setLayout(newVLayout([self.tab]))
 
   #----------------------------------------------------------------------------------------------------------
-  def connectSignals(self):
+  def wireInternal(self):
     self.launcher.btnProtonExec.clicked.connect(    lambda x : self.selectDialog(self.launcher._protonExec,    "Steam Proton executable", False))
     self.launcher.btnCompatData.clicked.connect(    lambda x : self.selectDialog(self.launcher._compatData,    "Steam Proton COMPAT_DATA path", True))
     self.launcher.btnWineExec.clicked.connect(      lambda x : self.selectDialog(self.launcher._wineExec,      "Wine executable", False))
     self.launcher.btnWinePrefix.clicked.connect(    lambda x : self.selectDialog(self.launcher._winePrefix,    "WINE_PREFIX path", True))
     self.launcher.btnSteamRoot.clicked.connect(     lambda x : self.selectDialog(self.launcher._steamRoot,     "STEAM_ROOT path", True))
-    self.launcher.btnGameExec.clicked.connect(      lambda x : self.selectDialog(self.launcher._gameExec,      "DDO executable", False))
+    self.launcher.btnGameExec.clicked.connect(      lambda x : self.selectDialog(self.launcher._gameFullExec,      "DDO executable", False))
     self.plugins.btnDHExec.clicked.connect(         lambda x : self.selectDialog(self.plugins._dhExec,         "Dungeon Helper executable", False))
     self.plugins.btnMilvianSHMPath.clicked.connect( lambda x : self.selectDialog(self.plugins._milvianSHMPath, "Milvians SHM path", True))
 
@@ -230,7 +301,7 @@ class cProfileNew(cFloating):
     self.launcher.btnWineExec.ctrlClicked.connect(      lambda x : self.autoDialog(self.launcher._wineExec,      "Wine executable", False))
     self.launcher.btnWinePrefix.ctrlClicked.connect(    lambda x : self.autoDialog(self.launcher._winePrefix,    "WINE_PREFIX path", True))
     self.launcher.btnSteamRoot.ctrlClicked.connect(     lambda x : self.autoDialog(self.launcher._steamRoot,     "STEAM_ROOT path", True))
-    self.launcher.btnGameExec.ctrlClicked.connect(      lambda x : self.autoDialog(self.launcher._gameExec,      "DDO executable", False))
+    self.launcher.btnGameExec.ctrlClicked.connect(      lambda x : self.autoDialog(self.launcher._gameFullExec,      "DDO executable", False))
     self.plugins.btnDHExec.ctrlClicked.connect(         lambda x : self.autoDialog(self.plugins._dhExec,         "Dungeon Helper executable", False))
     self.plugins.btnMilvianSHMPath.ctrlClicked.connect( lambda x : self.autoDialog(self.plugins._milvianSHMPath, "Milvians SHM path", True))
 
@@ -242,7 +313,27 @@ class cProfileNew(cFloating):
 
   #----------------------------------------------------------------------------------------------------------
   def onWidgetChanged(self, *_):
-    self.saveToFile()
+    self.save()
+
+  #----------------------------------------------------------------------------------------------------------
+  def wire(self, main : cMainWindow):
+    self.plugins._useDH.stateChanged.connect(main.dh.orb.setEnabled)
+    self.plugins._useMilvian.stateChanged.connect(main.macros.toggler.setEnabled)
+    self.plugins._useMilvian.stateChanged.connect(main.macros.daemon.orb.setEnabled)
+    self.plugins._useMilvian.stateChanged.connect(main.storageManager.toggler.setEnabled)
+    self.plugins._dhExec.editingFinished.connect( lambda : cMilvian.setup(self.plugins.dhExec(), self.plugins.milvianSHMPath()))
+
+  #----------------------------------------------------------------------------------------------------------
+  def unwire(self, main : cMainWindow):
+    pass
+
+  #----------------------------------------------------------------------------------------------------------
+  def aggregate(self):
+    pass
+
+  #----------------------------------------------------------------------------------------------------------
+  def propagate(self):
+    pass
 
   # #----------------------------------------------------------------------------------------------------------
   # def getValue(self, w):
@@ -267,37 +358,28 @@ class cProfileNew(cFloating):
   #==========================================================================================================
   #  Persistence
   #==========================================================================================================
-  def loadFromFile(self):
-    if not os.path.exists(self.filename):
-      cPrint.info(f"cProfileNew.loadFromFile: file {self.filename} not found. Creating with defaults...")
+  def load(self):
+    if not self.state.allKeys():
+      cPrint.info(f"cProfileNew.loadFromFile: no settings found in {self.confFile}. Creating with defaults...")
       self.loadFromDefaults()
       return
 
     try:
-      with open(self.filename, "r") as f: values = json.load(f)
-    except Exception as e:
-      cPrint.error(f"cProfileNew.loadFromFile: error reading {self.filename}", e)
-      return
-
-    try:
       for sname, sobj in self.sections.items():
-        sv = values.get(sname, {})
-        for wname in sv.keys():
-          if wname not in sobj:
-            cPrint.warning(f"[cProfile] found unknown key \"{wname}\" in the JSON file. Skipping...")
-            continue
-          _setValue(sobj[wname], sv[wname])
+        for wname, wobj in sobj.items():
+          if self.state.contains(f"{sname}/{wname}"):
+            _setValue(wobj, self.state.value(f"{sname}/{wname}"))
+          else:
+            cPrint.warning(f"[cProfile] key \"{wname}\" not found in settings. Using default.")
 
-      sv = values.get("session", {})
-      self.session.world       = sv.get("world",       "")
-      self.session.accounts    = sv.get("accounts",    [])
-      self.session.macroSets   = sv.get("macroSets",   [])
-      self.session.windowsInfo = sv.get("windowsInfo", {})
-      self.session.windowsInfo = sv.get("DDOInfo",     {})
+      self.session.world       = self.state.value("session/world",       "")
+      self.session.accounts    = self.state.value("session/accounts",    [])
+      self.session.macroSets   = self.state.value("session/macroSets",   [])
+      self.session.windowsInfo = self.state.value("session/windowsInfo", {})
     except Exception as e:
-      cPrint.error(f"cProfileNew.loadFromFile: error applying values from {self.filename}", e)
-    finally:
-      cPrint.info(f"Profile loaded from {self.filename}")
+      cPrint.error(f"cProfileNew.loadFromFile: error applying values from {self.confFile}", e)
+    else:
+      cPrint.info(f"Profile loaded from {self.confFile}")
 
   #----------------------------------------------------------------------------------------------------------
   def loadFromDefaults(self):
@@ -305,33 +387,24 @@ class cProfileNew(cFloating):
     self.launcher._useHighRes.setChecked(True)
     self.launcher._useDebug.setChecked(True)
     cPrint.info(f"{C_RED}Load from defaults not yet implemented!!!</font>")
-    self.saveToFile()
+    self.save()
 
   #----------------------------------------------------------------------------------------------------------
-  def saveToFile(self):
-    try:
-      os.makedirs(os.path.dirname(self.filename), exist_ok=True)
-    except Exception as e:
-      cPrint.error(f"cProfileNew.saveToFile: could not create {P_DEFAULT_CONFIGDIR}", e)
-
-    values = {}
+  def save(self):
     for sname, sobj in self.sections.items():
-      values[sname] = {wname: _getValue(wobj) for wname, wobj in sobj.items()}
+      for wname, wobj in sobj.items():
+        self.state.setValue(f"{sname}/{wname}", _getValue(wobj))
 
-    values["session"] = {
-      "lastWorld":       self.session.world,
-      "lastAccounts":    self.session.accounts,
-      "lastMacros":      self.session.macroSets,
-      "lastPreferences": self.session.windowsInfo
-    }
+    self.state.setValue("session/world",       self.session.world)
+    self.state.setValue("session/accounts",    self.session.accounts)
+    self.state.setValue("session/macroSets",   self.session.macroSets)
+    self.state.setValue("session/windowsInfo", self.session.windowsInfo)
 
-    try:
-      with open(self.filename, "w") as f:
-        json.dump(values, f, indent=2)
-    except Exception as e:
-      cPrint.error(f"cProfileNew.saveToFile: could not write {self.filename}", e)
+    self.state.sync()
+    if self.state.status() != QSettings.Status.NoError:
+      cPrint.error(f"cProfileNew.saveToFile: could not write {self.confFile}")
     else:
-      cPrint.info(f"Profile saved to {self.filename}")
+      cPrint.info(f"Profile saved to {self.confFile}")
 
   #----------------------------------------------------------------------------------------------------------
   def selectDialog(self, target : QLineEdit, title, dir = True):

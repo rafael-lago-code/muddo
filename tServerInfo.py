@@ -63,16 +63,16 @@ class tServerInfo(QRunnable):
   def run(self):
     self.status = self.P_STATUS_WORKING
 
-    gameDir = self.main.profile().gameDir.text()
-    gameConfig = gameDir+os.sep+P_DDO_LAUNCHERCONFIG
+    gamePath = self.main.profile().launcher.gamePath()
+    gameConfig = gamePath+os.sep+P_DDO_LAUNCHERCONFIG
     for i in range(4):
       if os.path.exists(gameConfig):
         break
-      gameDir = os.path.dirname(gameDir)
-      gameConfig = gameDir+os.sep+P_DDO_LAUNCHERCONFIG
+      gamePath = os.path.dirname(gamePath)
+      gameConfig = gamePath+os.sep+P_DDO_LAUNCHERCONFIG
     
     if not os.path.exists(gameConfig):
-      raise Exception(f"tServerInfo.init: could not find {P_DDO_LAUNCHERCONFIG} in directory \"{gameDir}\"")
+      raise Exception(f"tServerInfo.init: could not find {P_DDO_LAUNCHERCONFIG} in directory \"{gamePath}\"")
     else:
       try:
         doc = xml.dom.minidom.parse(gameConfig)

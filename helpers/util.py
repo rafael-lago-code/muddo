@@ -46,7 +46,7 @@ P_DEFAULT_CONFIGFILE = P_DEFAULT_CONFIGDIR + "/settings.json"
 P_DEFAULT_SERVERDIR = P_DEFAULT_CONFIGDIR+"/serverInfo/"
 P_DEFAULT_LOGSDIR   = P_DEFAULT_CONFIGDIR+"/logs/"
 
-P_DEFAULT_CONF = "muDDO/muddo"
+P_DEFAULT_CONF = "muDDO/settings"
 
 P_DEFAULT_ICON_SIZE=QtCore.QSize(28,28)
 P_DEFAULT_ICON_EXTENSION=".svg"
@@ -58,6 +58,7 @@ P_ICON_OPENFOLDER= "document-open-folder"
 P_ICON_SAVE      = "document-save"
 P_ICON_SAVEALL   = "document-save-all"
 P_ICON_SAVEAS    = "document-save-as"
+P_ICON_DUPDOC    = "document-duplicate"
 P_ICON_ADD       = "list-add"
 P_ICON_REMOVE    = "list-remove"
 P_ICON_REFRESH   = "view-refresh"

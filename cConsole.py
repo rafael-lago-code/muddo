@@ -27,6 +27,7 @@ import sys
 
 # -------------------------------------------------------------------------------------------------------------
 class cConsole(cToggler):
+  widgetID = "console"
   converter = None
   sigInfo  = pyqtSignal(str)
   sigDebug = pyqtSignal(str)
@@ -34,7 +35,6 @@ class cConsole(cToggler):
   sigWarning = pyqtSignal(str)
 
   def __init__(self, filename : str):
-    self.widgetID = "console"
     super().__init__("Log", P_ICON_CONSOLE)
     self.isDebugging = True
     self.logFileName = filename

@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QCheckBox, 
 from PyQt6.QtCore import Qt, pyqtSignal, QThreadPool, QItemSelectionModel, QSize
 from cWorlds import cWorldList
 from tServerInfo import tServerInfo
+from helpers.cPrint import cPrint
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbSmall
 from helpers.util import *
@@ -102,7 +103,7 @@ class cCredentials(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     self.serverInfo = tServerInfo(self.main)
-    self.console.info("Launching server info collector...")
+    cPrint.info("Launching server info collector...")
     QThreadPool.globalInstance().start(self.serverInfo)
 
   #----------------------------------------------------------------------------------------------------------
@@ -117,7 +118,7 @@ class cCredentials(cToggler):
     item.setIcon(getIcon(P_ICON_LOCKCLOSE_RED) if self.password.text() == "" else getIcon(P_ICON_LOCKOPEN_GREEN))
         
     if self.password.text() != "":
-      self.console.info(C_RED + "WARNING</font>: passwords are saved in plain text and not handled safely yet! Use it at your own risk!")
+      cPrint.info(C_RED + "WARNING</font>: passwords are saved in plain text and not handled safely yet! Use it at your own risk!")
     self.saveAccounts()
   
   #----------------------------------------------------------------------------------------------------------
@@ -152,7 +153,7 @@ class cCredentials(cToggler):
     if w:
       self.listWorlds.setCurrentIndex(w.index)
     else:
-      self.console.error(f"cLogin.selectWorld: world \"{name}\" not found in the list!")
+      cPrint.error(f"cLogin.selectWorld: world \"{name}\" not found in the list!")
 
   #----------------------------------------------------------------------------------------------------------
   def selectAccounts(self, accs : list):
@@ -163,7 +164,7 @@ class cCredentials(cToggler):
         m = self.listAccounts.findItems(name, Qt.MatchFlag.MatchExactly)
         self.listAccounts.setCurrentItem(m[0], QItemSelectionModel.SelectionFlag.Select)
       except Exception as e:
-        self.console.error(f"cLogin.selectAccounts: account \"{name}\" not found in the list!", e)
+        cPrint.error(f"cLogin.selectAccounts: account \"{name}\" not found in the list!", e)
         return
     
   #----------------------------------------------------------------------------------------------------------
@@ -184,7 +185,7 @@ class cCredentials(cToggler):
     try:
       json.dump(self.accounts, open(accFileName,"w"), separators=(', ',': '), indent=2)
     except Exception as e:
-      self.console.error(f"cLogin.save: could not create {accFileName} to store credentials!",e)
+      cPrint.error(f"cLogin.save: could not create {accFileName} to store credentials!",e)
   
   #----------------------------------------------------------------------------------------------------------
   def loadAccounts(self):
@@ -206,7 +207,7 @@ class cCredentials(cToggler):
     for i in selected:
       del self.accounts[i.text()]
       self.listAccounts.takeItem(self.listAccounts.row(i))
-    self.console.info(f" {len(selected)} accounts removed successfully")
+    cPrint.info(f" {len(selected)} accounts removed successfully")
     self.saveAccounts()
 
   #----------------------------------------------------------------------------------------------------------

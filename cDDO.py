@@ -117,16 +117,19 @@ class cDDO(aProcessItem):
     self.sigChangeRequest.emit(self.P_STATUS_QUEUEDONE)
 
     arg = self.parseArguments()
-    gameDir = self.frozenProfile.gameDir.text()
+    # gameDir = self.frozenProfile.gameDir.text()
 
-    cmd = (
-        f'cd "{gameDir}" && '
-        f'STEAM_ROOT="{self.frozenProfile.steamRoot.text()}" '
-        f'PROTON_LOG=1 '
-        f'STEAM_COMPAT_DATA_PATH="{self.frozenProfile.compatData.text()}" '
-        f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.frozenProfile.compatData.text()}" '
-        f'"{self.frozenProfile.protonExec.text()}" run "{cDDO.gameExec}" {arg} '
-    )
+    # cmd = (
+    #     f'cd "{gameDir}" && '
+    #     f'STEAM_ROOT="{self.frozenProfile.steamRoot.text()}" '
+    #     f'PROTON_LOG=1 '
+    #     f'STEAM_COMPAT_DATA_PATH="{self.frozenProfile.compatData.text()}" '
+    #     f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.frozenProfile.compatData.text()}" '
+    #     f'"{self.frozenProfile.protonExec.text()}" run "{cDDO.gameExec}" {arg} '
+    # )
+    gamePath = self.frozenProfile.launcher.gamePath()
+    gameExec = self.frozenProfile.launcher.gameExec()
+    cmd = f'{self.frozenProfile.launcher.command()} "{cDDO.gameExec}" {arg} '
 
     logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(

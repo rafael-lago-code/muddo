@@ -77,7 +77,7 @@ class cPatch(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def updateTimestamp(self):
-    timestampFilename = self.main.profile().gameDir.text()+os.sep+P_TIMESTAMP_FILE
+    timestampFilename = self.main.profile().launcher.gamePath()+os.sep+P_TIMESTAMP_FILE
     if os.path.exists(timestampFilename):
       try:
         with open(timestampFilename, 'r') as f:

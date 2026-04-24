@@ -20,12 +20,13 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QMenu, QSplitter, QGridLayout
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from cCredentials import cCredentials
+from cSettingsProfile import cSettingsProfile
 from cSettings import cSettings
 from cMacros import cMacros
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
-from cProfil import cProfil
+from cProfilasdfasdfasdf import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cStorage import cStorageManager
@@ -94,8 +95,6 @@ class cMainWindow(QMainWindow):
     aConf.triggered.connect(self.credentials.toggle)
     aConf.triggered.connect(self.processManager.toggle)
 
-    self.console.show()
-
     self.setCentralWidget(newVFrame([lButtonsBar]))
     self.loadState()
 
@@ -111,8 +110,8 @@ class cMainWindow(QMainWindow):
     from cMilvian import cMilvian
     from helpers.cTop import cTop
     from widgets.cLog import cLog
-    from cProfileNew import cProfileNew
-    self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
+    from cSettingsProfile import cSettingsProfile
+    # self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     cProcessManager.attachMain(self)
     self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
@@ -126,14 +125,13 @@ class cMainWindow(QMainWindow):
     self.patch.initialize()
     self.storageManager.initialize(self.macros.daemon)
 
-    bla = cProfileNew("tester", self)
+    bla = cSettingsProfile("tester", self)
     bla.show()
   
-    cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()))
-
 
   #----------------------------------------------------------------------------------------------------------
-  def profile(self, pname : str = None) -> cProfil:
+  def profile(self, pname : str = None) -> cSettingsProfile:
+    if not pname: pname = self.settings.profileList.currentText() 
     if pname in self.settings.profiles.keys():
       return self.settings.profiles[pname]
     if self.settings.profileList.currentText() in self.settings.profiles.keys():
@@ -151,7 +149,7 @@ class cMainWindow(QMainWindow):
     if not accs: accs = [self.credentials.username.text()]
     if not accs:
       if len(self.processManager.items)==0:
-        self.console.error("No accounts selected. Please add an account or enter a username")
+        cPrint.error("No accounts selected. Please add an account or enter a username")
       return
     
     self.processManager.setVisible(True)
@@ -163,7 +161,7 @@ class cMainWindow(QMainWindow):
         proc = cDDO(self, username, world)
         self.processManager.addItem(proc)
       proc.launch()
-    self.console.info("Finished queueing...")
+    cPrint.info("Finished queueing...")
   
   #----------------------------------------------------------------------------------------------------------
   def loadState(self):
