@@ -19,6 +19,7 @@
 #
 from __future__ import annotations
 from cProcess import aProcessItem
+from cSettings import cSettings
 from helpers.XHelper import XHelper
 from helpers.cTop import cTop
 import subprocess
@@ -46,7 +47,6 @@ class cDungeonHelper(aProcessItem):
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnClear.setEnabled(False)
-
     self.orb = cOrb("Dungeon\nHelper", getIcon(P_DEFAULT_ICON_PATHS[0]+'/dm_kundarak.svg'),
                     tooltip="Launches Dungeon Helper (it if is installed); activates on all instances" \
                      " of the game for as long as it runs.<br><b>Ctrl+Click to purge any instances and restart Dungeon Helper.<br><b><i>Right-click for more options</i></b>")
@@ -72,11 +72,11 @@ class cDungeonHelper(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    self.main.profile().useDungeonHelper.stateChanged.connect(lambda x: self.setEnabled(self.main.profile().useDungeonHelper.isChecked()))
+    cSettings.plugins._useDH.stateChanged.connect(lambda x: self.setEnabled(x))
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
-    if not self.main.profile().useDungeonHelper.isChecked(): return
+    # if not self.main.profile().useDungeonHelper.isChecked(): return
     if self.status == self.P_STATUS_RUNNING:
       cPrint.warning(" Attempting to launch Dungeon Helper, but it is already running."+
                         " Try right-click->kill to cleanup state.")
@@ -90,13 +90,7 @@ class cDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def _launchThread(self):
     
-    dhexec = self.main.profile().DungeonHelperExec.text()
-    cmd = (
-      f'STEAM_ROOT="{self.main.profile().steamRoot.text()}" PROTON_LOG=1 '
-      f'STEAM_COMPAT_DATA_PATH="{self.profile().compatData.text()}" '
-      f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.profile().compatData.text()}" '
-      f'"{self.profile().protonExec.text()}" run "{pathLinux2Windows(dhexec)}" '
-    )
+    cmd = f'{cSettings.launcher.command()} "{cSettings.plugins.dhExec()}"'
 
     logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(
@@ -141,7 +135,7 @@ class cDungeonHelper(aProcessItem):
           cPrint.error(f"cDungeonHelper.watchPID: timeout error while looking for PID")
           return None
         time.sleep(0.1)
-    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    baseExec = os.path.basename(cSettings.plugins.dhExec())
     t = threading.Thread(target=_watchPIDThread, args=(self,baseExec), daemon=True)
     t.start()
 
@@ -198,7 +192,7 @@ class cDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def kill(self):
     super().kill()
-    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    baseExec = os.path.basename(cSettings.plugins.dhExec())
     cPrint.warning(f"Killing all processes containing {baseExec}...")
     cTop.killAll(baseExec)
     self.clear()

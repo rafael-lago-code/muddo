@@ -20,12 +20,12 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QMenu, QSplitter, QGridLayout
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from cCredentials import cCredentials
+from cSettingsProfile import cSettingsProfile
 from cSettings import cSettings
 from cMacros import cMacros
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
-from cProfil import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cStorage import cStorageManager
@@ -43,6 +43,7 @@ class cMainWindow(QMainWindow):
 
   def __init__(self):
     super().__init__()
+    self._windowState = QSettings(P_DEFAULT_CONF)
     self.setWindowTitle("μDDO")
     self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -93,8 +94,6 @@ class cMainWindow(QMainWindow):
     aConf.triggered.connect(self.credentials.toggle)
     aConf.triggered.connect(self.processManager.toggle)
 
-    self.console.show()
-
     self.setCentralWidget(newVFrame([lButtonsBar]))
     self.loadState()
 
@@ -106,40 +105,21 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    from helpers.XHelper import XHelper
     from cMilvian import cMilvian
-    from helpers.cTop import cTop
-    from widgets.cLog import cLog
-    from cProfileNew import cProfileNew
-    self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     cProcessManager.attachMain(self)
     self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
 
     self.settings.initialize()
-    if self.profile() is None:
+    if cSettings.profile is None:
       self.console.abort("No valid profile loaded!")
     self.credentials.initialize()
     self.macros.initialize()
     self.news.initialize()
     self.patch.initialize()
+    cMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
 
-    bla = cProfileNew("tester", self)
-    bla.show()
-  
-    cMilvian.setup(os.path.dirname(self.profile().DungeonHelperExec.text()))
-
-
-  #----------------------------------------------------------------------------------------------------------
-  def profile(self, pname : str = None) -> cProfil:
-    if pname in self.settings.profiles.keys():
-      return self.settings.profiles[pname]
-    if self.settings.profileList.currentText() in self.settings.profiles.keys():
-      return self.settings.profiles[self.settings.profileList.currentText()]
-    else:
-      return None
-      
   #----------------------------------------------------------------------------------------------------------
   # This will queue everything; once a user is done queuing, it will emit 
   # sigQueuedUserDone. This will cause self.launchUser() to be triggered
@@ -150,7 +130,7 @@ class cMainWindow(QMainWindow):
     if not accs: accs = [self.credentials.username.text()]
     if not accs:
       if len(self.processManager.items)==0:
-        self.console.error("No accounts selected. Please add an account or enter a username")
+        cPrint.error("No accounts selected. Please add an account or enter a username")
       return
     
     self.processManager.setVisible(True)
@@ -162,21 +142,19 @@ class cMainWindow(QMainWindow):
         proc = cDDO(self, username, world)
         self.processManager.addItem(proc)
       proc.launch()
-    self.console.info("Finished queueing...")
+    cPrint.info("Finished queueing...")
   
   #----------------------------------------------------------------------------------------------------------
   def loadState(self):
-    settings = QSettings(P_DEFAULT_CONF)
-    pos = settings.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
-    size = settings.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
+    pos = self._windowState.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
+    size = self._windowState.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
     self.move(pos)
     self.resize(size)
   
   #----------------------------------------------------------------------------------------------------------
   def saveState(self):
-    settings = QSettings(P_DEFAULT_CONF)
-    settings.setValue(f"μDDO/pos",  self.pos())
-    settings.setValue(f"μDDO/size", self.size())
+    self._windowState.setValue(f"μDDO/pos",  self.pos())
+    self._windowState.setValue(f"μDDO/size", self.size())
   
   #----------------------------------------------------------------------------------------------------------
   def close(self):

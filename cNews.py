@@ -26,9 +26,9 @@ from helpers.util import *
 from widgets.cToggler import cToggler
 
 class cNews(cToggler):
+  widgetID = "News"
 
   def __init__(self, main):
-    self.widgetID = "blablabla"
     self.main = main
     super().__init__("News", P_ICON_SCROLL)
     self.toggler.setToolTip("Toggle News UI<br><b><i>NOT IMPLEMENTED</i></b>")

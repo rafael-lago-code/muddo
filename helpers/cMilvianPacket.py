@@ -69,7 +69,7 @@ class packetSignal(Enum):
 
 #---------------------------------------------------------------------------------------------------------------
 #
-#
+#                                       M I L V I A N   P A C K E T
 #
 #---------------------------------------------------------------------------------------------------------------
 class cMilvianPacket():
@@ -143,4 +143,27 @@ class cMilvianPacket():
   #---------------------------------------------------------------------------------------------------------------
   def __str__(self) -> str:
     return f"     ~ milvianPacket[id:{struct.unpack('<I',self.id)[0]}, command:{self.command}, status:{self.status}]{f"\n     ~ Payload: {self.outData}" if self.outData else ""}{f"\n     ~ OutMessage: {self.outMessage}" if self.outMessage else ""}"
+  
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#                                       P H O N Y P A C K E T
+#
+#---------------------------------------------------------------------------------------------------------------
+class cPhonyPacket:
+  command : packetCommand = packetCommand.none
+  status  : packetStatus  = packetStatus.unknown
+  id      = b''
+  inData = None
+  outMessage = None
+  outData = None
+  bridge = None
+
+  def __init__(self, command : packetCommand, bridge : cMilvian, inData = None): pass
+  def pack(self) -> bytes: return b''
+  def parseRawData(self, rawData: bytes): pass
+  def checkResponse(self) -> bool: return False
+  def wait(self, timeout=None) -> bool: return False  
+  def __str__(self) -> str: return '[cPhonyPacket]'
+  
   

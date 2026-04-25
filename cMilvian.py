@@ -23,13 +23,14 @@ import sys, mmap, time, struct
 import os, threading
 from typing import TYPE_CHECKING
 from PyQt6.QtCore import pyqtSignal, QObject
-from helpers.cMilvianPacket import cMilvianPacket, packetCommand, packetStatus, packetSignal
+from helpers.cMilvianPacket import cMilvianPacket, cPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
 from helpers.cPrint import cPrint
 from helpers.cDispatcher import cDispatcher
 from helpers.util import *
 if TYPE_CHECKING:
-   from cMilvian import cMilvian
+  from cSettings import cSettings
+  from cMilvian import cMilvian
 
 P_MILVIAN_DEBUG=True
 P_SHM_SIZE = 1024*1024
@@ -45,6 +46,8 @@ P_RESPONSE_READER_POS    = 0
 #
 #---------------------------------------------------------------------------------------------------------------
 class cMilvian():
+  _lastAlive = False
+  charName = None
   bridgePath = ''
   inputActions = None
   responseDaemonStopSignal = None
@@ -52,10 +55,13 @@ class cMilvian():
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def setup(cls, dhpath):
-    # cls.setBridgePath(os.path.dirname(dhpath)+"/Milvian/")
-    cls.setBridgePath("/dev/shm/Milvian/")
-    cls.getInputActions(dhpath)
+  def setup(cls):
+    from cSettings import cSettings
+    shmPath = cSettings.plugins.milvianSHMPath()
+    dhPath  = os.path.dirname(cSettings.plugins.dhExec())
+    cPrint.debug(f"[cMilvian.setup] shmPath={shmPath!r} dhPath={dhPath!r}")
+    cls.setBridgePath(shmPath)
+    cls.getInputActions(dhPath)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -132,6 +138,7 @@ class cMilvian():
 
     self.charName = packet.outData if isinstance(packet.outData,str) else packet.outData.decode('utf-8')
     self.charName = self.charName.split()[0]
+    self._lastAlive = True
     cPrint.info(f"[cMilvian] got charName {C_SILVER}\"{self.charName}\"</font> for {os.path.basename(bridgePath)}")
 
   #---------------------------------------------------------------------------------------------------------------
@@ -141,34 +148,34 @@ class cMilvian():
 
   #---------------------------------------------------------------------------------------------------------------
   def responseDaemon(self) -> bool:
-      try:
-        with open(self.pathResponse, 'r+b') as fdResponse:
-          while not self.responseDaemonStopSignal.is_set():
-            # shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
-            mmResponse = mmap.mmap(fdResponse.fileno(), 0, flags=mmap.MAP_SHARED, prot=mmap.PROT_READ | mmap.PROT_WRITE)
-          
-            writerPos = struct.unpack('<I', mmResponse[P_RESPONSE_WRITER_POS:P_RESPONSE_WRITER_POS+4])[0]
-            readerPos = struct.unpack('<I', mmResponse[P_RESPONSE_READER_POS:P_RESPONSE_READER_POS+4])[0]
+    try:
+      with open(self.pathResponse, 'r+b') as fdResponse:
+        while not self.responseDaemonStopSignal.is_set():
+          # shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
+          mmResponse = mmap.mmap(fdResponse.fileno(), 0, flags=mmap.MAP_SHARED, prot=mmap.PROT_READ | mmap.PROT_WRITE)
+        
+          writerPos = struct.unpack('<I', mmResponse[P_RESPONSE_WRITER_POS:P_RESPONSE_WRITER_POS+4])[0]
+          readerPos = struct.unpack('<I', mmResponse[P_RESPONSE_READER_POS:P_RESPONSE_READER_POS+4])[0]
 
-            if (writerPos == readerPos):
-              time.sleep(0.05)
-              continue
-            lenMessage = cMilvian.readCircularBuffer(mmResponse, readerPos, 4)
-            lenMessage = struct.unpack('<I', lenMessage)[0]        
-            if lenMessage == 0:
-              cPrint.warning(f"[cMilvian] seems to have received a message with length=0! Ignoring...")
-              continue
-            if not(lenMessage == 8 or lenMessage > 12):
-              cPrint.error(f"[cMilvian] seems to have received a message with length={lenMessage}! Valid lengths are 8 (id and status only) and 13 or more (id, status, payload lenght, + payload)...")
-              return False
-            
-            rawData = cMilvian.readCircularBuffer(mmResponse, readerPos+4, lenMessage)
-            cDispatcher.emit((self.id, packetSignal.gotData),rawData)
-            cMilvian.setResponseReaderPos(mmResponse,readerPos+4+lenMessage)
-      
-      except Exception as e:
-        print(f" EXCEPTION: {e}")
-      return True
+          if (writerPos == readerPos):
+            time.sleep(0.05)
+            continue
+          lenMessage = cMilvian.readCircularBuffer(mmResponse, readerPos, 4)
+          lenMessage = struct.unpack('<I', lenMessage)[0]        
+          if lenMessage == 0:
+            cPrint.warning(f"[cMilvian] seems to have received a message with length=0! Ignoring...")
+            continue
+          if not(lenMessage == 8 or lenMessage > 12):
+            cPrint.error(f"[cMilvian] seems to have received a message with length={lenMessage}! Valid lengths are 8 (id and status only) and 13 or more (id, status, payload lenght, + payload)...")
+            return False
+          
+          rawData = cMilvian.readCircularBuffer(mmResponse, readerPos+4, lenMessage)
+          cDispatcher.emit((self.id, packetSignal.gotData),rawData)
+          cMilvian.setResponseReaderPos(mmResponse,readerPos+4+lenMessage)
+    
+    except Exception as e:
+      print(f" EXCEPTION: {e}")
+    return True
   
   #---------------------------------------------------------------------------------------------------------------
   @staticmethod
@@ -262,7 +269,19 @@ class cMilvian():
       return self.newCommandRequest(cmd)
   
   #---------------------------------------------------------------------------------------------------------------
+  def isAlive(self):
+    newStatus = os.path.exists(self.pathRequest)
+    if self._lastAlive != newStatus and self.charName != None:
+      if newStatus == False:
+        cPrint.warning(f"[cMilvian] bridge for \"{self.charName}\" ({self.pathRequest}) is dead!")
+      else:
+        cPrint.warning(f"[cMilvian] bridge for \"{self.charName}\" ({self.pathRequest}) is back online")
+    self._lastAlive = newStatus
+    return newStatus
+
+  #---------------------------------------------------------------------------------------------------------------
   def sendList(self, data: list) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
     while isinstance(data,(list,tuple)) and len(data)==1:
       data = data[0]
     if isinstance(data,list):
@@ -272,22 +291,27 @@ class cMilvian():
     
   #---------------------------------------------------------------------------------------------------------------
   def sendDebugCircular(self, nentries: str) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
     return self.sendRequest(self.newDebugCircularRequest(int(nentries)))
       
   #---------------------------------------------------------------------------------------------------------------
   def sendInputAction(self, cmd: str) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
     return self.sendRequest(self.newInputActionRequest(cmd))
 
   #---------------------------------------------------------------------------------------------------------------
   def sendSleep(self, nsec: float) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
     return self.sendRequest(self.newSleepRequest(nsec))
 
   #---------------------------------------------------------------------------------------------------------------
   def sendCommand(self, command: str) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
     return self.sendRequest(self.newCommandRequest(command))
 
   #---------------------------------------------------------------------------------------------------------------
   def sendRequest(self, packet: cMilvianPacket) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
     cDispatcher.fate((self.id, packet.id, packetSignal.gotResponse), lambda data, p=packet: p.parseRawData(data))
     message = packet.pack()
     with open(self.pathRequest, 'r+b') as fdSHMI:
@@ -301,7 +325,7 @@ class cMilvian():
     return packet
 
   #---------------------------------------------------------------------------------------------------------------
-  def clearO(self):
+  def clearResponses(self):
     cPrint.info(f"[*] cMilvian: clearing {self.pathResponse}")
     with open(self.pathResponse, 'r+b') as fdSHMO:
       shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
