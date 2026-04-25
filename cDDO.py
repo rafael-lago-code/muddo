@@ -20,8 +20,9 @@
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
+from cSettings import cSettings
 from tAuthenticator import tAuthenticator
-from helpers.XHelper import XHelper
+from helpers.XHelper import XHelper, windowData
 from helpers.cTop import cTop
 import subprocess
 import os, time, glob, threading
@@ -52,7 +53,7 @@ class cDDO(aProcessItem):
     # cDDO freezes profile and uses that one until the process is cleaned
     # The reason is that changing profiles during runtime cannot change the already
     # running instances
-    self.frozenProfile = main.profile()
+    self.frozenProfile = cSettings.profile
     
     self.profileID.setText(self.frozenProfile.name)
     self.worldname.setText(world.name)
@@ -65,8 +66,6 @@ class cDDO(aProcessItem):
     self.sigGotPID.connect(self.watchWinID)
     self.sigGotWinID.connect(lambda : self.setStatus(self.status))
     self.sigGotWinID.connect(lambda x: self.restoreWindow())
-    # self.sigGotWinID.connect(lambda x: self.btnSave.setEnabled(x!=None))
-    # self.sigGotWinID.connect(lambda x: self.btnRestore.setEnabled(x!=None))
 
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, newStatus):
@@ -117,16 +116,9 @@ class cDDO(aProcessItem):
     self.sigChangeRequest.emit(self.P_STATUS_QUEUEDONE)
 
     arg = self.parseArguments()
-    gameDir = self.frozenProfile.gameDir.text()
-
-    cmd = (
-        f'cd "{gameDir}" && '
-        f'STEAM_ROOT="{self.frozenProfile.steamRoot.text()}" '
-        f'PROTON_LOG=1 '
-        f'STEAM_COMPAT_DATA_PATH="{self.frozenProfile.compatData.text()}" '
-        f'STEAM_COMPAT_CLIENT_INSTALL_PATH="{self.frozenProfile.compatData.text()}" '
-        f'"{self.frozenProfile.protonExec.text()}" run "{cDDO.gameExec}" {arg} '
-    )
+    gamePath = self.frozenProfile.launcher.gamePath()
+    gameExec = self.frozenProfile.launcher.gameExec()
+    cmd = f'cd \"{gamePath}\" ; {self.frozenProfile.launcher.command()} "{gameExec}" {arg} '
 
     logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(
@@ -232,22 +224,55 @@ class cDDO(aProcessItem):
   def saveWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
     xh = XHelper()
-    geo = xh.getWindowGeometry(int(self.winID.text()))
-    self.frozenProfile.windowsPreferences[self.username.text()] = (int(geo[0]), int(geo[1]))
-    self.frozenProfile.save()
+    winData = xh.getWindowsData(int(self.winID.text()))
+    prefs = self.frozenProfile.session.windowsPreferences
+    prefs[self.username.text()] = (winData.posx, winData.posy, winData.width, winData.height, winData.desktop, winData.borderless, winData.audio, False)
+    self.frozenProfile.session.setWindowsPreference(prefs)
 
   #----------------------------------------------------------------------------------------------------------
   def restoreWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
-    if self.username.text() in self.frozenProfile.windowsPreferences.keys():
-      pos1, pos2 = self.frozenProfile.windowsPreferences[self.username.text()]
-    else: 
+    winID = int(self.winID.text())
+    prefs = self.frozenProfile.session.windowsPreferences
+    if self.username.text() not in prefs:
       return
+    winData = windowData(prefs[self.username.text()])
     xh = XHelper()
-    xh.moveWindow(int(self.winID.text()), pos1, pos2)
-    # xh.remapWindow(int(self.winID.text()))
-    # xh.setBorderless(int(self.winID.text()))
+    if self.frozenProfile.xsettings.position():
+      xh.moveWindow(winID, winData.posx, winData.posy)
+    if self.frozenProfile.xsettings.size():
+      # xh.resizeWindow(winID, winData.posx, winData.posy)
+      cPrint.warning(f"[cDDO] resizing window not yet implemented")
+    if self.frozenProfile.xsettings.desktop():
+      xh.moveVirtualDesktop(winID, winData.desktop)
+    
+    if self.frozenProfile.xsettings.border() == "Remember":
+      if winData.borderless: xh.setBorderless(winID)
+      else: xh.setBorderyes(winID)
+    elif self.frozenProfile.xsettings.border().startswith("Always"):
+      xh.setBorderless(winID)
+    elif self.frozenProfile.xsettings.border().startswith("Never"):
+      xh.setBorderyes(winID)
+    
+    if self.frozenProfile.xsettings.audio() == "Remember":
+      if winData.audio: self.audioUnmute()
+      else: self.audioMute()
+    elif self.frozenProfile.xsettings.audio().startswith("Always"):
+      self.audioMute()
+    elif self.frozenProfile.xsettings.audio().startswith("Never"):
+      self.audioUnmute()
+
+    if self.frozenProfile.xsettings.logs() == "Remember":
+      if winData.log: self.logShow()
+      else: self.logHide()
+    elif self.frozenProfile.xsettings.audio().startswith("Always"):
+      self.logShow()
+    elif self.frozenProfile.xsettings.audio().startswith("Never"):
+      self.logHide()
   
+    if self.frozenProfile.xsettings.blackscreenFix():
+      xh.remapWindow(winID)  # to verify if works
+
   #----------------------------------------------------------------------------------------------------------
   def getLogFilename(self):
     return f"{P_DEFAULT_LOGSDIR}/ddoLog_{self.username.text()}.txt"
@@ -262,13 +287,13 @@ class cDDO(aProcessItem):
     arg = arg.replace("{LANG}", "English")
     arg = arg.replace("{GLSTICKETLIFETIME}", self.auth.credentials.serverInfo.gameClientGLSTicketLifetime)
     arg = arg.replace("{SUBSCRIPTION}", self.auth.subscription)
-    if not self.frozenProfile.useHighRes.isEnabled():
+    if not self.frozenProfile.launcher.useHighRes():
       arg += " --HighResOutOfDate"
     return arg
   
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
-  def siCMD(line) -> bool:
+  def isCMD(line) -> bool:
     return line.startswith(cDDO.gameExec)
   
   #----------------------------------------------------------------------------------------------------------

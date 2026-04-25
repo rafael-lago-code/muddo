@@ -38,11 +38,11 @@ if TYPE_CHECKING:
 P_TIMESTAMP_FILE=".muddo_patch_timestamp"
 
 class cPatch(cToggler):
+  widgetID = "Patcher"
   sigPatchInfo = pyqtSignal(str)
   sigPatchDone = pyqtSignal(bool)
 
   def __init__(self, main : cMainWindow):
-    self.widgetID = "patch"
     super().__init__("Patch", P_ICON_DOWNLOAD)
     self.toggler.setToolTip("Patch Client<br><b><i>Last update: NA</i></b>")
     self.main = main
@@ -77,7 +77,7 @@ class cPatch(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def updateTimestamp(self):
-    timestampFilename = self.main.profile().gameDir.text()+os.sep+P_TIMESTAMP_FILE
+    timestampFilename = self.main.profile().launcher.gamePath()+os.sep+P_TIMESTAMP_FILE
     if os.path.exists(timestampFilename):
       try:
         with open(timestampFilename, 'r') as f:

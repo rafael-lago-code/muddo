@@ -17,6 +17,7 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 from Xlib import X, display
 import Xlib.error
+import Xlib.protocol.event
 import time, re, threading, json, subprocess
 from helpers.tStoppableThread import tStoppableThread
 from helpers.cPrint import cPrint
@@ -98,6 +99,29 @@ def _buildModifiers():
   mmask['mod5']  = X.Mod5Mask
   return mkeys, mmask
 
+#----------------------------------------------------------------------------------------------------------
+class windowData():
+  posx = 0
+  posy = 0
+  width = 0
+  height = 0
+  desktop = 0
+  borderless = True
+  audio = True
+  log = False
+
+  def __init__(self, info : list):
+    if len(info)>0: self.posx    = info[0]
+    if len(info)>1: self.posy    = info[1]
+    if len(info)>2: self.width   = info[2]
+    if len(info)>3: self.height  = info[3]
+    if len(info)>4: self.desktop = info[4]
+    if len(info)>5: self.borderless = info[5]
+    if len(info)>6: self.audio   = info[6]
+    if len(info)>7: self.log     = info[7]
+
+
+
 #---------------------------------------------------------------------------------------------------------------
 #
 #
@@ -122,6 +146,7 @@ class XHelper(QObject):
     self.netWMName = self.disp.intern_atom('_NET_WM_NAME')
     self.WMName = self.disp.intern_atom('WM_NAME')
     self.utf8String = self.disp.intern_atom('UTF8_STRING')
+    self.netWMDesktop = self.disp.intern_atom('_NET_WM_DESKTOP')
     self.disp.set_error_handler(lambda d, e: None)
 
   #----------------------------------------------------------------------------------------------------------
@@ -482,9 +507,6 @@ class XHelper(QObject):
             if callback: callback()  # Direct call, no extra thread
         else:
           time.sleep(0.01)
-      # except Exception as e:
-      #   print(f" ERROR in XHelper: \n{e}\n")
-      # finally:
       for (modmask, keycode), _ in grabbed.items():
         self.root.ungrab_key(keycode, modmask)
       self.disp.sync()
@@ -511,6 +533,65 @@ class XHelper(QObject):
       return [-coords.x, -coords.y, geometry.width, geometry.height]
     except Exception as e:
       raise(f"XHelper.getWindowGeometry failed\n{e}")
+    
+  #----------------------------------------------------------------------------------------------------------
+  def getWindowsData(self, winID) -> windowData:
+    winData = windowData(self.getWindowGeometry(winID))
+    winData.desktop = self.getWindowsVirtualDesktop(winID)            
+    winData.borderless = self.getWindowsBorder(winID)
+    winData.audio = not self.audioQueryMuted(self.getPID(winID))
+    return winData
+  
+  #----------------------------------------------------------------------------------------------------------
+  def _getToplevel(self, winID):
+    win = self.disp.create_resource_object('window', winID)
+    while True:
+      parent = win.query_tree().parent
+      if parent.id == self.root.id:
+        return win
+      win = parent
+
+  #----------------------------------------------------------------------------------------------------------
+  def getWindowsVirtualDesktop(self, winID) -> int:
+    try:
+      win = self._getToplevel(winID)
+      prop = win.get_full_property(self.netWMDesktop, X.AnyPropertyType)
+      return int(prop.value[0]) if prop and prop.value else 0
+    except Exception as e:
+      raise(f"XHelper.getWindowsVirtualDesktop failed\n{e}")
+
+  #----------------------------------------------------------------------------------------------------------
+  def getWindowsBorder(self, winID) -> bool:
+    try:
+      hint = self.getWindowHint(winID)
+      if hint is None: return True
+      return bool(hint.get('decorations', 1))
+    except Exception as e:
+      raise(f"XHelper.getWindowsBorder failed\n{e}")
+
+  #----------------------------------------------------------------------------------------------------------
+  def getPID(self, winID) -> int:
+    try:
+      win = self.disp.create_resource_object('window', winID)
+      prop = win.get_full_property(self.netWMPID, X.AnyPropertyType)
+      return int(prop.value[0]) if prop and prop.value else 0
+    except Exception as e:
+      raise(f"XHelper.getPID failed\n{e}")
+
+  #----------------------------------------------------------------------------------------------------------
+  def moveVirtualDesktop(self, winID, targetDesktop: int):
+    try:
+      win = self.disp.create_resource_object('window', winID)
+      atom = self.disp.intern_atom('_NET_WM_DESKTOP')
+      evt = Xlib.protocol.event.ClientMessage(
+        window=win,
+        client_type=atom,
+        data=(32, [targetDesktop, 2, 0, 0, 0])
+      )
+      self.root.send_event(evt, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+      self.disp.sync()
+    except Exception as e:
+      raise(f"XHelper.moveVirtualDesktop({targetDesktop}) failed\n{e}")
 
   #----------------------------------------------------------------------------------------------------------
   def moveWindow(self, winID, x, y):

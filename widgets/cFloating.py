@@ -19,6 +19,7 @@
 #
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import QSettings, QPoint, QSize, Qt, QRect
+import time
 from helpers.util import *
 
 class cFloating(QWidget):
@@ -29,10 +30,10 @@ class cFloating(QWidget):
   P_SIZE_W = 300
   P_SIZE_H = 200
   widgetID = "floatingWidget"
+  _state = QSettings(P_DEFAULT_CONF)
   
-  def __init__(self):
-    super().__init__()
-    self.settings = QSettings(P_DEFAULT_CONF)
+  def __init__(self, parent = None):
+    super().__init__(parent)
     self.setWindowFlags(Qt.WindowType.FramelessWindowHint | 
                         Qt.WindowType.Window | 
                         Qt.WindowType.WindowStaysOnTopHint)
@@ -41,11 +42,36 @@ class cFloating(QWidget):
     self.loadState()
   
   def loadState(self):
-    rect = self.settings.value(f"{self.widgetID}/geometry", self.P_RECT)
+    setting = QSettings(P_DEFAULT_CONF)
+    self.loadGeometry()
+    self.setVisible(setting.value(f"{self.widgetID}/visible") == "true")
+  
+  def loadGeometry(self):
+    setting = QSettings(P_DEFAULT_CONF)
+    rect = setting.value(f"{self.widgetID}/geometry", self.P_RECT)
+    # there is a bug preventing the loading the position of the window, if it
+    # "thinks" that it didn't change, so we need to force some crap here.
+    self.move(QPoint(10,10))
     self.setGeometry(rect)
 
   def saveState(self):
-    self.settings.setValue(f"{self.widgetID}/geometry",  self.geometry())
+    self._state.setValue(f"{self.widgetID}/geometry",  self.geometry())
+    self._state.setValue(f"{self.widgetID}/visible",  self.isVisible())
+
+  def show(self):
+    if self.isVisible(): return
+    # self.loadState()
+    self.setVisible(True)
+
+  def hide(self):
+    if not self.isVisible(): return
+    # self.saveState()
+    self.setVisible(False)
+
+  def setVisible(self, value : bool):
+    super().setVisible(value)
+    if value: self.loadGeometry()
+    else:     self.saveState()
   
   def closeEvent(self, event):
     self.saveState()

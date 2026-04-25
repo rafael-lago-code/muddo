@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import QCheckBox, QDialog, QGridLayout, QLineEdit, QListWid
 from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
+from widgets.cDDOWidgets import cDDOCheck
 from helpers.util import *
 from widgets.cToggler import cToggler
 from widgets.cCheckCombo import cCheckCombo
@@ -128,16 +129,18 @@ class cStorageManager(cToggler):
                              tooltip="Sell all selected items to the currently open vendor UI. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
     self.btnTrade     = cOrb("Trade",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_trade_lean.svg'),
                              tooltip="Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
+    self.btnSort      = cOrb("Sort",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/sort.png'),
+                             tooltip="Sort selected items by type. <br><b>Right+Click</b> to sort by name<b>.<br><b><i>Right-click for more options</i></b>")
     self.btnStore     = cOrb("Store",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_bank_lean.svg'),
                              tooltip="Store selected items in the currently open bank/chest UI. <br><b><i>Right-click for more options</i></b>")
 
     self.filterCB = SimpleNamespace()
     for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Sellable", "Unsellable", "Name", "Description"]:
-      setattr(self.filterCB, f.lower(), cOrbCheck(f))
-    self.filterCB.aug0  = cOrbCheck('0')
-    self.filterCB.aug1  = cOrbCheck('1')
-    self.filterCB.aug2  = cOrbCheck('2')
-    self.filterCB.aug3p = cOrbCheck('3+')
+      setattr(self.filterCB, f.lower(), cDDOCheck(f))
+    self.filterCB.aug0  = cDDOCheck('0')
+    self.filterCB.aug1  = cDDOCheck('1')
+    self.filterCB.aug2  = cDDOCheck('2')
+    self.filterCB.aug3p = cDDOCheck('3+')
 
     for cb in self.filterCB.__dict__.keys():
       getattr(self.filterCB, cb).setChecked(True)
@@ -244,7 +247,7 @@ class cStorageManager(cToggler):
     allSplitters = newVSplitter([self.table, filtersContainer])
     allSplitters.setSizes([800,100])
    
-    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnStore, self.btnTrade, self.btnSell, self.btnDissolve, self.btnFeedJewel])]))
+    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnStore, self.btnTrade, self.btnSell, self.btnDissolve, self.btnFeedJewel, self.btnSort])]))
   
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, bridge, newStatus):
@@ -261,6 +264,7 @@ class cStorageManager(cToggler):
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
       self.btnFeedJewel.setEnabled(False)
+      self.btnSort.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_DISSOLVE:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(True)
@@ -268,6 +272,7 @@ class cStorageManager(cToggler):
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
       self.btnFeedJewel.setEnabled(False)
+      self.btnSort.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_SELL:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(False)
@@ -275,6 +280,7 @@ class cStorageManager(cToggler):
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
       self.btnFeedJewel.setEnabled(False)
+      self.btnSort.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_TRADE:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(False)
@@ -282,30 +288,31 @@ class cStorageManager(cToggler):
       self.btnTrade.setEnabled(True)
       self.btnStore.setEnabled(False)
       self.btnFeedJewel.setEnabled(False)
+      self.btnSort.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_STORE:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(False)
       self.btnSell.setEnabled(False)
       self.btnTrade.setEnabled(False)
-      self.btnStore.setEnabled(False)
       self.btnStore.setEnabled(True)
       self.btnFeedJewel.setEnabled(False)
+      self.btnSort.setEnabled(False)
     elif newStatus == P_STATUS_BUSY_FEEDJEWEL:
       self.btnRefresh.setEnabled(False)
       self.btnDissolve.setEnabled(False)
       self.btnSell.setEnabled(False)
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(False)
-      self.btnStore.setEnabled(False)
       self.btnFeedJewel.setEnabled(True)
+      self.btnSort.setEnabled(False)
     elif newStatus == P_STATUS_IDLE:
       self.btnRefresh.setEnabled(True)
       self.btnDissolve.setEnabled(True)
       self.btnSell.setEnabled(True)
-      self.btnTrade.setEnabled(True)
-      self.btnStore.setEnabled(True)
-      self.btnStore.setEnabled(True)
-      self.btnFeedJewel.setEnabled(True)
+      self.btnTrade.setEnabled(False)
+      self.btnStore.setEnabled(False)
+      self.btnFeedJewel.setEnabled(False)
+      self.btnSort.setEnabled(False)
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self, daemon : cMacrosDaemon):
