@@ -19,13 +19,12 @@
 #
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QTabWidget, QWidget, QCheckBox, QGroupBox, QGridLayout, QTextEdit
-from PyQt6.QtCore import QSettings
+from PyQt6.QtCore import QSettings, pyqtSignal
 from cSettingsProfile import cSettingsProfile
 from helpers.cPrint import cPrint
 from widgets.cOrb import cOrbSmall
 from helpers.util import *
 from widgets.cToggler import cToggler
-from cProfilasdfasdfasdf import cProfil
 import os, json, glob
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -36,28 +35,104 @@ if TYPE_CHECKING:
 #
 #                                            S E T T I N G S
 #                                  
-#   This is a static class. Don't instantiate it.
+#   This is a hybrid class.
+#   One instance lives in cMainWindow. __init__ calls cSettings.setup. Most of the time just use it as a
+#   static class, use cSettings.widget for the instance.
 #---------------------------------------------------------------------------------------------------------------
 class cSettings(cToggler):
+  widget : cSettings = None
+  sigProfileChanged = pyqtSignal(cSettingsProfile, str)
   widgetID = "settings"
-  lastProfile = ""
-  profiles : dict[str, cProfil] = {}  # This will hold all profiles
-  hiddenLayer = QVBoxLayout()
+  lastProfile : str = ""
+  multiAccount : bool = False
+  profiles : dict[str, cSettingsProfile] = {}  # This will hold all profiles
+  hiddenLayer = None # QVBoxLayout()
+  profileList = None # QComboBox()
+  profileMain = None # QComboBox()
+  profile = None
 
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def setup(cls, widget : cSettings):
+    cls.widget = widget
+    cls.hiddenLayer = QVBoxLayout()
+    cls.profileMain = QComboBox()
+    cls.profileMain.setMinimumWidth(200)
+    cls.profileList = QComboBox()
+    cls.profileList.setEditable(True)
+    cls.profileList.setMinimumWidth(200)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def addProfile(cls, name):
+    if cls.profiles.get(name): return
+    try:
+      newProfile = cSettingsProfile(name, cls.widget)
+      cls.profiles[name] = newProfile
+      cls.hiddenLayer.addWidget(newProfile)
+      cls.profileList.addItem(name)
+      cls.profileMain.addItem(name)
+      newProfile.setVisible(False)
+    except Exception as e:
+      cPrint.error(f"[cSettings] failed to load profile \"{name}\". Skipping it...", e)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def getWidget(cls) -> cSettings:
+    return cls.widget
+  
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def syncProfileLists(cls, source="settings"):
+    try:
+      cls.profileList.currentIndexChanged.disconnect()
+      cls.profileMain.currentIndexChanged.disconnect()
+    except: pass
+
+    if source=="settings":
+      name = cls.profileList.currentText()
+      idx = cls.profileList.currentIndex()
+      cls.profileMain.setCurrentIndex(idx)
+    else:
+      name = cls.profileMain.currentText()
+      idx = cls.profileMain.currentIndex()
+      cls.profileList.setCurrentIndex(idx)
+
+    cls.profileList.currentIndexChanged.connect(lambda : cls.syncProfileLists("settings"))
+    cls.profileMain.currentIndexChanged.connect(lambda : cls.syncProfileLists("main"))
+
+    if not name: return
+    if name in cls.profiles.keys():
+      cSettings.switchProfile(name)
+    else:
+      cPrint.warning(f"Trying to change to profile \"{name}\", but it was not found! Doing nothing instead...")
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def switchProfile(cls, name):
+    cls.profile   = cls.profiles[name]
+    cls.launcher  = cls.profiles[name].launcher
+    cls.xsettings = cls.profiles[name].xsettings
+    cls.plugins   = cls.profiles[name].plugins
+    cls.session   = cls.profiles[name].session
+
+    if cls.lastProfile in cls.profiles.keys():
+      cls.profiles[cls.lastProfile].setVisible(False)
+    cls.profiles[name].setVisible(True)
+    # cls.main.patch.updateTimestamp()
+    cls.widget.sigProfileChanged.emit(cls.profiles[name], cls.lastProfile)
+    cls.lastProfile = name
+
+  #----------------------------------------------------------------------------------------------------------
   def __init__(self, main : cMainWindow):
-    super().__init__("&Settings", P_ICON_GEARSTACK)
+    super().__init__("&Settings", P_ICON_GEARSTACK, main)
     self.toggler.setToolTip("Toggle Settings UI")
     self.main = main
-    # self.profiles : dict[str, cProfil] = {}  # This will hold all profiles
+    cSettings.setup(self)
 
-    # self.hiddenLayer = QVBoxLayout()
     profileLbl = QLabel("Profile: ")
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-    self.profileMain = QComboBox()
-    self.profileMain.setMinimumWidth(200)
-    self.profileList = QComboBox()
-    self.profileList.setEditable(True)
-    self.profileList.setMinimumWidth(200)
 
     self.btnNew = cOrbSmall(icon=P_ICON_DUPDOC, tooltip="Save current settings and profile")
     self.btnSave = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save current settings and profile")
@@ -66,50 +141,19 @@ class cSettings(cToggler):
 
     self.setLayout(newVLayout([self.hiddenLayer, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnNew,
                             self.btnSave, self.btnRemoveProfile, self.btnReload, "__stretch__"]), "__stretch__"]))
-
+    
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     self.load()
     self.btnSave.clicked.connect(self.save)
     self.btnRemoveProfile.clicked.connect(self.removeProfile)
     self.btnReload.clicked.connect(self.load)
-    self.profileList.currentIndexChanged.connect(lambda : self.changeProfile("settings"))
-    self.profileMain.currentIndexChanged.connect(lambda : self.changeProfile("main"))
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def switchProfile(cls, name):
-    cls.launcher  = cls.profiles[name].launcher
-    cls.xsettings = cls.profiles[name].xsettings
-    cls.plugins   = cls.profiles[name].plugins
-    cls.session   = cls.profiles[name].session
-
-  #----------------------------------------------------------------------------------------------------------
-  def setProfilesList(self, profiles):
-    try:
-      self.profileList.currentIndexChanged.disconnect()
-      self.profileMain.currentIndexChanged.disconnect()
-    except: pass
-    self.profileList.clear()
-    # self.main.launchMenu.clear()
-    # self.main.launchMenu.addSection("Switch profile to...")
-    for p in profiles:
-      if p == "": continue
-      self.profileList.addItem(p)
-      self.profileMain.addItem(p)
-      # act = QAction(f"\"{p}\" profile", self.main)
-      # self.main.launchMenu.addAction(act)
-      # self.connectAction2Profile(act, p)
-      if p not in self.profiles.keys():
-        self.profiles[p] = cSettingsProfile(p, self.main)
-        self.hiddenLayer.addWidget(self.profiles[p])
-      self.profiles[p].setVisible(False)
-      self.profiles[p].load()
-    self.profileList.currentIndexChanged.connect(lambda : self.changeProfile("settings"))
-    self.profileMain.currentIndexChanged.connect(lambda : self.changeProfile("main"))
+    self.profileList.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("settings"))
+    self.profileMain.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("main"))
 
   #----------------------------------------------------------------------------------------------------------
   def removeProfile(self):
+    print("   removeProfile removeProfile vremoveProfile NOOOOOOOOOOOOOOOOT IMPELMENETEEEEEEEEEEEED!!!")
     filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.profileList.lineEdit().text() + ".json"
     try:
       idx = self.profileList.findText(self.profileList.lineEdit().text(), QtCore.Qt.MatchFlag.MatchExactly)
@@ -121,80 +165,28 @@ class cSettings(cToggler):
       pass
 
   #----------------------------------------------------------------------------------------------------------
-  def setProfilesList(self, profiles):
-    try:
-      self.profileList.currentIndexChanged.disconnect()
-      self.profileMain.currentIndexChanged.disconnect()
-    except: pass
-    self.profileList.clear()
-    # self.main.launchMenu.clear()
-    # self.main.launchMenu.addSection("Switch profile to...")
-    for p in profiles:
-      if p == "": continue
-      self.profileList.addItem(p)
-      self.profileMain.addItem(p)
-      # act = QAction(f"\"{p}\" profile", self.main)
-      # self.main.launchMenu.addAction(act)
-      # self.connectAction2Profile(act, p)
-      if p not in self.profiles.keys():
-        self.profiles[p] = cSettingsProfile(p, self.main)
-        self.hiddenLayer.addWidget(self.profiles[p])
-      self.profiles[p].setVisible(False)
-      self.profiles[p].load()
-    self.profileList.currentIndexChanged.connect(lambda : self.changeProfile("settings"))
-    self.profileMain.currentIndexChanged.connect(lambda : self.changeProfile("main"))
-
-  # #----------------------------------------------------------------------------------------------------------
-  # def connectAction2Profile(self, a : QAction, p : str):
-  #   idx = self.profileList.findText(p)
-  #   a.triggered.connect(lambda x : self.profileList.setCurrentIndex(idx))
-
-  #----------------------------------------------------------------------------------------------------------
-  def changeProfile(self, source="settings"):
-    try:
-      self.profileList.currentIndexChanged.disconnect()
-      self.profileMain.currentIndexChanged.disconnect()
-    except: pass
-
-    if source=="settings":
-      pname = self.profileList.currentText()
-      idx = self.profileList.currentIndex()
-      self.profileMain.setCurrentIndex(idx)
-    else:
-      pname = self.profileMain.currentText()
-      idx = self.profileMain.currentIndex()
-      self.profileList.setCurrentIndex(idx)
-
-    self.profileList.currentIndexChanged.connect(lambda : self.changeProfile("settings"))
-    self.profileMain.currentIndexChanged.connect(lambda : self.changeProfile("main"))
-
-    if not pname: return
-    if pname in self.profiles.keys():
-      if self.lastProfile in self.profiles.keys():
-        self.profiles[self.lastProfile].setVisible(False)
-        self.profiles[self.lastProfile].aggregate()
-      self.profiles[pname].setVisible(True)
-      self.profiles[pname].propagate()
-      self.main.patch.updateTimestamp()
-      self.lastProfile = pname
-      self.main.sigProfileChanged.emit([self.lastProfile, pname])
-    else:
-      cPrint.error(f"{C_RED}[WARNING]</font> Trying to change to profile \"{pname}\",\
-                          but it was not found! Doing nothing instead...")
-
-  #----------------------------------------------------------------------------------------------------------
   def load(self):
-    settings = QSettings(P_DEFAULT_CONF)
-    self.lastProfile  = settings.value("lastProfile", "")    # goes in the "General" section of the settings file
-    multiAccount = settings.value("multiAccount") == "true"  # goes in the "General" section of the settings file
+    self.lastProfile  = self._state.value("lastProfile", "")         # goes in the "General" section of the settings file
+    self.multiAccount = self._state.value("multiAccount") == "true"  # goes in the "General" section of the settings file
 
-    self.main.credentials.multiAccount.setChecked(multiAccount)
+    self.main.credentials.multiAccount.setChecked(self.multiAccount)
     self.main.credentials.updateMultiAccount()
     
     try:
-      files = glob.glob(P_DEFAULT_CONFIGDIR+os.sep+"newprofile_*.conf")
-      files = [ os.path.splitext(os.path.basename(f))[0][11:].strip() for f in files ]
-      self.setProfilesList(files)
+      files = glob.glob(P_DEFAULT_CONFIGDIR+os.sep+"profile_*.conf")
+      files = [ os.path.splitext(os.path.basename(f))[0][8:].strip() for f in files ]
+      try:
+        self.profileList.currentIndexChanged.disconnect()
+        self.profileMain.currentIndexChanged.disconnect()
+      except: pass
+
+      self.profileList.clear()
+      self.profileMain.clear()
+      for p in files:
+        if p != "": cSettings.addProfile(p)
+      self.profileList.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("settings"))
+      self.profileMain.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("main"))
+
       lpIdx = self.profileList.findText(self.lastProfile)
       if lpIdx == -1:
         self.profileList.setCurrentIndex(0)
@@ -206,24 +198,20 @@ class cSettings(cToggler):
         self.profileMain.setCurrentIndex(-1)
         self.profileMain.setCurrentIndex(lpIdx)
       
-      if self.profileList.currentText(): self.main.profile().load()
-
     except Exception as e:
-      cPrint.error(f"[cSettings] error loading settings from \"{C_SILVER}{settings.fileName()}</font>\"", e)
+      cPrint.error(f"[cSettings] error loading settings from \"{C_SILVER}{self._state.fileName()}</font>\"", e)
     else:
-      cPrint.info(f"[cSettings] loaded from \"{C_SILVER}{settings.fileName()}</font>\"")
+      cPrint.info(f"[cSettings] loaded from \"{C_SILVER}{self._state.fileName()}</font>\"")
 
   #----------------------------------------------------------------------------------------------------------
   def save(self):
     try:
-      settings = QSettings(P_DEFAULT_CONF)
-      settings.setValue("multiAccount", self.main.credentials.multiAccount.isChecked()) # goes in the "General" section of the settings file
-      settings.setValue("lastProfile", self.profileList.currentText())                  # goes in the "General" section of the settings file
-      self.main.profile().save()
+      self._state.setValue("multiAccount", self.main.credentials.multiAccount.isChecked()) # goes in the "General" section of the settings file
+      self._state.setValue("lastProfile", self.profileList.currentText())                  # goes in the "General" section of the settings file
     except Exception as e:
-      cPrint.error(f"[cSettings] could not create \"{C_SILVER}{settings.fileName()}</font>\" to store settings!",e)
+      cPrint.error(f"[cSettings] could not create \"{C_SILVER}{self._state.fileName()}</font>\" to store settings!",e)
     else:
-      cPrint.info(f"[cSettings] saved in \"{C_SILVER}{settings.fileName()}</font>\"")
+      cPrint.info(f"[cSettings] saved in \"{C_SILVER}{self._state.fileName()}</font>\"")
     
   
 

@@ -25,6 +25,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QCheckBox, QListWidget, \
   QSizePolicy, QListWidgetItem
 from PyQt6.QtCore import Qt, pyqtSignal, QThreadPool, QItemSelectionModel, QSize
+from cSettings import cSettings
 from cWorlds import cWorldList
 from tServerInfo import tServerInfo
 from helpers.cPrint import cPrint
@@ -36,6 +37,7 @@ import json
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
+   from cSettings   import cSettingsProfile
 
 class cCredentials(cToggler):
   sigFetchedGLS        = pyqtSignal(bool)
@@ -99,12 +101,21 @@ class cCredentials(cToggler):
     self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
     self.sigFetchedWorld.connect(self.listWorlds.updateWorld)
     self.sigFetchedQueueInfo.connect(self.main.btnLaunch.setEnabled)
-
+    
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     self.serverInfo = tServerInfo(self.main)
+    self.listAccounts.itemSelectionChanged.connect(lambda x = cSettings: x.session.setAccounts(self.getSelectedAccounts()))
+    self.listWorlds.currentTextChanged.connect(lambda x,y = cSettings : y.session.setWorld(x))
+    cSettings.widget.sigProfileChanged.connect(self.updateProfile)
+    self.updateProfile(cSettings.profile, cSettings.lastProfile)
     cPrint.info("Launching server info collector...")
     QThreadPool.globalInstance().start(self.serverInfo)
+
+  #----------------------------------------------------------------------------------------------------------
+  def updateProfile(self, prof : cSettingsProfile, last : str):
+    if prof.session.world:    self.selectWorld(prof.session.world)
+    if prof.session.accounts: self.selectAccounts(prof.session.accounts)
 
   #----------------------------------------------------------------------------------------------------------
   def addAccount(self):
@@ -135,7 +146,7 @@ class cCredentials(cToggler):
       self.listAccounts.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
   
   #----------------------------------------------------------------------------------------------------------
-  def getSelectedAccounts(self):
+  def getSelectedAccounts(self) -> list:
     acc = []
     for i in self.listAccounts.selectedItems():
       acc.append(i.text())

@@ -25,10 +25,10 @@ from helpers.util import *
 
 class cToggler(cFloating):
 
-  def __init__(self, title : str, icon):
+  def __init__(self, title : str, icon, parent = None):
     self.toggler = cOrb(title, icon)
     self.toggler.setCheckable(True)
-    super().__init__()
+    super().__init__(parent)
 
     self.toggler.clicked.connect(self.toggle)
     self.setVisible(False)

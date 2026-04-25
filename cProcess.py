@@ -21,6 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
+from widgets.cDDOWidgets import cDDOCheck
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbCheck, cOrbSmall
 from helpers.util import *
@@ -36,7 +37,6 @@ if TYPE_CHECKING:
 
 class cProcessManager(cToggler):
   main = None      # set in attachMain
-  profile = None   # set in attachMain
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -270,7 +270,6 @@ class aProcessItem(QWidget):
   @classmethod
   def attachMain(cls, main : cMainWindow):
     cls.main = main
-    cls.profile = main.profile # pointer to the function
 
   #----------------------------------------------------------------------------------------------------------
   def __init__(self):
@@ -284,7 +283,7 @@ class aProcessItem(QWidget):
     self.username   = QLabel()
     self.logger     = None
 
-    self.btnSelect  = cOrbCheck(tooltip="Include this process in batch Save/Kill/Reload actions")
+    self.btnSelect  = cDDOCheck(tooltip="Include this process in batch Save/Kill/Reload actions")
     self.btnToggle  = cOrbSmall(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
     self.btnSave    = cOrbSmall(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
     self.btnRestore = cOrbSmall(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")

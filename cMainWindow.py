@@ -26,7 +26,6 @@ from cMacros import cMacros
 from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
-from cProfilasdfasdfasdf import cProfil
 from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cStorage import cStorageManager
@@ -117,7 +116,7 @@ class cMainWindow(QMainWindow):
     self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
 
     self.settings.initialize()
-    if self.profile() is None:
+    if cSettings.profile is None:
       self.console.abort("No valid profile loaded!")
     self.credentials.initialize()
     self.macros.initialize()
@@ -125,20 +124,6 @@ class cMainWindow(QMainWindow):
     self.patch.initialize()
     self.storageManager.initialize(self.macros.daemon)
 
-    bla = cSettingsProfile("tester", self)
-    bla.show()
-  
-
-  #----------------------------------------------------------------------------------------------------------
-  def profile(self, pname : str = None) -> cSettingsProfile:
-    if not pname: pname = self.settings.profileList.currentText() 
-    if pname in self.settings.profiles.keys():
-      return self.settings.profiles[pname]
-    if self.settings.profileList.currentText() in self.settings.profiles.keys():
-      return self.settings.profiles[self.settings.profileList.currentText()]
-    else:
-      return None
-      
   #----------------------------------------------------------------------------------------------------------
   # This will queue everything; once a user is done queuing, it will emit 
   # sigQueuedUserDone. This will cause self.launchUser() to be triggered

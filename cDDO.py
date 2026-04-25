@@ -20,6 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
+from cSettings import cSettings
 from tAuthenticator import tAuthenticator
 from helpers.XHelper import XHelper
 from helpers.cTop import cTop
@@ -52,7 +53,7 @@ class cDDO(aProcessItem):
     # cDDO freezes profile and uses that one until the process is cleaned
     # The reason is that changing profiles during runtime cannot change the already
     # running instances
-    self.frozenProfile = main.profile()
+    self.frozenProfile = cSettings.profile
     
     self.profileID.setText(self.frozenProfile.name)
     self.worldname.setText(world.name)

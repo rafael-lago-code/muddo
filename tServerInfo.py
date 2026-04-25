@@ -24,6 +24,7 @@
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable
 from PyQt6.QtCore import pyqtSignal
+from cSettings import cSettings
 from helpers.util import *
 import os, time
 import xml.dom.minidom
@@ -63,7 +64,7 @@ class tServerInfo(QRunnable):
   def run(self):
     self.status = self.P_STATUS_WORKING
 
-    gamePath = self.main.profile().launcher.gamePath()
+    gamePath = cSettings.launcher.gamePath()
     gameConfig = gamePath+os.sep+P_DDO_LAUNCHERCONFIG
     for i in range(4):
       if os.path.exists(gameConfig):

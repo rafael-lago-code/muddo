@@ -21,6 +21,8 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QAbstractItemView, QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit
 from helpers.cPrint import cPrint
 from helpers.util import *
+from cSettings import cSettings
+from cSettingsProfile import cSettingsProfile
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbSmall
 from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel, QDialog
@@ -306,10 +308,17 @@ class cMacros(cToggler):
       name = os.path.splitext(os.path.basename(n))[0]
       self.appendMacroSet(name)
     self.initialized = True
+    self.setListWidget.itemChanged.connect(lambda a, x = cSettings: x.session.setMacroSets(self.getActiveSets()))
+    cSettings.widget.sigProfileChanged.connect(self.updateProfile)
+    self.updateProfile(cSettings.profile, cSettings.lastProfile)
     if self.toActivate: 
       self.setActiveSets(self.toActivate)
       self.toActivate = None
-  
+    
+  #----------------------------------------------------------------------------------------------------------
+  def updateProfile(self, prof : cSettingsProfile, last : str):
+    if prof.session.macroSets: self.setActiveSets(prof.session.macroSets)
+
   #----------------------------------------------------------------------------------------------------------
   def updateTable(self):
     sset = self.setListWidget.selectedItems()

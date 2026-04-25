@@ -49,12 +49,12 @@ class cOrbTheme_RedMedium():
       FG_RED_PIX = getPixmap(P_FG_REDORB)
       PRESSED_RED = getPixmap(P_BG_PRESSED_REDORB)
 
-      BG_RED_PIX = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
-                                     Qt.TransformationMode.SmoothTransformation)
-      FG_RED_PIX = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
-                                     Qt.TransformationMode.SmoothTransformation)
+      BG_RED_PIX  = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
+      FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
+                                      Qt.TransformationMode.SmoothTransformation)
       PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
-                                     Qt.TransformationMode.SmoothTransformation)
+                                      Qt.TransformationMode.SmoothTransformation)
 
       self.bg = {}
       self.bg[P_STATUS_NORMAL] = BG_RED_PIX

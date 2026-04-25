@@ -30,10 +30,10 @@ class cFloating(QWidget):
   P_SIZE_W = 300
   P_SIZE_H = 200
   widgetID = "floatingWidget"
+  _state = QSettings(P_DEFAULT_CONF)
   
   def __init__(self, parent = None):
     super().__init__(parent)
-    self._windowState = QSettings(P_DEFAULT_CONF)
     self.setWindowFlags(Qt.WindowType.FramelessWindowHint | 
                         Qt.WindowType.Window | 
                         Qt.WindowType.WindowStaysOnTopHint)
@@ -55,9 +55,8 @@ class cFloating(QWidget):
     self.setGeometry(rect)
 
   def saveState(self):
-    setting = QSettings(P_DEFAULT_CONF)
-    setting.setValue(f"{self.widgetID}/geometry",  self.geometry())
-    setting.setValue(f"{self.widgetID}/visible",  self.isVisible())
+    self._state.setValue(f"{self.widgetID}/geometry",  self.geometry())
+    self._state.setValue(f"{self.widgetID}/visible",  self.isVisible())
 
   def show(self):
     if self.isVisible(): return

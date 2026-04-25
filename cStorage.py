@@ -29,6 +29,7 @@ from PyQt6.QtWidgets import QCheckBox, QDialog, QGridLayout, QLineEdit, QListWid
 from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
+from widgets.cDDOWidgets import cDDOCheck
 from helpers.util import *
 from widgets.cToggler import cToggler
 from widgets.cCheckCombo import cCheckCombo
@@ -135,11 +136,11 @@ class cStorageManager(cToggler):
 
     self.filterCB = SimpleNamespace()
     for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Sellable", "Unsellable", "Name", "Description"]:
-      setattr(self.filterCB, f.lower(), cOrbCheck(f))
-    self.filterCB.aug0  = cOrbCheck('0')
-    self.filterCB.aug1  = cOrbCheck('1')
-    self.filterCB.aug2  = cOrbCheck('2')
-    self.filterCB.aug3p = cOrbCheck('3+')
+      setattr(self.filterCB, f.lower(), cDDOCheck(f))
+    self.filterCB.aug0  = cDDOCheck('0')
+    self.filterCB.aug1  = cDDOCheck('1')
+    self.filterCB.aug2  = cDDOCheck('2')
+    self.filterCB.aug3p = cDDOCheck('3+')
 
     for cb in self.filterCB.__dict__.keys():
       getattr(self.filterCB, cb).setChecked(True)
