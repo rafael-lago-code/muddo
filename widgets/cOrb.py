@@ -59,7 +59,7 @@ class cOrbTheme_RedMedium():
       self.bg = {}
       self.bg[P_STATUS_NORMAL] = BG_RED_PIX
       self.bg[P_STATUS_HOVERD] = cEffects.tintPixmap(BG_RED_PIX,(200,10,10),1.0)
-      self.bg[P_STATUS_COVERD] = cEffects.tintPixmap(BG_RED_PIX,(40,0,160),1.0)
+      self.bg[P_STATUS_COVERD] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),0.3)
       self.bg[P_STATUS_LCLICK] = cEffects.desaturatePixmap(BG_RED_PIX,0.3)
       self.bg[P_STATUS_RCLICK] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),1.0)
       self.bg[P_STATUS_CCLICK] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),1.0)
