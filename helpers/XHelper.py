@@ -98,6 +98,29 @@ def _buildModifiers():
   mmask['mod5']  = X.Mod5Mask
   return mkeys, mmask
 
+#----------------------------------------------------------------------------------------------------------
+class windowData():
+  posx = 0
+  posy = 0
+  width = 0
+  height = 0
+  desktop = 0
+  borderless = False
+  audio = False
+  log = False
+
+  def __init__(self, info : list):
+    if len(info)>0: self.posx    = info[0]
+    if len(info)>1: self.posy    = info[1]
+    if len(info)>2: self.width   = info[2]
+    if len(info)>3: self.height  = info[3]
+    if len(info)>4: self.desktop = info[4]
+    if len(info)>5: self.borderless = info[5]
+    if len(info)>6: self.audio   = info[6]
+    if len(info)>7: self.log     = info[7]
+
+
+
 #---------------------------------------------------------------------------------------------------------------
 #
 #

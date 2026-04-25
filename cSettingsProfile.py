@@ -28,7 +28,7 @@ from widgets.cOrb import cOrbSmall
 from widgets.cDDOWidgets import cDDOCheck
 from widgets.cGridLayout import cGridLayout
 from types import SimpleNamespace
-import os, subprocess
+import os, subprocess, json
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
@@ -212,28 +212,33 @@ class dSession(dSection):
     self.world       = ""
     self.accounts    = []
     self.macroSets   = []
-    self.windowsInfo = {}
+    self.windowsPreferences = {}
     super().__init__(state)
   
   #---------------------------------------------------------------------------------------------------------------
   def setAccounts(self, selectedAccounts : list):
     self.accounts = selectedAccounts
-    self._state.setValue("session/accounts", selectedAccounts)
-  
+    self._state.setValue("session/accounts", ", ".join(selectedAccounts))
+    self._state.sync()
+
   #---------------------------------------------------------------------------------------------------------------
   def setWorld(self, world : str):
     self.world = world
     self._state.setValue("session/world", world)
-  
+    self._state.sync()
+
   #---------------------------------------------------------------------------------------------------------------
   def setMacroSets(self, macroSets : list):
     self.macroSets = macroSets
-    self._state.setValue("session/macroSets", macroSets)
+    self._state.setValue("session/macroSets", ", ".join(macroSets))
+    self._state.sync()
 
   #---------------------------------------------------------------------------------------------------------------
-  def setWindowsInfo(self, windowsInfo : dict):
-    self.windowsInfo = windowsInfo
-    self._state.setValue("session/windowsInfo", windowsInfo)
+  def setWindowsPreference(self, windowsPreferences : dict):
+    self.windowsPreferences = windowsPreferences
+    lines = [f'  {json.dumps(k)}: {json.dumps(list(v))}' for k, v in windowsPreferences.items()]
+    self._state.setValue("session/windowsPreferences", "{\n" + ",\n".join(lines) + "\n}")
+    self._state.sync()
 
 #---------------------------------------------------------------------------------------------------------------
 #
@@ -326,17 +331,6 @@ class cSettingsProfile(QWidget):
     self.plugins.btnDHExec.ctrlClicked.connect(        lambda x : self.autoDialog(self.plugins._dhExec,         "Dungeon Helper executable", False))
     self.plugins.btnMilvianSHMPath.ctrlClicked.connect(lambda x : self.autoDialog(self.plugins._milvianSHMPath, "Milvians SHM path", True))
 
-    for sname, sobj in self.sections.items():
-      for wname, wobj in sobj.items():
-        if isinstance(wobj, QLineEdit):   wobj.editingFinished.connect(self.onWidgetChanged)
-        elif isinstance(wobj, cDDOCheck): wobj.toggled.connect(self.onWidgetChanged)
-        elif isinstance(wobj, QComboBox): wobj.currentIndexChanged.connect(self.onWidgetChanged)
-
-  #----------------------------------------------------------------------------------------------------------
-  def onWidgetChanged(self, *_):
-    pass
-    # self.save()
-  
   #----------------------------------------------------------------------------------------------------------
   def load(self):
     if not self._state.allKeys():
@@ -353,9 +347,16 @@ class cSettingsProfile(QWidget):
             cPrint.warning(f"[cProfile] key \"{wname}\" not found in settings. Using default.")
 
       self.session.world       = self._state.value("session/world",       "")
-      self.session.accounts    = self._state.value("session/accounts",    [])
-      self.session.macroSets   = self._state.value("session/macroSets",   [])
-      self.session.windowsInfo = self._state.value("session/windowsInfo", {})
+      accounts  = self._state.value("session/accounts",  "")
+      macroSets = self._state.value("session/macroSets", "")
+      self.session.accounts  = [a.strip() for a in accounts.split(",")  if a.strip()] if isinstance(accounts,  str) else accounts
+      self.session.macroSets = [m.strip() for m in macroSets.split(",") if m.strip()] if isinstance(macroSets, str) else macroSets
+      raw = self._state.value("session/windowsPreferences", "{}")
+      try:
+        parsed = json.loads(raw) if isinstance(raw, str) else {}
+        self.session.windowsPreferences = {k: tuple(v) for k, v in parsed.items()}
+      except Exception:
+        self.session.windowsPreferences = {}
     except Exception as e:
       cPrint.error(f"cProfileNew.loadFromFile: error applying values from {self.confFile}", e)
     else:

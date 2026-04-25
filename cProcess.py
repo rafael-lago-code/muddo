@@ -223,7 +223,7 @@ class cProcessManager(cToggler):
     for c in orphanCandidates:
       cmdline = cTop.getCommand(c)
       cmdline = cmdline.replace("\x00", " ")
-      if cDDO.siCMD(cmdline) and not self.isPIDManaged(c):
+      if cDDO.isCMD(cmdline) and not self.isPIDManaged(c):
         orphan : cDDO = cDDO.createFromOrphan(self.main, c, cmdline)
         if orphan:
           found += 1

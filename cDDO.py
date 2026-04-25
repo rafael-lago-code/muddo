@@ -22,7 +22,7 @@ from PyQt6.QtCore import QRunnable, pyqtSignal
 from cProcess import aProcessItem
 from cSettings import cSettings
 from tAuthenticator import tAuthenticator
-from helpers.XHelper import XHelper
+from helpers.XHelper import XHelper, windowData
 from helpers.cTop import cTop
 import subprocess
 import os, time, glob, threading
@@ -130,7 +130,7 @@ class cDDO(aProcessItem):
     # )
     gamePath = self.frozenProfile.launcher.gamePath()
     gameExec = self.frozenProfile.launcher.gameExec()
-    cmd = f'{self.frozenProfile.launcher.command()} "{cDDO.gameExec}" {arg} '
+    cmd = f'cd \"{gamePath}\" ; {self.frozenProfile.launcher.command()} "{gameExec}" {arg} '
 
     logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(
@@ -236,22 +236,24 @@ class cDDO(aProcessItem):
   def saveWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
     xh = XHelper()
-    geo = xh.getWindowGeometry(int(self.winID.text()))
-    self.frozenProfile.windowsPreferences[self.username.text()] = (int(geo[0]), int(geo[1]))
-    self.frozenProfile.save()
+    winData = windowData(xh.getWindowGeometry(int(self.winID.text())))
+    prefs = self.frozenProfile.session.windowsPreferences
+    prefs[self.username.text()] = (winData.posx, winData.posy, winData.width, winData.height, 0, False, False, False)
+    self.frozenProfile.session.setWindowsPreference(prefs)
 
   #----------------------------------------------------------------------------------------------------------
   def restoreWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
-    if self.username.text() in self.frozenProfile.windowsPreferences.keys():
-      pos1, pos2 = self.frozenProfile.windowsPreferences[self.username.text()]
-    else: 
+    prefs = self.frozenProfile.session.windowsPreferences
+    if self.username.text() not in prefs:
       return
+    winData = windowData(prefs[self.username.text()])
+    # posx, posy, width, height, desktop, borderless, audio, log
     xh = XHelper()
-    xh.moveWindow(int(self.winID.text()), pos1, pos2)
+    xh.moveWindow(int(self.winID.text()), winData.posx, winData.posy)
     # xh.remapWindow(int(self.winID.text()))
     # xh.setBorderless(int(self.winID.text()))
-  
+
   #----------------------------------------------------------------------------------------------------------
   def getLogFilename(self):
     return f"{P_DEFAULT_LOGSDIR}/ddoLog_{self.username.text()}.txt"
@@ -266,13 +268,13 @@ class cDDO(aProcessItem):
     arg = arg.replace("{LANG}", "English")
     arg = arg.replace("{GLSTICKETLIFETIME}", self.auth.credentials.serverInfo.gameClientGLSTicketLifetime)
     arg = arg.replace("{SUBSCRIPTION}", self.auth.subscription)
-    if not self.frozenProfile.useHighRes.isEnabled():
+    if not self.frozenProfile.launcher.useHighRes():
       arg += " --HighResOutOfDate"
     return arg
   
   #----------------------------------------------------------------------------------------------------------
   @staticmethod
-  def siCMD(line) -> bool:
+  def isCMD(line) -> bool:
     return line.startswith(cDDO.gameExec)
   
   #----------------------------------------------------------------------------------------------------------
