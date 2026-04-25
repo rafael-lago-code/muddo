@@ -70,7 +70,7 @@ class dSection():
     # each modification saves to disk immediately
     for wname, att in allItems.items():
       wname = wname[1:]
-      if isinstance(att, QLineEdit): att.editingFinished.connect(lambda a="", w=wname: self.saveWidget(w, a))
+      if isinstance(att, QLineEdit): att.editingFinished.connect(lambda a=att, w=wname: self.saveWidget(w, a.text()))
       if isinstance(att, cDDOCheck): att.stateChanged.connect(lambda a=False, w=wname: self.saveWidget(w, a))
       if isinstance(att, QComboBox): att.currentTextChanged.connect(lambda a="", w=wname: self.saveWidget(w, a))
 
@@ -172,17 +172,12 @@ class dXSettings(dSection):
     self._logs.addItems(["Remember", "Always shown", "Never shown"])
     self._MUDDOLog.addItems(["Remember", "Always shown", "Never shown"])
     
-    self._desktop.setEnabled(False)
     self._MUDDOPos.setChecked(True)
     self._MUDDOSize.setChecked(True)
     self._MUDDOPos.setEnabled(False)
     self._MUDDOSize.setEnabled(False)
     self._MUDDODesktop.setEnabled(False)
     self._MUDDOLog.setEnabled(False)
-    self._audio.setEnabled(False)
-    self._audio.setEnabled(False)
-    self._border.setEnabled(False)
-    self._logs.setEnabled(False)
     super().__init__(state)
 
 #---------------------------------------------------------------------------------------------------------------
@@ -254,7 +249,7 @@ class cSettingsProfile(QWidget):
     super().__init__(parent)
     self.tab  = QTabWidget(self)
     self.name = name
-    self._state   = QSettings(f"muDDO/profile_{self.name}")
+    self._state   = QSettings(P_DEFAULT_CONFIGDIR + f"/profile_{self.name}.conf", QSettings.Format.IniFormat)
     self.launcher = dLauncher(self._state)
     self.xsettings= dXSettings(self._state)
     self.plugins  = dPlugins(self._state)
@@ -334,7 +329,7 @@ class cSettingsProfile(QWidget):
   #----------------------------------------------------------------------------------------------------------
   def load(self):
     if not self._state.allKeys():
-      cPrint.info(f"cProfileNew.loadFromFile: no settings found in {self.confFile}. Creating with defaults...")
+      cPrint.info(f"[cSettingsProfile] no settings found in {self.confFile}. Creating with defaults...")
       self.loadFromDefaults()
       return
 
@@ -358,7 +353,7 @@ class cSettingsProfile(QWidget):
       except Exception:
         self.session.windowsPreferences = {}
     except Exception as e:
-      cPrint.error(f"cProfileNew.loadFromFile: error applying values from {self.confFile}", e)
+      cPrint.error(f"[cSettingsProfile] error loading values from {self.confFile}", e)
     else:
       cPrint.info(f"Profile loaded from {self.confFile}")
 
@@ -378,9 +373,9 @@ class cSettingsProfile(QWidget):
       target.setText(filename)
       target.editingFinished.emit()
     else:
-      cPrint.warning(f"[cProfile] invalid {title} selected, doing nothing...")
+      cPrint.warning(f"[cSettingsProfile] invalid {title} selected, doing nothing...")
     
   #----------------------------------------------------------------------------------------------------------
   def autoDialog(self, target : QLineEdit, title, dir = True):
-    cPrint.warning(f"[cProfile] auto finding {title} is not yet implemented. Enter it manually for now.")
+    cPrint.warning(f"[cSettingsProfile] auto finding {title} is not yet implemented. Enter it manually for now.")
 

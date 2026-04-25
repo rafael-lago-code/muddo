@@ -29,7 +29,8 @@ from helpers.cPrint import cPrint
 from helpers.cDispatcher import cDispatcher
 from helpers.util import *
 if TYPE_CHECKING:
-   from cMilvian import cMilvian
+  from cSettings import cSettings
+  from cMilvian import cMilvian
 
 P_MILVIAN_DEBUG=True
 P_SHM_SIZE = 1024*1024
@@ -54,10 +55,13 @@ class cMilvian():
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def setup(cls, dhExec, milvianSHMPath):
-    cls.setBridgePath(milvianSHMPath)
-    cls.getInputActions(os.path.dirname(dhExec))
-    pass
+  def setup(cls):
+    from cSettings import cSettings
+    shmPath = cSettings.plugins.milvianSHMPath()
+    dhPath  = os.path.dirname(cSettings.plugins.dhExec())
+    cPrint.debug(f"[cMilvian.setup] shmPath={shmPath!r} dhPath={dhPath!r}")
+    cls.setBridgePath(shmPath)
+    cls.getInputActions(dhPath)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod

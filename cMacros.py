@@ -208,7 +208,7 @@ class cMacroItem(QListWidgetItem):
 #----------------------------------------------------------------------------------------------------------
 class cMacros(cToggler):
   def __init__(self, main : cMainWindow):
-    self.widgetID = "macros"
+    self.widgetID = "Macros"
     super().__init__("Macros", P_ICON_GEARHIER)
     self.toggler.setToolTip("Toggle Macros UI<br><b><i>Requires Milvian plugin installed and running in Dungeon Helper!</i></b>")
     v = QVBoxLayout()

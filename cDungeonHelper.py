@@ -19,6 +19,7 @@
 #
 from __future__ import annotations
 from cProcess import aProcessItem
+from cSettings import cSettings
 from helpers.XHelper import XHelper
 from helpers.cTop import cTop
 import subprocess
@@ -71,8 +72,7 @@ class cDungeonHelper(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    pass
-    # self.main.profile().useDungeonHelper.stateChanged.connect(lambda x: self.setEnabled(self.main.profile().useDungeonHelper.isChecked()))
+    cSettings.plugins._useDH.stateChanged.connect(lambda x: self.setEnabled(x))
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
@@ -90,7 +90,7 @@ class cDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def _launchThread(self):
     
-    cmd = f'{self.main.profile().launcher.command()} "{self.main.profile().plugins.dhExec()}"'
+    cmd = f'{cSettings.launcher.command()} "{cSettings.plugins.dhExec()}"'
 
     logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(
@@ -135,7 +135,7 @@ class cDungeonHelper(aProcessItem):
           cPrint.error(f"cDungeonHelper.watchPID: timeout error while looking for PID")
           return None
         time.sleep(0.1)
-    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    baseExec = os.path.basename(cSettings.plugins.dhExec())
     t = threading.Thread(target=_watchPIDThread, args=(self,baseExec), daemon=True)
     t.start()
 
@@ -192,7 +192,7 @@ class cDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def kill(self):
     super().kill()
-    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    baseExec = os.path.basename(cSettings.plugins.dhExec())
     cPrint.warning(f"Killing all processes containing {baseExec}...")
     cTop.killAll(baseExec)
     self.clear()

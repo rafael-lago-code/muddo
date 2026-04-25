@@ -37,6 +37,7 @@ if TYPE_CHECKING:
 
 class cProcessManager(cToggler):
   main = None      # set in attachMain
+  widgetID = "ProcessManager"
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -46,7 +47,6 @@ class cProcessManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def __init__(self):
-    self.widgetID = "processManager"
     super().__init__("Process\nManager", P_ICON_PROPERTIES)
     self.toggler.setToolTip("Toggle Process Manager and allows control of individual launched processes")
     self.items : OrderedDict[str, aProcessItem] = OrderedDict()
@@ -345,16 +345,24 @@ class aProcessItem(QWidget):
     return ""
   
   #----------------------------------------------------------------------------------------------------------
+  def logShow(self):
+    if self.logger: return
+    tabName = re.sub(r'<[^>]+>', '', self.username.text())
+    tabName = tabName.replace("[E]", "")
+    self.logger = cLog(self.getLogFilename(), tabName)
+    self.btnLog.setChecked(True)
+
+  #----------------------------------------------------------------------------------------------------------
+  def logHide(self):
+    if not self.logger: return
+    self.logger.deleteLater()
+    self.logger = None
+    self.btnLog.setChecked(False)
+
+  #----------------------------------------------------------------------------------------------------------
   def logToggle(self):
-    if self.logger:
-      self.logger.deleteLater()
-      self.logger = None
-      self.btnLog.setChecked(False)
-    else:
-      tabName = re.sub(r'<[^>]+>', '', self.username.text())
-      tabName = tabName.replace("[E]", "")
-      self.logger = cLog(self.getLogFilename(), tabName)
-      self.btnLog.setChecked(True)
+    if self.logger: self.logHide()
+    else:           self.logShow()
 
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, newStatus):

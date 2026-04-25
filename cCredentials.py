@@ -44,9 +44,9 @@ class cCredentials(cToggler):
   sigFetchedWorld      = pyqtSignal(tuple)
   sigFetchedWorldsInfo = pyqtSignal(bool)
   sigFetchedQueueInfo  = pyqtSignal(bool)
+  widgetID = "Credentials"
 
   def __init__(self, main : cMainWindow):
-    self.widgetID = "credentials"
     super().__init__("Accounts", P_ICON_LOGIN)
     self.toggler.setToolTip("Toggle Accounts UI for selecting, adding or removing accounts and for changing the game World")
 

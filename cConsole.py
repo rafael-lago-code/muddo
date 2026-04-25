@@ -27,7 +27,7 @@ import sys
 
 # -------------------------------------------------------------------------------------------------------------
 class cConsole(cToggler):
-  widgetID = "console"
+  widgetID = "Console"
   converter = None
   sigInfo  = pyqtSignal(str)
   sigDebug = pyqtSignal(str)

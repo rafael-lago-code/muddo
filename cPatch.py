@@ -38,11 +38,11 @@ if TYPE_CHECKING:
 P_TIMESTAMP_FILE=".muddo_patch_timestamp"
 
 class cPatch(cToggler):
+  widgetID = "Patcher"
   sigPatchInfo = pyqtSignal(str)
   sigPatchDone = pyqtSignal(bool)
 
   def __init__(self, main : cMainWindow):
-    self.widgetID = "patch"
     super().__init__("Patch", P_ICON_DOWNLOAD)
     self.toggler.setToolTip("Patch Client<br><b><i>Last update: NA</i></b>")
     self.main = main

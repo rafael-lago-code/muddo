@@ -18,14 +18,14 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox, QTabWidget, QWidget, QCheckBox, QGroupBox, QGridLayout, QTextEdit
-from PyQt6.QtCore import QSettings, pyqtSignal
+from PyQt6.QtWidgets import QComboBox
+from PyQt6.QtCore import pyqtSignal
 from cSettingsProfile import cSettingsProfile
 from helpers.cPrint import cPrint
 from widgets.cOrb import cOrbSmall
 from helpers.util import *
 from widgets.cToggler import cToggler
-import os, json, glob
+import os, json, glob, shutil
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 class cSettings(cToggler):
   widget : cSettings = None
   sigProfileChanged = pyqtSignal(cSettingsProfile, str)
-  widgetID = "settings"
+  widgetID = "Settings"
   lastProfile : str = ""
   multiAccount : bool = False
   profiles : dict[str, cSettingsProfile] = {}  # This will hold all profiles
@@ -135,34 +135,90 @@ class cSettings(cToggler):
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
     self.btnNew = cOrbSmall(icon=P_ICON_DUPDOC, tooltip="Save current settings and profile")
-    self.btnSave = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save current settings and profile")
+    # self.btnSave = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save current settings and profile")
     self.btnRemoveProfile = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
-    self.btnReload = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
+    # self.btnReload = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
 
     self.setLayout(newVLayout([self.hiddenLayer, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnNew,
-                            self.btnSave, self.btnRemoveProfile, self.btnReload, "__stretch__"]), "__stretch__"]))
+                               self.btnRemoveProfile, "__stretch__"]), "__stretch__"]))
     
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def _confPath(name):
+    return P_DEFAULT_CONFIGDIR + os.sep + f"profile_{name}.conf"
+
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
     self.load()
-    self.btnSave.clicked.connect(self.save)
+    self.btnNew.clicked.connect(self.duplicateProfile)
     self.btnRemoveProfile.clicked.connect(self.removeProfile)
-    self.btnReload.clicked.connect(self.load)
     self.profileList.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("settings"))
     self.profileMain.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("main"))
+    self.profileList.lineEdit().editingFinished.connect(self.renameProfile)
+
+  #----------------------------------------------------------------------------------------------------------
+  def _selectProfile(self, name):
+    try:
+      self.profileList.currentIndexChanged.disconnect()
+      self.profileMain.currentIndexChanged.disconnect()
+    except: pass
+    idx = self.profileList.findText(name)
+    self.profileList.setCurrentIndex(-1)
+    self.profileList.setCurrentIndex(idx)
+    self.profileMain.setCurrentIndex(-1)
+    self.profileMain.setCurrentIndex(idx)
+    self.profileList.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("settings"))
+    self.profileMain.currentIndexChanged.connect(lambda : cSettings.syncProfileLists("main"))
+    cSettings.switchProfile(name)
 
   #----------------------------------------------------------------------------------------------------------
   def removeProfile(self):
-    print("   removeProfile removeProfile vremoveProfile NOOOOOOOOOOOOOOOOT IMPELMENETEEEEEEEEEEEED!!!")
-    filename = P_DEFAULT_CONFIGDIR + os.sep + "profile_" + self.profileList.lineEdit().text() + ".json"
+    name = cSettings.lastProfile
+    if not name: return
     try:
-      idx = self.profileList.findText(self.profileList.lineEdit().text(), QtCore.Qt.MatchFlag.MatchExactly)
-      if idx >= 0:
-        self.profileList.removeItem(idx)
-        self.profileMain.removeItem(idx)
-      os.remove(filename)
-    except:
-      pass
+      for combo in [self.profileList, self.profileMain]:
+        idx = combo.findText(name)
+        if idx >= 0: combo.removeItem(idx)
+      cSettings.profiles.pop(name, None)
+      os.remove(self._confPath(name))
+      cPrint.info(f"[cSettings] removed profile \"{name}\"")
+    except Exception as e:
+      cPrint.error(f"[cSettings] failed to remove profile \"{name}\"", e)
+    if self.profileList.count() > 0:
+      self._selectProfile(self.profileList.itemText(0))
+
+  #----------------------------------------------------------------------------------------------------------
+  def duplicateProfile(self):
+    src = cSettings.lastProfile
+    if not src: return
+    dst = f"copyOf_{src}"
+    try:
+      shutil.copy2(self._confPath(src), self._confPath(dst))
+      cSettings.addProfile(dst)
+      self._selectProfile(dst)
+      cPrint.info(f"[cSettings] duplicated \"{src}\" → \"{dst}\"")
+    except Exception as e:
+      cPrint.error(f"[cSettings] failed to duplicate profile \"{src}\"", e)
+
+  #----------------------------------------------------------------------------------------------------------
+  def renameProfile(self):
+    newName = self.profileList.lineEdit().text().strip()
+    oldName = cSettings.lastProfile
+    if not newName or newName == oldName: return
+    if newName in cSettings.profiles: return
+    try:
+      shutil.move(self._confPath(oldName), self._confPath(newName))
+      profile = cSettings.profiles.pop(oldName)
+      cSettings.profiles[newName] = profile
+      for combo in [self.profileList, self.profileMain]:
+        idx = combo.findText(oldName)
+        if idx >= 0: combo.setItemText(idx, newName)
+      cSettings.lastProfile = newName
+      cSettings.profile.name = newName
+      cPrint.info(f"[cSettings] renamed \"{oldName}\" → \"{newName}\"")
+    except Exception as e:
+      cPrint.error(f"[cSettings] failed to rename profile \"{oldName}\"", e)
+      self.profileList.lineEdit().setText(oldName)
 
   #----------------------------------------------------------------------------------------------------------
   def load(self):

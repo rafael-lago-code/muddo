@@ -105,12 +105,7 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    from helpers.XHelper import XHelper
     from cMilvian import cMilvian
-    from helpers.cTop import cTop
-    from widgets.cLog import cLog
-    from cSettingsProfile import cSettingsProfile
-    # self.sigProfileChanged.connect(lambda : self.dh.orb.setEnabled(self.profile().useDungeonHelper.isChecked()))
 
     cProcessManager.attachMain(self)
     self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
@@ -122,6 +117,7 @@ class cMainWindow(QMainWindow):
     self.macros.initialize()
     self.news.initialize()
     self.patch.initialize()
+    cMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
 
   #----------------------------------------------------------------------------------------------------------
