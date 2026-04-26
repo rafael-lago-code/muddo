@@ -30,6 +30,7 @@ from cDungeonHelper import cDungeonHelper
 from cProcess import cProcessManager
 from cStorage import cStorageManager
 from cDDO import cDDO
+from cToolbar import cToolbar
 from widgets.cOrb import cOrb
 from helpers.util import *
 from helpers.cPrint import cPrint
@@ -43,7 +44,7 @@ class cMainWindow(QMainWindow):
 
   def __init__(self):
     super().__init__()
-    self._windowState = QSettings(P_DEFAULT_CONF)
+    self._state = QSettings(P_DEFAULT_CONF)
     self.setWindowTitle("μDDO")
     self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
@@ -64,6 +65,7 @@ class cMainWindow(QMainWindow):
     self.processManager.setVisible(False)    
     self.dh = cDungeonHelper(self)
     self.storageManager = cStorageManager(self)
+    self.toolbar = cToolbar(self)
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
@@ -77,7 +79,7 @@ class cMainWindow(QMainWindow):
     self.summary = QWidget()
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)
-    lButtonsBar = newHLayout([self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
+    lButtonsBar = newHLayout([self.toolbar.widget, self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
                               "__stretch__", self.summary, "__stretch__", 
                               self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler, 
                               self.macros.toggler, self.settings.toggler, self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
@@ -146,15 +148,15 @@ class cMainWindow(QMainWindow):
   
   #----------------------------------------------------------------------------------------------------------
   def loadState(self):
-    pos = self._windowState.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
-    size = self._windowState.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
+    pos = self._state.value(f"μDDO/pos",   QPoint(self.P_POS_X, self.P_POS_Y))
+    size = self._state.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
     self.move(pos)
     self.resize(size)
   
   #----------------------------------------------------------------------------------------------------------
   def saveState(self):
-    self._windowState.setValue(f"μDDO/pos",  self.pos())
-    self._windowState.setValue(f"μDDO/size", self.size())
+    self._state.setValue(f"μDDO/pos",  self.pos())
+    self._state.setValue(f"μDDO/size", self.size())
   
   #----------------------------------------------------------------------------------------------------------
   def close(self):

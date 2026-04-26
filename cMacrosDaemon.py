@@ -21,6 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QAction
 from cProcess import aProcessItem
+from cToolbar import cToolbar, cToolbarItem
 from widgets.cOrb import cOrb
 from helpers.XHelper import XHelper
 from helpers.util import *
@@ -156,23 +157,33 @@ class cMacrosDaemon(aProcessItem):
       cPrint.warning(" Macros Daemon already running through Milvian."+
                                 " Try right-click->kill to cleanup state.")
     else:
-      consolidatedMacros = self.main.macros.consolidateActiveMacros()
-      toolbarMacros = {k: consolidatedMacros.pop(k) for k in list(consolidatedMacros) if k.startswith('toolbar')}
-      if toolbarMacros:
-        cPrint.info(f"cMacrosDaemon found {len(toolbarMacros.keys())} toolbar macros")
-        cPrint.info(f"@TODO Implement toolbarMacros!")
-
+      consolidatedMacros, meta = self.main.macros.consolidateActiveMacros()
       parsed = self.convert(consolidatedMacros)
+
       if not parsed:
         cPrint.warning(" Attempting to launch Macros Daemon but no macros found." \
         " Make sure you have macro sets selected and that the relevant accounts are online. No shortcuts daemon" \
         " has been started")
         return
       else:
+        toolbarMacros = {k: parsed.pop(k) for k in list(parsed) if k.startswith('toolbar')}
+
         xh = XHelper()
         for hk, script in parsed.items():
           parsed[hk] = lambda x=script : xh.execute(x)
         self.process = xh.getShortcutsDaemon(parsed)
+
+        if toolbarMacros:
+          cPrint.info(f"[cMacrosDaemon] found {len(toolbarMacros.keys())} toolbar macros")
+          cToolbar.clearItems()
+          for tb, script in toolbarMacros.items():
+            m = meta.get(tb, {})
+            commands = [cmd for item in script if callable(item) for cmd in item.cmd]
+            cToolbar.addItems(cToolbarItem(tb, script,
+                                           icon=m.get('icon'),
+                                           names=m.get('names', set()),
+                                           commands=commands))
+          cToolbar.sortLayout()
     if not self.main.processManager.itemExists(self):
       self.main.processManager.addItem(self)
     self.setStatus(self.P_STATUS_RUNNING)

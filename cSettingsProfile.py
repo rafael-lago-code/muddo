@@ -18,30 +18,27 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox, QDialog, QFileDialog, QGroupBox, QLineEdit, QTabWidget, QWidget
-from PyQt6.QtCore import QSettings, pyqtSignal
-import cMilvian
+from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QTabWidget, QWidget
+from PyQt6.QtCore import QSettings
 from helpers.util import *
 from helpers.cPrint import cPrint
-from widgets.cFloating import cFloating
 from widgets.cOrb import cOrbSmall
 from widgets.cDDOWidgets import cDDOCheck
 from widgets.cGridLayout import cGridLayout
-from types import SimpleNamespace
-import os, subprocess, json
+import json
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 
-P_SERIALIZABLE = (QLineEdit, cDDOCheck, QComboBox)
-
+P_SERIALIZABLE = (QLineEdit, cDDOCheck, QComboBox, QSpinBox)
 
 #----------------------------------------------------------------------------------------------------------
 def _getValue(w):
   if isinstance(w, QLineEdit): return w.text()
   if isinstance(w, cDDOCheck): return w.isChecked()
   if isinstance(w, QComboBox): return w.currentText()
+  if isinstance(w, QSpinBox):  return w.value()
   return None
 
 #----------------------------------------------------------------------------------------------------------
@@ -53,6 +50,9 @@ def _setValue(w, v):
   elif isinstance(w, QComboBox):
     idx = w.findText(str(v))
     if idx >= 0: w.setCurrentIndex(idx)
+  elif isinstance(w, QSpinBox):
+    try: w.setValue(int(v))
+    except (TypeError, ValueError): pass
 
 #---------------------------------------------------------------------------------------------------------------
 class dSection():
@@ -66,6 +66,7 @@ class dSection():
       if isinstance(att, QLineEdit): setattr(self, wname, att.text)
       if isinstance(att, cDDOCheck): setattr(self, wname, att.isChecked)
       if isinstance(att, QComboBox): setattr(self, wname, att.currentText)
+      if isinstance(att, QSpinBox):  setattr(self, wname, att.value)
 
     # each modification saves to disk immediately
     for wname, att in allItems.items():
@@ -73,6 +74,7 @@ class dSection():
       if isinstance(att, QLineEdit): att.editingFinished.connect(lambda a=att, w=wname: self.saveWidget(w, a.text()))
       if isinstance(att, cDDOCheck): att.stateChanged.connect(lambda a=False, w=wname: self.saveWidget(w, a))
       if isinstance(att, QComboBox): att.currentTextChanged.connect(lambda a="", w=wname: self.saveWidget(w, a))
+      if isinstance(att, QSpinBox):  att.valueChanged.connect(lambda a=0, w=wname: self.saveWidget(w, a))
 
   #-------------------------------------------------------------------------------------------------------------
   def saveWidget(self, key, value):
@@ -201,6 +203,19 @@ class dPlugins(dSection):
     super().__init__(state)
 
 #---------------------------------------------------------------------------------------------------------------
+class dToolbar(dSection):
+  name = "toolbar"
+  def __init__(self, state):
+    self._macroNRows        = QSpinBox()
+    self._macroNCols        = QSpinBox()
+    self._macroNRows.setMinimum(1)
+    self._macroNCols.setMinimum(1)
+    self._macroFloating     = cDDOCheck("floating macros bar")
+    self._macroFillRowFirst = cDDOCheck("fill rows first")
+    self._macroFillMissing = cDDOCheck("fill missing/inactive macros")
+    super().__init__(state)
+
+#---------------------------------------------------------------------------------------------------------------
 class dSession(dSection):
   name = "session"
   def __init__(self, state):
@@ -254,18 +269,9 @@ class cSettingsProfile(QWidget):
     self.xsettings= dXSettings(self._state)
     self.plugins  = dPlugins(self._state)
     self.session  = dSession(self._state)
+    self.toolbar  = dToolbar(self._state)
     self.confFile = self._state.fileName()
     
-    # Collects all saveable widgets (future-proof)
-    self.sections = {}
-    for sname, sobj in self.__dict__.items():
-      if not isinstance(sobj, dSection): continue
-      self.sections[sname] = {}
-      for wname,wobj in sobj.__dict__.items():
-        if not isinstance(wobj, P_SERIALIZABLE): continue
-        name = wname[1:] if wname.startswith("_") else wname
-        self.sections[sname][name] = wobj
-
     self.initializeLayout()
     self.load()
     self.wireInternal()
@@ -301,9 +307,14 @@ class cSettingsProfile(QWidget):
     gplugins.appendRow([self.plugins._useDH,      "Dungeon Helper executable:", self.plugins._dhExec,         self.plugins.btnDHExec])
     gplugins.appendRow([self.plugins._useMilvian, "Milvian SHM Path:",          self.plugins._milvianSHMPath, self.plugins.btnMilvianSHMPath])
 
+    gtoolbar = cGridLayout()
+    gtoolbar.appendRow(["Number of Rows:", self.toolbar._macroNRows, "Number of Columns:", self.toolbar._macroNCols, self.toolbar._macroFillRowFirst])
+    gtoolbar.appendRow([">", self.toolbar._macroFloating, ">", self.toolbar._macroFillMissing])
+
     self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")
     self.tab.addTab(newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"]), "X && Audio")
     self.tab.addTab(newVFrame([gplugins, "__stretch__"]), "Plugins")
+    self.tab.addTab(newVFrame([gtoolbar, "__stretch__"]), "Toolbar")
     self.setLayout(newVLayout([self.tab]))
 
   #----------------------------------------------------------------------------------------------------------
@@ -334,14 +345,20 @@ class cSettingsProfile(QWidget):
       return
 
     try:
-      for sname, sobj in self.sections.items():
-        for wname, wobj in sobj.items():
-          if self._state.contains(f"{sname}/{wname}"):
-            _setValue(wobj, self._state.value(f"{sname}/{wname}"))
-          else:
-            cPrint.warning(f"[cProfile] key \"{wname}\" not found in settings. Using default.")
+      for key in self._state.allKeys():
+        parts = key.split("/", 1)
+        if len(parts) != 2: continue
+        sname, wname = parts
+        if sname == "session": continue
+        sobj = getattr(self, sname, None)
+        if not isinstance(sobj, dSection): continue
+        wobj = getattr(sobj, f"_{wname}", None) or getattr(sobj, wname, None)
+        if isinstance(wobj, P_SERIALIZABLE):
+          _setValue(wobj, self._state.value(key))
+        else:
+          cPrint.error(f"[cProfile] widget \"{wname}\" (section \"{sname}\") does not exist.")
 
-      self.session.world       = self._state.value("session/world",       "")
+      self.session.world = self._state.value("session/world",       "")
       accounts  = self._state.value("session/accounts",  "")
       macroSets = self._state.value("session/macroSets", "")
       self.session.accounts  = [a.strip() for a in accounts.split(",")  if a.strip()] if isinstance(accounts,  str) else accounts

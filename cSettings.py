@@ -116,6 +116,7 @@ class cSettings(cToggler):
     cls.xsettings = cls.profiles[name].xsettings
     cls.plugins   = cls.profiles[name].plugins
     cls.session   = cls.profiles[name].session
+    cls.toolbar   = cls.profiles[name].toolbar
 
     if cls.lastProfile in cls.profiles.keys():
       cls.profiles[cls.lastProfile].setVisible(False)

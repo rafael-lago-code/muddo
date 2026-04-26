@@ -117,7 +117,7 @@ class cMacroItem(QListWidgetItem):
       if row[0]:
         icon_item.setIcon(QIcon(row[0]))
       else:
-        icon_item.setIcon(QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png'))
+        icon_item.setIcon(QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png')) #TODO
       # table.setCellWidget(pos,0,QPushButton("D"))
       table.setItem(pos, 0, icon_item)
       table.setItem(pos, 1, QTableWidgetItem(str(row[1])))
@@ -145,7 +145,7 @@ class cMacroItem(QListWidgetItem):
       self.data = []
 
   #----------------------------------------------------------------------------------------------------------
-  def consolidate(self, consolidated = {}, aliases = {}) -> dict:
+  def consolidate(self, consolidated = {}, aliases = {}, meta = {}) -> tuple:
     # Macros format:
     #     [<icon>, <name>, <hotkey>, <scripts>]
     # Scripts are of the form: 
@@ -170,10 +170,14 @@ class cMacroItem(QListWidgetItem):
       validAliases[k] = a
 
     for row in self.data:
+      icon, name = row[0], row[1]
       hotkey  = row[2]
       for k,a in validAliases.items():
         hotkey = re.sub(aliasRegex(k), aliasReplace(a), hotkey)
       hotkey  = (hotkey.replace(" ", "")).lower()
+      entry = meta.setdefault(hotkey, {'icon': None, 'names': set()})
+      if icon: entry['icon'] = icon
+      if name: entry['names'].add(name)
       scripts = row[3]
       for k,a in validAliases.items():
         scripts = re.sub(aliasRegex(k), aliasReplace(a), scripts)
@@ -203,7 +207,7 @@ class cMacroItem(QListWidgetItem):
     
     # todo: check if "all" is scripting the same action; if yes, then the individual characters don't need to do it by themselves
       consolidated[hotkey] = cs
-    return consolidated
+    return consolidated, meta
 
 #----------------------------------------------------------------------------------------------------------
 class cMacros(cToggler):
@@ -488,12 +492,13 @@ class cMacros(cToggler):
 
 
   #----------------------------------------------------------------------------------------------------------
-  def consolidateActiveMacros(self) -> dict:
+  def consolidateActiveMacros(self) -> tuple:
     allActive = self.getActiveSets()
     aliases = self.getAliases()
     consolidated = {}
+    meta = {}
     for name in allActive:
-      consolidated = self.allMacroItems[name].consolidate(consolidated, aliases)
+      consolidated, meta = self.allMacroItems[name].consolidate(consolidated, aliases, meta)
 
     cPrint.debug(f"--------------------------------------------------------")
     cPrint.debug(f"  Consolidated macros (all active sets)")
@@ -502,7 +507,7 @@ class cMacros(cToggler):
       cPrint.debug(f"  {hk}:")
       for target in consolidated[hk].keys():
         cPrint.debug(f"     {target}: {consolidated[hk][target]}")
-    return consolidated
+    return consolidated, meta
 
   #----------------------------------------------------------------------------------------------------------
   def removeMacroEntry(self):
