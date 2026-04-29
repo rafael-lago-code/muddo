@@ -12,11 +12,13 @@ Currently implemented features:
  - manages all processes/instances launched, including terminate, kill, restart, etc
  - basic X window management of game windows: save position and border status and restores them
    - no Wayland support and no plans for it
- - basic pipewire support for Audio muting/unmuting (you don't want all game instances narrating the dungeon, do you?)
- - basic [Dungeon Helper](https://dungeonhelper.com/) integration (must be installed separately)
- - basic [Macro'ing](docs/Macros.md) capabilities, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
+ - basic Pipewire support for Audio muting/unmuting (you don't want all game instances narrating the dungeon, do you?)
  - patching
     - quick or full patching (calls original launcher)
+ - basic [Dungeon Helper](https://dungeonhelper.com/) integration (must be installed separately)
+ - basic [Macro'ing](docs/Macros.md) capabilities, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
+    - set to global shortcuts
+    - set to μDDO's toolbar (e.g. for occasional and not urgent macros)
  - support for inventory management via Milvian (alpha stage)
     - fetches current inventory information
     - advanced filtering in the local UI
@@ -27,6 +29,7 @@ Currently implemented features:
 ## TODO
   - update README's screenshot
   - Milvian Bridge (Macros Daemon)
+    - add number of active bridges/sets in "summary"
     - add complex macros
       - allow loops
       - allow branches
@@ -34,17 +37,12 @@ Currently implemented features:
       - allow check state (e.g. cooldown)
     - UI improvements
       - create context menu with all existing macros (so that they don't need a keyboard shortcut)
-      - side bar with buttons for selected/favourite macros
       - vizualize keyboard with its macros
   - Inventory Manager
     - enable storing list of itemIds to currently opened container/bank
     - enable trading
     - enable tracking of last known state for each container/character/bank (like Trove Plugin)
-  - XHelper
-    - save border/borderless state (currently forces borderless)
-    - allow for refreshing of OpenGL (workaround black screen bug in some WM)
   - Other 
-    - move all settings into their own submenu
     - aProcessItems refactor?
       - use a QTableWidget or QListWidget instead?
     - implement news visualization
@@ -69,3 +67,5 @@ I couldn't care less about Windows and/or MacOS (a.k.a. reciprocity 😉). You a
 - https://www.ddo.com
 - https://github.com/Lynx3d/pylotro
 - http://sny.name/LOTRO/
+- https://github.com/Maetrim/DDOBuilderV2 
+  - has pretty much all DDO icons you could ever wish for

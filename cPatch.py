@@ -70,6 +70,7 @@ class cPatch(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
+    super().initialize()
     self.btnPatch.clicked.connect(self.patch)
     self.btnPatch.ctrlClicked.connect(self.fullPatch)
     self.sigPatchInfo.connect(self.log.append)

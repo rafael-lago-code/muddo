@@ -22,14 +22,25 @@
 #
 #
 from PyQt6.QtWidgets import QGridLayout, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtGui import QPainter, QPixmap, QColor
+from PyQt6.QtCore import Qt, QPoint
 from cSettings import cSettings
 from helpers.cPrint import cPrint
 from helpers.util import *
-from widgets.cOrb import cOrbSmall
+from helpers import cEffects
+from widgets.cOrb import cOrb, cTheme_Toolbar
 from widgets.cToggler import cToggler
 
 #----------------------------------------------------------------------------------------------------------
-class cToolbarItem(cOrbSmall):
+class cToolbarItem(cOrb):
+  theme = None
+
+  @classmethod
+  def getTheme(cls):
+    if cls.theme is None:
+      cls.theme = cTheme_Toolbar()
+    return cls.theme
+
   def __init__(self, toolbar, script, enabled=True, icon=None, names=frozenset(), commands=[]):
     title = toolbar.replace("_","").replace("toolbar", "")
     resolved_icon = QIcon(icon) if icon else QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png')
@@ -43,6 +54,34 @@ class cToolbarItem(cOrbSmall):
   
   def index(self):
     return int(self.text())
+
+  def paintText(self, painter):
+    if not self.text(): return
+    if not self.textRendered:
+      self.textRendered = QPixmap(self.size())
+      self.textRendered.fill(Qt.GlobalColor.transparent)
+      textPainter = QPainter(self.textRendered)
+
+      text = self.text().replace("&", "")
+      textPainter.setFont(self.font())
+      aFlags = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTop
+      textRect = self.rect().adjusted(4, 4, -4, -4)
+
+      outlineColour = QColor(50, 50, 50, 75)
+      textPainter.setPen(outlineColour)
+      for dx in range(-2, 3):
+        for dy in range(-2, 3):
+          textPainter.drawText(
+            textRect.adjusted(dx, dy, dx, dy), aFlags, text)
+
+      textPainter.setPen(QColor(0, 0, 0, 200))
+      textPainter.drawText(textRect.translated(QPoint(1, 1)), aFlags, text)
+      textPainter.setPen(QColor(255, 255, 255))
+      textPainter.drawText(textRect, aFlags, text)
+      textPainter.end()
+
+    textEffect = self.theme.textEffect.get(self._current_state, cEffects.cNone())
+    painter.drawPixmap(self.rect(), textEffect.apply(self.textRendered))
 
 
 #---------------------------------------------------------------------------------------------------------------
@@ -86,11 +125,6 @@ class cToolbar(QWidget):
     cls.items.clear()
   
   #----------------------------------------------------------------------------------------------------------
-  def initialize(self):
-    pass
-
-
-  #----------------------------------------------------------------------------------------------------------
   @classmethod
   def sortLayout(cls):
     cls.clearLayout()
@@ -102,7 +136,7 @@ class cToolbar(QWidget):
 
     if macroFillMissing and cls.items:
       indexed = {item.index(): item for item in cls.items}
-      slots = [indexed.get(i) or cToolbarItem(str(i), {}, enabled=False)
+      slots = [indexed.get(i) or cToolbarItem(str(i), {}, icon=QIcon(), enabled=False)
                for i in range(1, max(indexed) + 1)]
     else:
       slots = cls.items

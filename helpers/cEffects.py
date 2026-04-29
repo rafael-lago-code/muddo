@@ -17,9 +17,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtGui import QPainter, QPixmap, QColor, qGray, QImage
-from PyQt6.QtWidgets import QWidget, QGraphicsBlurEffect
-from PyQt6.QtCore import Qt, QRect
+import math
+from PyQt6.QtGui import QPixmap, QColor, qGray, QImage
+from PyQt6.QtCore import Qt
 from helpers.util import *
 
 P_EFFECT_NONE = 0
@@ -30,6 +30,7 @@ P_EFFECT_DSAT = 4
 P_EFFECT_SEPI = 5
 P_EFFECT_INVT = 6
 P_EFFECT_OPAC = 7
+P_EFFECT_BCON = 8
 
 class cNone():
   def __init__(self, pre=None):
@@ -42,141 +43,157 @@ class cNone():
 class cGreyscale(cNone):
   def __init__(self, pre=cNone()):
     self.pre = pre
-  
+
   def apply(self, target):
-    target = self.pre.apply(target)
-    if isinstance(target,str):     return greyscalePixmap(getPixmap(target))
-    if isinstance(target,QPixmap): return greyscalePixmap(target)
-    if isinstance(target,QImage):  return greyscaleImage(target)
+    return greyscale(self.pre.apply(target))
 
 class cDesaturate(cNone):
   def __init__(self, amount, pre=cNone()):
     self.pre = pre
     self.amount = amount
-  
+
   def apply(self, target):
-    target = self.pre.apply(target)
-    if isinstance(target,QPixmap): return desaturatePixmap(target, self.amount)
-    if isinstance(target,QImage):  return desaturateImage(target, self.amount)
+    return desaturate(self.pre.apply(target), self.amount)
 
 class cTint(cNone):
-  def __init__(self, tintColour : QColor, strength : float, pre=cNone()):
+  def __init__(self, tintColour: QColor, strength: float, pre=cNone()):
     self.pre = pre
     self.tintColour = tintColour
     self.strength = strength
-  
+
   def apply(self, target):
-    target = self.pre.apply(target)
-    if isinstance(target,QPixmap): return tintPixmap(target, self.tintColour, self.strength)
-    if isinstance(target,QImage):  return tintImage(target, self.tintColour, self.strength)
+    return tint(self.pre.apply(target), self.tintColour, self.strength)
 
 class cInvert(cNone):
   def __init__(self, pre=cNone()):
     self.pre = pre
-  
+
   def apply(self, target):
-    target = self.pre.apply(target)
-    if isinstance(target,QPixmap): return invertPixmap(target)
-    if isinstance(target,QImage):  return invertImage(target)
+    return invert(self.pre.apply(target))
+
+class cBlur(cNone):
+  def __init__(self, radius: float, pre=cNone()):
+    self.pre = pre
+    self.radius = radius
+
+  def apply(self, target):
+    return blur(self.pre.apply(target), self.radius)
 
 class cOpacity(cNone):
-  def __init__(self, amount, pre = cNone):
+  def __init__(self, amount, pre=cNone()):
     self.amount = amount
     self.pre = pre
-  
+
   def apply(self, target):
-    target = self.pre.apply(target)
-    if isinstance(target,QPixmap): return opacityPixmap(target, self.amount)
-    if isinstance(target,QImage):  return opacityImage(target, self.amount)
+    return opacity(self.pre.apply(target), self.amount)
 
-def greyscaleImage(image : QImage) -> QImage:
-  return desaturateImage(image, 1.0)
+class cBrightContrast(cNone):
+  def __init__(self, brightness: float = 0.0, contrast: float = 1.0, pre=cNone()):
+    self.pre = pre
+    self.brightness = brightness
+    self.contrast = contrast
 
-def desaturateImage(image : QImage, amount : float) -> QImage:
-  for x in range(image.width()):
-    for y in range(image.height()):
-      color = image.pixelColor(x, y)
+  def apply(self, target):
+    return brightContrast(self.pre.apply(target), self.brightness, self.contrast)
+
+# -----------------------------------------------------------------------------
+
+def greyscale(target):
+  return desaturate(target, 1.0)
+
+def desaturate(target, amount: float):
+  if isinstance(target, QPixmap):
+    return QPixmap.fromImage(desaturate(target.toImage(), amount))
+  for x in range(target.width()):
+    for y in range(target.height()):
+      color = target.pixelColor(x, y)
       gray = qGray(color.red(), color.green(), color.blue())
       r = int(color.red()   * (1 - amount) + gray * amount)
       g = int(color.green() * (1 - amount) + gray * amount)
       b = int(color.blue()  * (1 - amount) + gray * amount)
-      image.setPixelColor(x, y, QColor(r,g,b,color.alpha()))
-  return image
+      target.setPixelColor(x, y, QColor(r, g, b, color.alpha()))
+  return target
 
-def tintImage(image : QImage, tintColour, strength : float) -> QImage:
-  if isinstance(tintColour, QColor): tintColour = (tintColour.red(), tintColour.green(), tintColour.blue())
-  for x in range(image.width()):
-    for y in range(image.height()):
-      color = image.pixelColor(x, y)
+def tint(target, tintColour, strength: float):
+  if isinstance(target, QPixmap):
+    return QPixmap.fromImage(tint(target.toImage(), tintColour, strength))
+  if isinstance(tintColour, QColor):
+    tintColour = (tintColour.red(), tintColour.green(), tintColour.blue())
+  for x in range(target.width()):
+    for y in range(target.height()):
+      color = target.pixelColor(x, y)
       r = int(color.red()   * (1 - strength) + tintColour[0] * strength)
       g = int(color.green() * (1 - strength) + tintColour[1] * strength)
       b = int(color.blue()  * (1 - strength) + tintColour[2] * strength)
-      image.setPixelColor(x, y, QColor(r,g,b,color.alpha()))
-  return image
+      target.setPixelColor(x, y, QColor(r, g, b, color.alpha()))
+  return target
 
-def invertImage(image : QImage) -> QImage:
-  image.invertPixels(QImage.InvertMode.InvertRgb)
-  return image
+def invert(target):
+  if isinstance(target, QPixmap):
+    return QPixmap.fromImage(invert(target.toImage()))
+  target.invertPixels(QImage.InvertMode.InvertRgb)
+  return target
 
-def opacityImage(image : QImage, opacity : float) -> QImage:
-  for x in range(image.width()):
-    for y in range(image.height()):
-      color = image.pixelColor(x, y)
-      color.setAlpha(int(color.alpha() * opacity))
-      image.setPixelColor(x, y, color)
-  return image
+def opacity(target, amount: float):
+  if isinstance(target, QPixmap):
+    return QPixmap.fromImage(opacity(target.toImage(), amount))
+  for x in range(target.width()):
+    for y in range(target.height()):
+      color = target.pixelColor(x, y)
+      color.setAlpha(int(color.alpha() * amount))
+      target.setPixelColor(x, y, color)
+  return target
 
-def blurImage(image : QImage, radius : float) -> QImage:
-  pass
-  # temp_widget = QWidget()
-  # temp_widget.setFixedSize(image.size())
-  
-  # blur_effect = QGraphicsBlurEffect()
-  # blur_effect.setBlurRadius(radius)
-  # temp_widget.setGraphicsEffect(blur_effect)
-  
-  # result = QPixmap(pixmap.size())
-  # result.fill(Qt.GlobalColor.transparent)
-  
-  # painter = QPainter(result)
-  # blur_effect.draw(painter)
-  # painter.drawPixmap(QRect(pixmap.size().height(), pixmap.size().width()), pixmap)
-  # painter.end()
-  
-  # return result
+def blur(target, radius: float):
+  if isinstance(target, QPixmap):
+    return QPixmap.fromImage(blur(target.toImage(), radius))
+  r = max(1, int(round(radius)))
+  sigma = radius / 2.0
+  k = 2 * r + 1
+  raw = [math.exp(-(i - r) ** 2 / (2 * sigma * sigma)) for i in range(k)]
+  total = sum(raw)
+  kernel = [v / total for v in raw]
 
-def greyscalePixmap(pixmap : QPixmap) -> QPixmap:
-  return QPixmap.fromImage(greyscaleImage(pixmap.toImage()))
+  target = target.convertToFormat(QImage.Format.Format_ARGB32)
+  w, h = target.width(), target.height()
 
-def desaturatePixmap(pixmap : QPixmap, amount : float) -> QPixmap:
-  return QPixmap.fromImage(desaturateImage(pixmap.toImage(), amount))
+  tmp = QImage(w, h, QImage.Format.Format_ARGB32)
+  for y in range(h):
+    for x in range(w):
+      rv = gv = bv = av = 0.0
+      for i, kv in enumerate(kernel):
+        sx = max(0, min(w - 1, x + i - r))
+        c = target.pixelColor(sx, y)
+        rv += c.red()   * kv
+        gv += c.green() * kv
+        bv += c.blue()  * kv
+        av += c.alpha() * kv
+      tmp.setPixelColor(x, y, QColor(int(rv), int(gv), int(bv), int(av)))
 
-def tintPixmap(pixmap : QPixmap, tintColour : QColor, strength : float) -> QPixmap:
-  return QPixmap.fromImage(tintImage(pixmap.toImage(), tintColour, strength))
+  result = QImage(w, h, QImage.Format.Format_ARGB32)
+  for y in range(h):
+    for x in range(w):
+      rv = gv = bv = av = 0.0
+      for i, kv in enumerate(kernel):
+        sy = max(0, min(h - 1, y + i - r))
+        c = tmp.pixelColor(x, sy)
+        rv += c.red()   * kv
+        gv += c.green() * kv
+        bv += c.blue()  * kv
+        av += c.alpha() * kv
+      result.setPixelColor(x, y, QColor(int(rv), int(gv), int(bv), int(av)))
 
-def invertPixmap(pixmap : QPixmap) -> QPixmap:
-  return QPixmap.fromImage(invertImage(pixmap.toImage()))
+  return result
 
-def opacityPixmap(pixmap : QPixmap, opacity : float) -> QPixmap:
-  return QPixmap.fromImage(opacityImage(pixmap.toImage(), opacity))
-
-def blurPixmap(pixmap : QPixmap, radius : float) -> QPixmap:
-  return QPixmap.fromImage(blurImage(pixmap.toImage(), radius))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+def brightContrast(target, brightness: float, contrast: float):
+  if isinstance(target, QPixmap):
+    return QPixmap.fromImage(brightContrast(target.toImage(), brightness, contrast))
+  b = int(brightness * 255)
+  for x in range(target.width()):
+    for y in range(target.height()):
+      color = target.pixelColor(x, y)
+      r  = max(0, min(255, int((color.red()   - 128) * contrast + 128 + b)))
+      g  = max(0, min(255, int((color.green() - 128) * contrast + 128 + b)))
+      bl = max(0, min(255, int((color.blue()  - 128) * contrast + 128 + b)))
+      target.setPixelColor(x, y, QColor(r, g, bl, color.alpha()))
+  return target

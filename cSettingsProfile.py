@@ -23,7 +23,7 @@ from PyQt6.QtCore import QSettings
 from helpers.util import *
 from helpers.cPrint import cPrint
 from widgets.cOrb import cOrbSmall
-from widgets.cDDOWidgets import cDDOCheck
+from widgets.cOrb import cBoxCheck
 from widgets.cGridLayout import cGridLayout
 import json
 from typing import TYPE_CHECKING
@@ -31,12 +31,12 @@ if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
 
-P_SERIALIZABLE = (QLineEdit, cDDOCheck, QComboBox, QSpinBox)
+P_SERIALIZABLE = (QLineEdit, cBoxCheck, QComboBox, QSpinBox)
 
 #----------------------------------------------------------------------------------------------------------
 def _getValue(w):
   if isinstance(w, QLineEdit): return w.text()
-  if isinstance(w, cDDOCheck): return w.isChecked()
+  if isinstance(w, cBoxCheck): return w.isChecked()
   if isinstance(w, QComboBox): return w.currentText()
   if isinstance(w, QSpinBox):  return w.value()
   return None
@@ -44,7 +44,7 @@ def _getValue(w):
 #----------------------------------------------------------------------------------------------------------
 def _setValue(w, v):
   if isinstance(w, QLineEdit):   w.setText(str(v) if v is not None else "")
-  elif isinstance(w, cDDOCheck):
+  elif isinstance(w, cBoxCheck):
     if isinstance(v, str): w.setChecked(v.lower() == "true")
     else: w.setChecked(bool(v))
   elif isinstance(w, QComboBox):
@@ -64,7 +64,7 @@ class dSection():
     for wname, att in allItems.items():
       wname = wname[1:]
       if isinstance(att, QLineEdit): setattr(self, wname, att.text)
-      if isinstance(att, cDDOCheck): setattr(self, wname, att.isChecked)
+      if isinstance(att, cBoxCheck): setattr(self, wname, att.isChecked)
       if isinstance(att, QComboBox): setattr(self, wname, att.currentText)
       if isinstance(att, QSpinBox):  setattr(self, wname, att.value)
 
@@ -72,7 +72,7 @@ class dSection():
     for wname, att in allItems.items():
       wname = wname[1:]
       if isinstance(att, QLineEdit): att.editingFinished.connect(lambda a=att, w=wname: self.saveWidget(w, a.text()))
-      if isinstance(att, cDDOCheck): att.stateChanged.connect(lambda a=False, w=wname: self.saveWidget(w, a))
+      if isinstance(att, cBoxCheck): att.stateChanged.connect(lambda a=False, w=wname: self.saveWidget(w, a))
       if isinstance(att, QComboBox): att.currentTextChanged.connect(lambda a="", w=wname: self.saveWidget(w, a))
       if isinstance(att, QSpinBox):  att.valueChanged.connect(lambda a=0, w=wname: self.saveWidget(w, a))
 
@@ -96,8 +96,8 @@ class dLauncher(dSection):
     self._winePrefix    = QLineEdit()  # not implemented
     self._backend       = QComboBox()  # not implemented
     self._language      = QComboBox()  # not implemented
-    self._useHighRes    = cDDOCheck("use HighRes")
-    self._useDebug      = cDDOCheck("enable debug")
+    self._useHighRes    = cBoxCheck("use HighRes")
+    self._useDebug      = cBoxCheck("enable debug")
     self._backend.addItems(["Steam Proton", "Wine64", "Wine32"])
     self._language.addItems(["English", "German", "French"])
     self.btnProtonExec = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Select Steam Proton executable.<br><b>Ctrl+Click</b> for attempting to automatically find it.")
@@ -158,13 +158,13 @@ class dLauncher(dSection):
 class dXSettings(dSection):
   name = "xsettings"
   def __init__(self, state):
-    self._position    = cDDOCheck("Position")                        
-    self._size        = cDDOCheck("Size")
-    self._desktop     = cDDOCheck("Virtual desktop")               
-    self._blackscreenFix = cDDOCheck("Fix blackscreen at startup") 
-    self._MUDDOPos    = cDDOCheck("Position")                      
-    self._MUDDOSize   = cDDOCheck("Size")                          
-    self._MUDDODesktop= cDDOCheck("Virtual desktop")               
+    self._position    = cBoxCheck("Position")                        
+    self._size        = cBoxCheck("Size")
+    self._desktop     = cBoxCheck("Virtual desktop")               
+    self._blackscreenFix = cBoxCheck("Fix blackscreen at startup") 
+    self._MUDDOPos    = cBoxCheck("Position")                      
+    self._MUDDOSize   = cBoxCheck("Size")                          
+    self._MUDDODesktop= cBoxCheck("Virtual desktop")               
     self._audio       = QComboBox()
     self._border      = QComboBox()
     self._logs        = QComboBox()
@@ -188,8 +188,8 @@ class dPlugins(dSection):
   def __init__(self, state):
     self._dhExec           = QLineEdit()
     self._milvianSHMPath   = QLineEdit()                          # not implemented
-    self._useDH            = cDDOCheck("enable Dungeon Helper")
-    self._useMilvian       = cDDOCheck("enable Milvian Bridge")   # not implemented
+    self._useDH            = cBoxCheck("enable Dungeon Helper")
+    self._useMilvian       = cBoxCheck("enable Milvian Bridge")   # not implemented
     self.btnDHExec         = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select DungeonHelper executable")
     self.btnMilvianSHMPath = cOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually set path for Milvian Bridges")
 
@@ -210,9 +210,9 @@ class dToolbar(dSection):
     self._macroNCols        = QSpinBox()
     self._macroNRows.setMinimum(1)
     self._macroNCols.setMinimum(1)
-    self._macroFloating     = cDDOCheck("floating macros bar")
-    self._macroFillRowFirst = cDDOCheck("fill rows first")
-    self._macroFillMissing = cDDOCheck("fill missing/inactive macros")
+    self._macroFloating     = cBoxCheck("floating macros bar")
+    self._macroFillRowFirst = cBoxCheck("fill rows first")
+    self._macroFillMissing = cBoxCheck("fill missing/inactive macros")
     super().__init__(state)
 
 #---------------------------------------------------------------------------------------------------------------
@@ -315,6 +315,22 @@ class cSettingsProfile(QWidget):
     self.tab.addTab(newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"]), "X && Audio")
     self.tab.addTab(newVFrame([gplugins, "__stretch__"]), "Plugins")
     self.tab.addTab(newVFrame([gtoolbar, "__stretch__"]), "Toolbar")
+    self.tab.setStyleSheet(f"""
+      QTabWidget::pane {{ background: rgba(40, 40, 40, 120); border: none; }}
+      QTabBar::tab {{
+          background: rgba(40, 40, 40, 120);                
+          color: white;
+          padding: 4px 8px;
+          border: none;
+      }}
+      QTabBar::tab:selected {{
+          background: rgba(84, 19, 8, 220);
+      }}
+      QTabBar::tab:hover:!selected {{
+          background: rgba(80, 80, 80, 180);
+      }}
+    """)
+    # setBGColour(self.table.viewport(), QColor(0, 0, 0, 210))
     self.setLayout(newVLayout([self.tab]))
 
   #----------------------------------------------------------------------------------------------------------

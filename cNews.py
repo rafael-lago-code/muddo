@@ -35,6 +35,7 @@ class cNews(cToggler):
     self.context = QTextEdit()
     self.context.setReadOnly(True)
     self.context.setAcceptRichText(True)
+    setBGColour(self.context.viewport(), QColor(32, 32, 32, 250))
     self.context.setText("TODO")
 
     v = QVBoxLayout()
@@ -43,7 +44,7 @@ class cNews(cToggler):
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    pass
+    super().initialize()
 
 
 

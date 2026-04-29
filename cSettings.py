@@ -150,6 +150,7 @@ class cSettings(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
+    super().initialize()
     self.load()
     self.btnNew.clicked.connect(self.duplicateProfile)
     self.btnRemoveProfile.clicked.connect(self.removeProfile)

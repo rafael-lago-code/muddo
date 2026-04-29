@@ -104,6 +104,7 @@ class cCredentials(cToggler):
     
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
+    super().initialize()
     self.serverInfo = tServerInfo(self.main)
     self.listAccounts.itemSelectionChanged.connect(lambda x = cSettings: x.session.setAccounts(self.getSelectedAccounts()))
     self.listWorlds.currentTextChanged.connect(lambda x,y = cSettings : y.session.setWorld(x))

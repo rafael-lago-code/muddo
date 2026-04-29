@@ -18,19 +18,21 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QAbstractItemView, QTextEdit, QVBoxLayout, QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit
+from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
+                              QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit,
+                              QTableWidget, QTableWidgetItem, QLabel, QDialog)
 from helpers.cPrint import cPrint
 from helpers.util import *
 from cSettings import cSettings
 from cSettingsProfile import cSettingsProfile
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbSmall
-from PyQt6.QtWidgets import QTableWidget, QTableWidgetItem, QLabel, QDialog
 from PyQt6.QtGui import QIcon
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QSize, Qt
 import glob, re, os
 from typing import TYPE_CHECKING
 from cMacrosDaemon import cMacrosDaemon
+from widgets.cIconSelectDialog import cIconSelectDialog
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
@@ -84,6 +86,26 @@ def expandBraces(text: str) -> str:
     return ' '.join(prefix + item for item in _expandList('{' + body + '}'))
   return re.sub(r'([^\s{}]*)\{([^}]+)\}', repl, text)
 
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#
+#                                            T A B L E   R O W
+#
+#---------------------------------------------------------------------------------------------------------------
+class cTableRow(QTableWidgetItem):
+  def __init__(self, text=None):
+    super().__init__(text)
+    self.setFlags(Qt.ItemFlag.ItemIsDragEnabled)
+    self.setFlags(~Qt.ItemFlag.ItemIsDropEnabled)
+
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#
+#                                            M A C R O   I T E M
+#
+#---------------------------------------------------------------------------------------------------------------
 class cMacroItem(QListWidgetItem):
   def __init__(self, parent : cMacros, name : str):
     super().__init__()
@@ -94,18 +116,22 @@ class cMacroItem(QListWidgetItem):
     self.data = [["", "", "", ""]]
 
   #----------------------------------------------------------------------------------------------------------
-  def setActive(self, val : bool ):
+  def setActive(self, val : bool):
     if val:
       self.setCheckState(Qt.CheckState.Checked)
     else:
       self.setCheckState(Qt.CheckState.Unchecked)
-    
+
   #----------------------------------------------------------------------------------------------------------
   def sync(self, row, column):
     while row >= len(self.data):
       self.data.append([None, None, None, None])
-    modifiedCell = self.parent.table.item(row,column)
-    self.data[row][column] = modifiedCell.text()
+    modifiedCell = self.parent.table.item(row, column)
+    if modifiedCell is None: return
+    if column == 0:
+      self.data[row][0] = modifiedCell.data(Qt.ItemDataRole.UserRole) or ""
+    else:
+      self.data[row][column] = modifiedCell.text()
 
   #----------------------------------------------------------------------------------------------------------
   def display(self):
@@ -113,16 +139,17 @@ class cMacroItem(QListWidgetItem):
     for row in self.data:
       pos = table.rowCount()
       table.insertRow(pos)
-      icon_item = QTableWidgetItem()
+      icon_item = cTableRow()
+      icon_item.setData(Qt.ItemDataRole.UserRole, row[0] or "")
+      icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
       if row[0]:
         icon_item.setIcon(QIcon(row[0]))
       else:
         icon_item.setIcon(QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png')) #TODO
-      # table.setCellWidget(pos,0,QPushButton("D"))
       table.setItem(pos, 0, icon_item)
-      table.setItem(pos, 1, QTableWidgetItem(str(row[1])))
-      table.setItem(pos, 2, QTableWidgetItem(str(row[2])))
-      table.setItem(pos, 3, QTableWidgetItem(str(row[3])))
+      table.setItem(pos, 1, cTableRow(str(row[1])))
+      table.setItem(pos, 2, cTableRow(str(row[2])))
+      table.setItem(pos, 3, cTableRow(str(row[3])))
 
   #----------------------------------------------------------------------------------------------------------
   def save(self):
@@ -148,8 +175,8 @@ class cMacroItem(QListWidgetItem):
   def consolidate(self, consolidated = {}, aliases = {}, meta = {}) -> tuple:
     # Macros format:
     #     [<icon>, <name>, <hotkey>, <scripts>]
-    # Scripts are of the form: 
-    #     <script1>; <script2>; <script3>; 
+    # Scripts are of the form:
+    #     <script1>; <script2>; <script3>;
     # Each script should be formatted as:
     #     <target1>, <target2>, <target3>: <action1>, <action2>, <action3>
     # If <target> is missing, "self" is assumed (useful for macros)
@@ -198,18 +225,24 @@ class cMacroItem(QListWidgetItem):
           targets = [t.strip().lower() for t in targets]
         actions = s[0].split()
         actions = [a.strip() for a in actions]
-        
+
         for t in targets:
           if t in cs.keys():
             cs[t] += actions
           else:
             cs[t] = actions
-    
+
     # todo: check if "all" is scripting the same action; if yes, then the individual characters don't need to do it by themselves
       consolidated[hotkey] = cs
     return consolidated, meta
 
-#----------------------------------------------------------------------------------------------------------
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#
+#                                                M A C R O S
+#
+#---------------------------------------------------------------------------------------------------------------
 class cMacros(cToggler):
   def __init__(self, main : cMainWindow):
     self.widgetID = "Macros"
@@ -221,31 +254,27 @@ class cMacros(cToggler):
     self.main = main
 
     self.daemon = cMacrosDaemon(self.main)
-    
+
     self.btnNewSet      = cOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
-    self.btnSaveSet     = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected set to a file\nCtrl+Left click to save all")
     self.btnDeleteSet   = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
-    self.btnReloadSet   = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected set from file\nCtrl+Left click to reload all")
     self.btnAddEntry    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new macro to the currently selected set")
     self.btnRemoveEntry = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected macro from the currently selected set")
+    self.btnEditIcon    = cOrbSmall(icon=P_ICON_IMAGE, tooltip="Set icon for the selected macro")
     self.btnHelp        = cOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how macros work here (lol)")
 
     self.btnAddAlias    = cOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
     self.btnRemoveAlias = cOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
-    self.btnSaveAlias   = cOrbSmall(icon=P_ICON_SAVEALL, tooltip="Save all aliases to file")
-    self.btnReloadAlias = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload all aliases from file")
-    
+
     self.btnNewSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
-    self.btnSaveSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnDeleteSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
-    self.btnReloadSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
-    
+
     self.setListWidget = QListWidget()
     self.setListWidget.setWordWrap(True)
     self.setListWidget.setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
+
     self.aliasTable = QTableWidget(0, 2)
     self.aliasTable.setHorizontalHeaderLabels(["Alias", "Translation"])
-    self.aliasTable.setColumnWidth(40, 40)
+    self.aliasTable.setColumnWidth(0, 120)
     self.aliasTable.horizontalHeader().setStretchLastSection(True)
     self.aliasTable.setSortingEnabled(True)
     self.aliasTable.setWordWrap(True)
@@ -257,31 +286,41 @@ class cMacros(cToggler):
 
     self.allMacroItems = {}
     self.activeSetLabel = QLabel("Macros in selected set:")
+    self._loading = False
+    self._aliasLoading = False
+
     self.table = QTableWidget(0, 4)
+    self.table.setIconSize(QSize(32, 32))
     self.table.setHorizontalHeaderLabels(["Icon", "Name", "Trigger", "Action"])
-    self.table.setColumnWidth(0, 40)
+    self.table.setColumnWidth(0, 32)
     self.table.horizontalHeader().setStretchLastSection(True)
     self.table.verticalHeader().setVisible(False)
     self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    self.table.setAcceptDrops(True)
+    self.table.setDragEnabled(True)
+    self.table.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+    self.table.setDropIndicatorShown(True)
+    self.table.setDragDropOverwriteMode(False)
 
     _vsplitter = QSplitter(Qt.Orientation.Vertical)
     _bottomSplitter = QSplitter()
-    _bottomSplitter.addWidget(newVFrame([ "Sets:", 
+    _bottomSplitter.addWidget(newVFrame([ "Sets:",
                               newHLayout([self.setListWidget,
-                                newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, 
-                                  self.btnSaveSet, self.btnReloadSet, self.btnHelp, "__stretch__"])])]))
-    _bottomSplitter.addWidget(newVFrame([self.activeSetLabel, 
-                         newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry, 
-                                     self.btnRemoveEntry, "__stretch__"])])]))
+                                newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, self.btnHelp, "__stretch__"])])]))
+    _bottomSplitter.addWidget(newVFrame([self.activeSetLabel,
+                         newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry,
+                                     self.btnRemoveEntry, self.btnEditIcon, "__stretch__"])])]))
+
     _bottomSplitter.setSizes([100,400])
 
-    _vsplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]), 
-                           newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias,
-                                       self.btnSaveAlias, self.btnReloadAlias,"__stretch__"])]))
+    _vsplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]),
+                           newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias, "__stretch__"])]))
     _vsplitter.addWidget(_bottomSplitter)
     _vsplitter.setSizes([100,300])
 
     self.setLayout(newVLayout([_vsplitter]))
+
+    self.table.dropEvent = lambda x : self._saveWhenDropped(x)      
 
     self.btnNewSet.clicked.connect(self.newMacroSet)
     self.btnDeleteSet.clicked.connect(self.deleteMacroSet)
@@ -289,24 +328,32 @@ class cMacros(cToggler):
     self.setListWidget.itemChanged.connect(self.renameMacroSetFile)
     self.setListWidget.itemSelectionChanged.connect(self.updateTable)
     self.table.cellChanged.connect(self.syncTable2Data)
+    self.table.cellDoubleClicked.connect(self._onCellDoubleClicked)
+    self.aliasTable.cellChanged.connect(self._onAliasCellChanged)
 
     self.btnAddAlias.clicked.connect(self.addAlias)
     self.btnRemoveAlias.clicked.connect(self.removeAlias)
-    self.btnSaveAlias.clicked.connect(self.saveAlias)
-    self.btnReloadAlias.clicked.connect(self.reloadAlias)
     self.aliasFilter.textChanged.connect(self.filterAlias)
 
     self.btnAddEntry.clicked.connect(self.addMacroEntry)
     self.btnRemoveEntry.clicked.connect(self.removeMacroEntry)
-    self.btnSaveSet.clicked.connect(self.saveSelectedMacroSet)
-    self.btnSaveSet.ctrlClicked.connect(self.saveAllMacroSet)
-    self.btnReloadSet.clicked.connect(self.reloadSelectedMacroSet)
-    self.btnReloadSet.ctrlClicked.connect(self.reloadAllMacroSet)
+    self.btnEditIcon.clicked.connect(self.editMacroIcon)
 
     self.reloadAlias()
 
   #----------------------------------------------------------------------------------------------------------
+  def _saveWhenDropped(self, event):
+    QTableWidget.dropEvent(self.table, event)
+    cset : cMacroItem = self.setListWidget.currentItem()
+    for row in range(self.table.rowCount()):
+      for col in range(4):
+        cset.sync(row,col)
+    self.setListWidget.currentItem().save()
+
+
+  #----------------------------------------------------------------------------------------------------------
   def initialize(self):
+    super().initialize()
     allFiles = glob.glob(os.path.join(P_DEFAULT_MACRODIR, "*"+P_DEFAULT_MACROEXT))
     for n in allFiles:
       name = os.path.splitext(os.path.basename(n))[0]
@@ -315,10 +362,10 @@ class cMacros(cToggler):
     self.setListWidget.itemChanged.connect(lambda a, x = cSettings: x.session.setMacroSets(self.getActiveSets()))
     cSettings.widget.sigProfileChanged.connect(self.updateProfile)
     self.updateProfile(cSettings.profile, cSettings.lastProfile)
-    if self.toActivate: 
+    if self.toActivate:
       self.setActiveSets(self.toActivate)
       self.toActivate = None
-    
+
   #----------------------------------------------------------------------------------------------------------
   def updateProfile(self, prof : cSettingsProfile, last : str):
     if prof.session.macroSets: self.setActiveSets(prof.session.macroSets)
@@ -328,50 +375,63 @@ class cMacros(cToggler):
     sset = self.setListWidget.selectedItems()
     if not sset:
       return
-
+    self._loading = True
     self.table.clearContents()
     self.table.setRowCount(0)
     sset[0].display()
+    self._loading = False
 
   #----------------------------------------------------------------------------------------------------------
   def addMacroEntry(self):
     pos = self.table.rowCount()
     self.table.insertRow(pos)
-    self.table.setItem(pos, 0, QTableWidgetItem(""))
-    self.table.setItem(pos, 1, QTableWidgetItem(""))
-    self.table.setItem(pos, 2, QTableWidgetItem(""))
-    self.table.setItem(pos, 3, QTableWidgetItem(""))
+    icon = cTableRow()
+    icon.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+    icon.setIcon(QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png'))
+    self.table.setItem(pos, 0, icon)
+    self.table.setItem(pos, 1, cTableRow(""))
+    self.table.setItem(pos, 2, cTableRow(""))
+    self.table.setItem(pos, 3, cTableRow(""))
 
   #----------------------------------------------------------------------------------------------------------
   def syncTable2Data(self, row, column):
+    if self._loading: return
     sset = self.setListWidget.selectedItems()
     if not sset: return
     sset[0].sync(row, column)
     self.activeSetLabel.setText(f"Shortcuts in \"{sset[0].text()}\":")
-  
+    sset[0].save()
+
   #----------------------------------------------------------------------------------------------------------
   def addAlias(self, alias="", action=""):
     pos = self.aliasTable.rowCount()
     self.aliasTable.insertRow(pos)
-    self.aliasTable.setItem(pos, 0, QTableWidgetItem(alias))
-    self.aliasTable.setItem(pos, 1, QTableWidgetItem(action))
+    self.aliasTable.setItem(pos, 0, cTableRow(alias))
+    self.aliasTable.setItem(pos, 1, cTableRow(action))
 
   #----------------------------------------------------------------------------------------------------------
   def removeAlias(self):
     crow = self.aliasTable.currentRow()
-    if crow:
+    if crow >= 0:
       self.aliasTable.removeRow(crow)
+      self.saveAlias()
+
+  #----------------------------------------------------------------------------------------------------------
+  def _onAliasCellChanged(self, row, column):
+    if self._aliasLoading: return
+    self.saveAlias()
 
   #----------------------------------------------------------------------------------------------------------
   def reloadAlias(self):
+    self._aliasLoading = True
     self.aliasTable.clearContents()
     self.aliasTable.setRowCount(0)
-
     filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
-    with open(filename,"r") as f:
+    with open(filename, "r") as f:
       data = json.load(f)
     for k in data.keys():
-      self.addAlias(k,data[k])
+      self.addAlias(k, data[k])
+    self._aliasLoading = False
 
   #----------------------------------------------------------------------------------------------------------
   def saveAlias(self):
@@ -383,7 +443,10 @@ class cMacros(cToggler):
   def getAliases(self):
     d = {}
     for row in range(self.aliasTable.rowCount()):
-      d[self.aliasTable.item(row,0).text()] = self.aliasTable.item(row,1).text()
+      k = self.aliasTable.item(row, 0)
+      v = self.aliasTable.item(row, 1)
+      if k and v:
+        d[k.text()] = v.text()
     return d
 
   #----------------------------------------------------------------------------------------------------------
@@ -407,7 +470,7 @@ class cMacros(cToggler):
 
     self.allMacroItems[name] = cMacroItem(self,name)
     self.setListWidget.addItem(self.allMacroItems[name])
-    
+
     filename = P_DEFAULT_MACRODIR+os.sep+name+P_DEFAULT_MACROEXT
     if os.path.exists(filename):
       self.allMacroItems[name].load()
@@ -423,7 +486,7 @@ class cMacros(cToggler):
       if sset.checkState() == Qt.CheckState.Checked:
         allActive.append(sset.text())
     return allActive
-  
+
   #----------------------------------------------------------------------------------------------------------
   def setActiveSets(self, toActivate : list):
     if not self.initialized:
@@ -466,7 +529,7 @@ class cMacros(cToggler):
     <br> ● It helps to have a "set" per class/character, e.g. a "healer" set. Toggle the set inactive/active if the healer account is online or not.
     <br> ● Right-click or Ctrl+Click "Save" or "Reload" to apply the action to all sets.
     <br> ● Use descriptive names for sets and shortcuts for easier management.
-    <br> ● All sets are stored as text files in {P_DEFAULT_MACRODIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk! 
+    <br> ● All sets are stored as text files in {P_DEFAULT_MACRODIR} and can be modified by any program. This is a security issue, if you believe in security issues, btw 🦄. Use at your own risk!
 
     <br>If you need further support, look for help.
     """
@@ -489,7 +552,6 @@ class cMacros(cToggler):
       pass
     self.setListWidget.takeItem(self.setListWidget.row(sset[0]))
     del sset[0]
-
 
   #----------------------------------------------------------------------------------------------------------
   def consolidateActiveMacros(self) -> tuple:
@@ -514,43 +576,44 @@ class cMacros(cToggler):
     sset = self.setListWidget.selectedItems()
     if not sset: return
     crow = self.table.currentRow()
+    if crow < 0: return
     sset[0].removeRow(crow)
+    self._loading = True
     self.table.removeRow(crow)
-
-  #----------------------------------------------------------------------------------------------------------
-  def saveSelectedMacroSet(self):
-    sset = self.setListWidget.selectedItems()
-    if not sset: return
+    self._loading = False
     sset[0].save()
 
   #----------------------------------------------------------------------------------------------------------
-  def saveAllMacroSet(self):
-    for sset in self.allMacroItems.values():
-      sset.save()
+  def _onCellDoubleClicked(self, row, column):
+    if column == 0:
+      self.editMacroIcon()
 
   #----------------------------------------------------------------------------------------------------------
-  def reloadAllMacroSet(self):
-    for sset in self.allMacroItems.values():
-      sset.load()
-    self.updateTable()
-
-  #----------------------------------------------------------------------------------------------------------
-  def reloadSelectedMacroSet(self):
+  def editMacroIcon(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
-    sset[0].load()
-    self.updateTable()
+    crow = self.table.currentRow()
+    if crow < 0: return
+    current_icon = sset[0].data[crow][0] if crow < len(sset[0].data) else None
+    dlg = cIconSelectDialog(current=current_icon, parent=self)
+    if dlg.exec():
+      path = dlg.selectedPath()
+      if path:
+        icon_item = self.table.item(crow, 0)
+        if not icon_item:
+          icon_item = cTableRow()
+          icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+          self.table.setItem(crow, 0, icon_item)
+        icon_item.setData(Qt.ItemDataRole.UserRole, path)
+        icon_item.setIcon(QIcon(path))
+        sset[0].sync(crow, 0)
+        sset[0].save()
 
   #----------------------------------------------------------------------------------------------------------
   def renameMacroSetFile(self, sset : cMacroItem):
     key = next((k for k, v in self.allMacroItems.items() if v is sset), None)
     if key != sset.text():
       cPrint.info(f"Renaming macro set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
-      os.rename(P_DEFAULT_MACRODIR+os.sep+key+P_DEFAULT_MACROEXT, P_DEFAULT_MACRODIR+os.sep+sset.text()+P_DEFAULT_MACROEXT, )
+      os.rename(P_DEFAULT_MACRODIR+os.sep+key+P_DEFAULT_MACROEXT, P_DEFAULT_MACRODIR+os.sep+sset.text()+P_DEFAULT_MACROEXT)
       self.allMacroItems[sset.text()] = sset
       del self.allMacroItems[key]
-  
-
-    
-
-

@@ -29,7 +29,7 @@ from PyQt6.QtWidgets import QCheckBox, QDialog, QGridLayout, QLineEdit, QListWid
 from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
-from widgets.cDDOWidgets import cDDOCheck
+from widgets.cOrb import cBoxCheck
 from helpers.util import *
 from widgets.cToggler import cToggler
 from widgets.cCheckCombo import cCheckCombo
@@ -118,6 +118,7 @@ class cStorageManager(cToggler):
     self.toggler.setToolTip("Toggle StorageManager UI<br><b><i>NOT IMPLEMENTED</i></b>")
     self.table = cItemsTable(self)
     self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    setBGColour(self.table.viewport(), P_DEFAULT_BG)
     
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
     self.btnRefresh   = cOrb("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
@@ -136,11 +137,11 @@ class cStorageManager(cToggler):
 
     self.filterCB = SimpleNamespace()
     for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Sellable", "Unsellable", "Name", "Description"]:
-      setattr(self.filterCB, f.lower(), cDDOCheck(f))
-    self.filterCB.aug0  = cDDOCheck('0')
-    self.filterCB.aug1  = cDDOCheck('1')
-    self.filterCB.aug2  = cDDOCheck('2')
-    self.filterCB.aug3p = cDDOCheck('3+')
+      setattr(self.filterCB, f.lower(), cBoxCheck(f))
+    self.filterCB.aug0  = cBoxCheck('0')
+    self.filterCB.aug1  = cBoxCheck('1')
+    self.filterCB.aug2  = cBoxCheck('2')
+    self.filterCB.aug3p = cBoxCheck('3+')
 
     for cb in self.filterCB.__dict__.keys():
       getattr(self.filterCB, cb).setChecked(True)
@@ -316,6 +317,7 @@ class cStorageManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self, daemon : cMacrosDaemon):
+    super().initialize()
     self.daemon = daemon
     self.table.staleData = {}
 

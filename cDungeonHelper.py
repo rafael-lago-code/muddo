@@ -173,7 +173,7 @@ class cDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def terminate(self):
     super().terminate()
-    baseExec = os.path.basename(self.main.profile().DungeonHelperExec.text())
+    baseExec = os.path.basename(cSettings.plugins.dhExec())
     cTop.terminateAll(baseExec)
     self.clear()
   

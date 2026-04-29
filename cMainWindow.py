@@ -62,7 +62,6 @@ class cMainWindow(QMainWindow):
     self.settings = cSettings(self)
     self.macros = cMacros(self)
     self.processManager = cProcessManager()
-    self.processManager.setVisible(False)    
     self.dh = cDungeonHelper(self)
     self.storageManager = cStorageManager(self)
     self.toolbar = cToolbar(self)
@@ -97,6 +96,13 @@ class cMainWindow(QMainWindow):
     aConf.triggered.connect(self.processManager.toggle)
 
     self.setCentralWidget(newVFrame([lButtonsBar]))
+
+    self._docks = [self.credentials, self.settings, self.macros, self.processManager,
+                   self.storageManager, self.patch, self.news, self.console]
+    for dock in self._docks:
+      self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
+      dock.setFloating(True)
+
     self.loadState()
 
     if not P_CERTFILE:
@@ -152,14 +158,28 @@ class cMainWindow(QMainWindow):
     size = self._state.value(f"μDDO/size", QSize(self.P_SIZE_W, self.P_SIZE_H))
     self.move(pos)
     self.resize(size)
+    dockState = self._state.value("μDDO/dockState")
+    if dockState:
+      QMainWindow.restoreState(self, dockState)
   
   #----------------------------------------------------------------------------------------------------------
   def saveState(self):
     self._state.setValue(f"μDDO/pos",  self.pos())
     self._state.setValue(f"μDDO/size", self.size())
+    self._state.setValue("μDDO/dockState", QMainWindow.saveState(self))
+    for dock in self._docks:
+      self._state.setValue(f"{dock.widgetID}/visible", dock.isVisible())
   
   #----------------------------------------------------------------------------------------------------------
+  #----------------------------------------------------------------------------------------------------------
+  def showEvent(self, event):
+    super().showEvent(event)
+    for dock in self._docks:
+      dock.setVisible(self._state.value(f"{dock.widgetID}/visible", False, type=bool))
+
+  #----------------------------------------------------------------------------------------------------------
   def close(self):
+    self.saveState()
     self.settings.save()
     self.settings.close()
     self.macros.close()
@@ -169,7 +189,6 @@ class cMainWindow(QMainWindow):
     self.credentials.close()
     self.console.close()
     self.storageManager.close()
-    self.saveState()
     super().close()
 
 

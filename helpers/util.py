@@ -20,8 +20,8 @@
 import os
 from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout, QSplitter, \
                             QVBoxLayout, QLayout, QFrame
-from PyQt6.QtGui import QIcon, QPixmap, QImage
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap, QImage
+from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6 import QtCore
 from http.client import HTTPConnection, HTTPSConnection
 import ssl
@@ -64,6 +64,7 @@ P_ICON_REMOVE    = "list-remove"
 P_ICON_REFRESH   = "view-refresh"
 P_ICON_CHECKMARK = "checkmark"
 P_ICON_SMPLCHECK = "simple-checkmark"
+P_ICON_SMPLX     = "simple-x"
 P_ICON_QUESTION  = "question"
 P_ICON_MUTE      = "audio-volume-muted"
 P_ICON_UNMUTE    = "audio-on"
@@ -83,6 +84,7 @@ P_ICON_COMPASS   = "compass"
 P_ICON_LOCKOPEN  = "document-decrypt"
 P_ICON_LOCKCLOSE = "document-encrypted"
 P_ICON_EDIT      = "document-edit"
+P_ICON_IMAGE     = "viewimage"
 P_ICON_SCROLL    = "curled-scroll"
 P_ICON_NEWDOC    = "document-new"
 P_ICON_STAR      = "draw-star"
@@ -104,6 +106,9 @@ P_ICON_GEARSTACK = "gears-stack"
 P_ICON_BACKPACK  = "backpack"
 P_ICON_CHEST     = "chest"
 
+P_ICON_HARDDISK  = "drive-harddisk"
+P_ICON_PASTE     = "edit-paste"
+
 P_ICON_TRIANGLE_UP    = "draw-triangle3"
 P_ICON_TRIANGLE_DOWN  = "draw-triangle4"
 P_ICON_TRIANGLE_LEFT  = "draw-triangle1"
@@ -122,10 +127,15 @@ P_ICON_SKULL = "human-skull-white"
 P_FG_REDORB = "orb_fg"
 P_BG_REDORB = "redorb_bg"
 P_BG_PRESSED_REDORB = "redorb_pressed"
+P_FG_REDBOX = "box_fg"
+P_BG_REDBOX = "redbox_bg"
+P_BG_PRESSED_REDBOX = "redbox_pressed"
+P_FG_REDFRAME = "frame_fg"
+P_BG_REDFRAME = "redframe_bg"
 
 P_DEFAULT_ICON_PATHS  = [P_MUDDO_DIR+'/images/custom-icons/',
+                         P_MUDDO_DIR+'/images/ui_elements/',
                          P_MUDDO_DIR+'/images/breeze-dark-icons/',
-                         P_MUDDO_DIR+'/images/',
                          '/usr/share/icons/breeze-dark',
                          '/usr/share/icons/breeze',
                          '/usr/share/icons/Adwaita',
@@ -134,6 +144,8 @@ P_DEFAULT_ICON_PATHS  = [P_MUDDO_DIR+'/images/custom-icons/',
                          '/usr/share/icons/Humanity']
 P_CERTFILE = None
 P_CERTCTX = None
+
+P_DEFAULT_BG = QColor(27, 30, 32, 240)
 
 #@TODO write this properly to search/detect the correct icon scheme...
 _iconScheme = {}
@@ -341,6 +353,21 @@ def pathLinux2Windows(linuxPath : str):
 def getPrefix(linuxPath : str):
   tmp = linuxPath.split('/')
   return "/".join(tmp[0:tmp.index('drive_c')])
+
+#----------------------------------------------------------------------------------------------------------
+class setBGColour(QObject):
+  def __init__(self, viewport, color: QColor):
+    super().__init__(viewport)
+    self._color = color
+    viewport.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+    viewport.installEventFilter(self)
+
+  def eventFilter(self, obj, event):
+    if event.type() == QEvent.Type.Paint:
+      p = QPainter(obj)
+      p.fillRect(obj.rect(), self._color)
+      p.end()
+    return False
 
 #----------------------------------------------------------------------------------------------------------
 # This encoder is originally taken from

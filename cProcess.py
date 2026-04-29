@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
-from widgets.cDDOWidgets import cDDOCheck
+from widgets.cOrb import cBoxCheck
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbCheck, cOrbSmall
 from helpers.util import *
@@ -55,21 +55,21 @@ class cProcessManager(cToggler):
     self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
 
     header = QWidget()
-    header.setLayout(newHLayout([newHeaderLabel("", 32), newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
+    header.setLayout(newHLayout([newHeaderLabel("", 64), newHeaderLabel("PID", 50), newHeaderLabel("WinID"),\
                      newHeaderLabel("World"), newHeaderLabel("Profile"), "Username"]))
 
-    self.btnStartAll   = cOrbSmall(icon=P_ICON_PLAY,      tooltip="Starts all processes which are not yet already running")
-    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL,     tooltip="Terminates selected running processes<br>Ctrl+click: force termination (SIGKILL) selected processes")
-    self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL,   tooltip="Saves selected windows positions")
-    self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,      tooltip="Reloads previously saved positions for selected windows")
-    self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEAR,     tooltip="Clear all processes<br>Ctrl+click: kill and clear all processes")
-    self.btnAudioAll    = cOrbSmall(icon=P_ICON_MUTE,      tooltip="Toggles audio on/off for all processes")
-    self.btnLogAll     = cOrbSmall(icon=P_ICON_NOTES,     tooltip="Toggles logs on/off for all processes")
-    self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/chain.png'), tooltip="Attempts to find running instances of DDO and capture them"\
+    self.btnStartAll   = cOrbSmall(icon=P_ICON_PLAY,    tooltip="Starts all processes which are not yet already running")
+    self.btnKillAll    = cOrbSmall(icon=P_ICON_SKULL,   tooltip="Terminates selected running processes<br>Ctrl+click: force termination (SIGKILL) selected processes")
+    self.btnSaveAll    = cOrbSmall(icon=P_ICON_SAVEALL, tooltip="Saves selected windows positions")
+    self.btnRestoreAll = cOrbSmall(icon=P_ICON_UNDO,    tooltip="Reloads previously saved positions for selected windows")
+    self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEAR,   tooltip="Clear all processes<br>Ctrl+click: kill and clear all processes")
+    self.btnAudioAll   = cOrbSmall(icon=P_ICON_MUTE,    tooltip="Toggles audio on/off for all processes")
+    self.btnLogAll     = cOrbSmall(icon=P_ICON_NOTES,   tooltip="Toggles logs on/off for all processes")
+    self.btnFixBlackScreen = cOrbSmall(icon=P_ICON_CONSOLE, tooltip="Attempt to solve the blackscreen bug in all running instances.")
+    self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/custom-icons/link.png'), tooltip="Attempts to find running instances of DDO and capture them"\
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")
-    self.btnSelectAll  = cOrbSmall(icon=P_ICON_CHECKMARK, tooltip="Select/deselect all processes for batch Save/Kill/Reload")
-    self.btnSelectAll.setCheckable(True)
+    self.btnSelectAll  = cBoxCheck(tooltip="Select/deselect all processes for batch Save/Kill/Reload")
     self.btnSelectAll.setChecked(True)
     
     self.btnCaptureOrphans.clicked.connect(self.captureOrphan)
@@ -83,12 +83,13 @@ class cProcessManager(cToggler):
     self.btnCleanAll.ctrlClicked.connect(lambda : self.cleanAll(True))
     self.btnAudioAll.clicked.connect(self.toggleAudioAll)
     self.btnAudioAll.ctrlClicked.connect(self.audioMuteAll)
+    self.btnFixBlackScreen.clicked.connect(self.fixBlackScreenAll)
 
     justSpace = QLabel(" ")
     justSpace.setMinimumWidth(2)
     
     self.content = newVLayout([header])
-    self.setLayout(newVLayout([self.content, newHLayout([self.btnSelectAll, self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
+    self.setLayout(newVLayout([self.content, newHLayout([self.btnSelectAll, self.btnFixBlackScreen, self.btnCaptureOrphans,"__stretch__", "All processes: ", self.btnStartAll,\
       self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnCleanAll, self.btnLogAll, self.btnAudioAll, justSpace]),
                     "__stretch__"]))
 
@@ -166,6 +167,15 @@ class cProcessManager(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def restoreWindowAll(self):
     for p in self.selectedItems(): p.restoreWindow()
+
+  #----------------------------------------------------------------------------------------------------------
+  def fixBlackScreenAll(self):
+    from helpers.XHelper import XHelper
+    xh = XHelper()
+    for p in self.selectedItems():
+      winID = p.winID.text()
+      if winID.isdigit():
+        xh.remapWindow(int(winID))
 
   #----------------------------------------------------------------------------------------------------------
   def itemExists(self, p : aProcessItem):
@@ -283,7 +293,7 @@ class aProcessItem(QWidget):
     self.username   = QLabel()
     self.logger     = None
 
-    self.btnSelect  = cDDOCheck(tooltip="Include this process in batch Save/Kill/Reload actions")
+    self.btnSelect  = cBoxCheck(tooltip="Include this process in batch Save/Kill/Reload actions")
     self.btnToggle  = cOrbSmall(icon=P_ICON_PLAY,  tooltip="Toggles launch/terminate process.<br>Right click or ctrl click to force kill (SIGKILL)")
     self.btnSave    = cOrbSmall(icon=P_ICON_SAVE,  tooltip="Save this windows's position")
     self.btnRestore = cOrbSmall(icon=P_ICON_UNDO,  tooltip="Restore previously saved windows position")

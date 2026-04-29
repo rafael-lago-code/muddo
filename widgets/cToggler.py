@@ -28,33 +28,17 @@ class cToggler(cFloating):
   def __init__(self, title : str, icon, parent = None):
     self.toggler = cOrb(title, icon)
     self.toggler.setCheckable(True)
-    super().__init__(parent)
-
+    super().__init__(title, parent)
     self.toggler.clicked.connect(self.toggle)
+    self.visibilityChanged.connect(self.toggler.setChecked)
     self.setVisible(False)
-    
+
   def toggle(self):
     if self.isVisible():
       self.hide()
     else:
       self.show()
-  
-  # def show(self):
-  #   # there is a bug preventing the loading the position of the window, if it
-  #   # "thinks" that it didn't change, so we need to force some crap here.
-  #   if self.isVisible(): return
-  #   self.move(QPoint(10,10))
-  #   self.loadState()
-  #   self.setVisible(True)
-
-  # def hide(self):
-  #   if not self.isVisible(): return
-  #   self.setVisible(False)
-  #   self.saveState()
 
   def setVisible(self, value : bool):
     self.toggler.setChecked(value)
     super().setVisible(value)
-  
-
-

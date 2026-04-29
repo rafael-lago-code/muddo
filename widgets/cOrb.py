@@ -20,7 +20,7 @@
 from helpers.util import *
 from PyQt6.QtWidgets import QPushButton, QSizePolicy, QToolTip, QApplication
 from PyQt6.QtGui import QPainter, QPixmap, QColor, QFont, QMouseEvent, QShortcut, QKeySequence
-from PyQt6.QtCore import Qt, pyqtSignal, QPoint, QEvent
+from PyQt6.QtCore import QSize, Qt, pyqtSignal, QPoint, QEvent
 from PyQt6.QtWidgets import QMenu, QWidget
 from helpers import cEffects
 
@@ -49,62 +49,74 @@ class cOrbTheme_RedMedium():
       FG_RED_PIX = getPixmap(P_FG_REDORB)
       PRESSED_RED = getPixmap(P_BG_PRESSED_REDORB)
 
-      BG_RED_PIX  = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
-                                      Qt.TransformationMode.SmoothTransformation)
-      FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
-                                      Qt.TransformationMode.SmoothTransformation)
-      PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio,
-                                      Qt.TransformationMode.SmoothTransformation)
+      BG_RED_PIX  = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      ICON_EFFECT = cEffects.cTint((215,120,0),0.5)
+      TEXT_EFFECT = cEffects.cTint((215,120,0),0.2)
 
-      self.bg = {}
-      self.bg[P_STATUS_NORMAL] = BG_RED_PIX
-      self.bg[P_STATUS_HOVERD] = cEffects.tintPixmap(BG_RED_PIX,(200,10,10),1.0)
-      self.bg[P_STATUS_COVERD] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),0.3)
-      self.bg[P_STATUS_LCLICK] = cEffects.desaturatePixmap(BG_RED_PIX,0.3)
-      self.bg[P_STATUS_RCLICK] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),1.0)
-      self.bg[P_STATUS_CCLICK] = cEffects.tintPixmap(BG_RED_PIX,(215,120,0),1.0)
-      self.bg[P_STATUS_CRLICK] = cEffects.invertPixmap(BG_RED_PIX)
-      self.bg[P_STATUS_DISBLD] = cEffects.desaturatePixmap(BG_RED_PIX,1.0)
-      self.bg[P_STATUS_CHECKD] = PRESSED_RED
-      self.bg[P_STATUS_CHECKD_HOVERD] = PRESSED_RED
+      self._instance.setBg(BG_RED_PIX, PRESSED_RED)
+      self._instance.setFg(FG_RED_PIX, QPixmap())
+      self._instance.setIconEffect(ICON_EFFECT)
+      self._instance.setTextEffect(TEXT_EFFECT)
 
-      self.fg = {}
-      self.fg[P_STATUS_NORMAL] = FG_RED_PIX
-      self.fg[P_STATUS_HOVERD] = FG_RED_PIX
-      self.fg[P_STATUS_COVERD] = FG_RED_PIX
-      self.fg[P_STATUS_LCLICK] = FG_RED_PIX
-      self.fg[P_STATUS_RCLICK] = FG_RED_PIX
-      self.fg[P_STATUS_CCLICK] = FG_RED_PIX
-      self.fg[P_STATUS_CRLICK] = FG_RED_PIX
-      self.fg[P_STATUS_DISBLD] = FG_RED_PIX
-      self.fg[P_STATUS_CHECKD] = QPixmap()
-      self.fg[P_STATUS_CHECKD_HOVERD] = cEffects.tintPixmap(FG_RED_PIX,(215,120,0),0.3)
-
-      self.iconEffect = {}
-      self.iconEffect[P_STATUS_NORMAL] = cEffects.cNone()
-      self.iconEffect[P_STATUS_HOVERD] = cEffects.cTint((215,120,0),0.5)
-      self.iconEffect[P_STATUS_COVERD] = cEffects.cNone()
-      self.iconEffect[P_STATUS_LCLICK] = cEffects.cTint((215,120,0),0.5)
-      self.iconEffect[P_STATUS_RCLICK] = cEffects.cNone()
-      self.iconEffect[P_STATUS_CCLICK] = cEffects.cNone()
-      self.iconEffect[P_STATUS_CRLICK] = cEffects.cNone()
-      self.iconEffect[P_STATUS_DISBLD] = cEffects.cGreyscale()
-      self.iconEffect[P_STATUS_CHECKD] = cEffects.cTint((215,120,0),0.5)
-      self.iconEffect[P_STATUS_CHECKD_HOVERD] = cEffects.cTint((215,120,0),0.5)
-
-      self.textEffect = {}
-      self.textEffect[P_STATUS_NORMAL] = cEffects.cNone()
-      self.textEffect[P_STATUS_HOVERD] = cEffects.cTint((215,120,0),0.2)
-      self.textEffect[P_STATUS_COVERD] = cEffects.cNone()
-      self.textEffect[P_STATUS_LCLICK] = cEffects.cTint((215,120,0),0.2)
-      self.textEffect[P_STATUS_RCLICK] = cEffects.cNone()
-      self.textEffect[P_STATUS_CCLICK] = cEffects.cNone()
-      self.textEffect[P_STATUS_CRLICK] = cEffects.cNone()
-      self.textEffect[P_STATUS_DISBLD] = cEffects.cGreyscale()
-      self.textEffect[P_STATUS_CHECKD] = cEffects.cTint((215,120,0),0.2)
-      self.textEffect[P_STATUS_CHECKD_HOVERD] = cEffects.cTint((215,120,0),0.2)
-      
     return self._instance
+
+  #---------------------------------------------------------------------------------------------------------
+  def setBg(self, bg, pressed):
+    self.bg = {}
+    self.bg[P_STATUS_NORMAL] = bg
+    self.bg[P_STATUS_HOVERD] = cEffects.tint(bg,(200,10,10),1.0)
+    self.bg[P_STATUS_COVERD] = cEffects.tint(bg,(215,120,0),0.3)
+    self.bg[P_STATUS_LCLICK] = cEffects.desaturate(bg,0.3)
+    self.bg[P_STATUS_RCLICK] = cEffects.tint(bg,(215,120,0),1.0)
+    self.bg[P_STATUS_CCLICK] = cEffects.tint(bg,(215,120,0),1.0)
+    self.bg[P_STATUS_CRLICK] = cEffects.invert(bg)
+    self.bg[P_STATUS_DISBLD] = cEffects.desaturate(bg,1.0)
+    self.bg[P_STATUS_CHECKD] = pressed
+    self.bg[P_STATUS_CHECKD_HOVERD] = pressed
+  
+  #---------------------------------------------------------------------------------------------------------
+  def setIconEffect(self, iconEffect):
+    self.iconEffect = {}
+    self.iconEffect[P_STATUS_NORMAL] = cEffects.cNone()
+    self.iconEffect[P_STATUS_HOVERD] = iconEffect
+    self.iconEffect[P_STATUS_COVERD] = cEffects.cNone()
+    self.iconEffect[P_STATUS_LCLICK] = iconEffect
+    self.iconEffect[P_STATUS_RCLICK] = cEffects.cNone()
+    self.iconEffect[P_STATUS_CCLICK] = cEffects.cNone()
+    self.iconEffect[P_STATUS_CRLICK] = cEffects.cNone()
+    self.iconEffect[P_STATUS_DISBLD] = cEffects.cGreyscale()
+    self.iconEffect[P_STATUS_CHECKD] = iconEffect
+    self.iconEffect[P_STATUS_CHECKD_HOVERD] = iconEffect
+
+  #---------------------------------------------------------------------------------------------------------
+  def setTextEffect(self, textEffect):
+    self.textEffect = {}
+    self.textEffect[P_STATUS_NORMAL] = cEffects.cNone()
+    self.textEffect[P_STATUS_HOVERD] = textEffect
+    self.textEffect[P_STATUS_COVERD] = cEffects.cNone()
+    self.textEffect[P_STATUS_LCLICK] = textEffect
+    self.textEffect[P_STATUS_RCLICK] = cEffects.cNone()
+    self.textEffect[P_STATUS_CCLICK] = cEffects.cNone()
+    self.textEffect[P_STATUS_CRLICK] = cEffects.cNone()
+    self.textEffect[P_STATUS_DISBLD] = cEffects.cGreyscale()
+    self.textEffect[P_STATUS_CHECKD] = textEffect
+    self.textEffect[P_STATUS_CHECKD_HOVERD] = textEffect
+  
+  #---------------------------------------------------------------------------------------------------------
+  def setFg(self, fg, pressed):
+    self.fg = {}
+    self.fg[P_STATUS_NORMAL] = fg
+    self.fg[P_STATUS_HOVERD] = fg
+    self.fg[P_STATUS_COVERD] = fg
+    self.fg[P_STATUS_LCLICK] = fg
+    self.fg[P_STATUS_RCLICK] = fg
+    self.fg[P_STATUS_CCLICK] = fg
+    self.fg[P_STATUS_CRLICK] = fg
+    self.fg[P_STATUS_DISBLD] = fg
+    self.fg[P_STATUS_CHECKD] = pressed
+    self.fg[P_STATUS_CHECKD_HOVERD] = cEffects.tint(fg,(215,120,0),0.3)
 
 #-------------------------------------------------------------------------------------------------------------
 class cOrbTheme_RedSmall(cOrbTheme_RedMedium):
@@ -113,8 +125,66 @@ class cOrbTheme_RedSmall(cOrbTheme_RedMedium):
   iconSize = QtCore.QSize(20,20)
 
 #-------------------------------------------------------------------------------------------------------------
+class cTheme_DialogClose(cOrbTheme_RedMedium):
+  _instance = None
+  orbSize = QtCore.QSize(24,24)
+  iconSize = QtCore.QSize(14,14)
+
+#-------------------------------------------------------------------------------------------------------------
+class cTheme_Checkbox(cOrbTheme_RedMedium):
+  _instance = None
+  orbSize = QtCore.QSize(21,21)
+  iconSize = QtCore.QSize(18,18)
+
+  def __new__(self):
+    if self._instance is None:
+      self._instance = super().__new__(self)
+      BG_RED_PIX  = getPixmap(P_BG_REDBOX)
+      FG_RED_PIX  = getPixmap(P_FG_REDBOX)
+      PRESSED_RED = getPixmap(P_BG_PRESSED_REDBOX)
+
+      BG_RED_PIX  = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      ICON_EFFECT = cEffects.cNone()
+      TEXT_EFFECT = cEffects.cTint((215,120,0),0.2)
+
+      self._instance.setBg(BG_RED_PIX, PRESSED_RED)
+      self._instance.setFg(FG_RED_PIX, QPixmap())
+      self._instance.setIconEffect(ICON_EFFECT)
+      self._instance.setTextEffect(TEXT_EFFECT)
+
+    return self._instance
+  
+#-------------------------------------------------------------------------------------------------------------
+class cTheme_Toolbar(cOrbTheme_RedMedium):
+  _instance = None
+  orbSize = QtCore.QSize(38,38)
+  iconSize = QtCore.QSize(30,30)
+
+  def __new__(self):
+    if self._instance is None:
+      self._instance = super().__new__(self)
+      BG_RED_PIX  = getPixmap(P_BG_REDFRAME)
+      FG_RED_PIX  = getPixmap(P_FG_REDFRAME)
+      PRESSED_RED = getPixmap(P_BG_REDFRAME)
+
+      BG_RED_PIX  = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      ICON_EFFECT = cEffects.cNone()
+      TEXT_EFFECT = cEffects.cTint((215,120,0),0.2)
+
+      self._instance.setBg(BG_RED_PIX, PRESSED_RED)
+      self._instance.setFg(FG_RED_PIX, QPixmap())
+      self._instance.setIconEffect(ICON_EFFECT)
+      self._instance.setTextEffect(TEXT_EFFECT)
+
+    return self._instance
+  
+#-------------------------------------------------------------------------------------------------------------
 #
-#                                              O R B S M A L L
+#                                                  O R B
 #
 #-------------------------------------------------------------------------------------------------------------
 class cOrb(QPushButton):
@@ -131,6 +201,10 @@ class cOrb(QPushButton):
     if cls.theme is None:
       cls.theme = cOrbTheme_RedMedium()
     return cls.theme
+  
+  def setIconSize(self, size):
+    self.theme.iconSize = size
+    return super().setIconSize(size)
   
   #----------------------------------------------------------------------------------------------------------
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
@@ -367,6 +441,41 @@ class cOrbSmall(cOrb):
 
 #-------------------------------------------------------------------------------------------------------------
 #
+#                                              O R B T I N Y
+#
+#-------------------------------------------------------------------------------------------------------------
+class cOrbTiny(cOrb):
+  theme = None
+
+  @classmethod
+  def getTheme(cls):
+    if cls.theme is None:
+      cls.theme = cTheme_DialogClose()
+    return cls.theme
+  
+  def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
+    super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
+
+#-------------------------------------------------------------------------------------------------------------
+#
+#                                              B O X S M A L L
+#
+#-------------------------------------------------------------------------------------------------------------
+class cBox(cOrb):
+  theme = None
+
+  @classmethod
+  def getTheme(cls):
+    if cls.theme is None:
+      cls.theme = cTheme_Checkbox()
+    return cls.theme
+  
+  def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
+    super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
+
+
+#-------------------------------------------------------------------------------------------------------------
+#
 #                                              O R B C H E C K
 #
 #-------------------------------------------------------------------------------------------------------------
@@ -418,3 +527,58 @@ class cOrbCheck(QWidget):
 
   # def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     # super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
+
+#-------------------------------------------------------------------------------------------------------------
+#
+#                                              C H E C K B O X
+#
+#-------------------------------------------------------------------------------------------------------------
+class cBoxCheck(QWidget):
+  box : cBox = None
+  label : QLabel  = None
+  toggled = pyqtSignal(bool)
+
+  @classmethod
+  def getTheme(cls):
+    if cls.box.theme is None:
+      cls.box.theme = cTheme_Checkbox()
+    return cls.box.theme
+  
+  def __init__(self, title = None, enabled = True, tooltip = "", *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.box = cBox("")
+    self.label = QLabel(title)
+    self.box.setCheckable(True)
+    self.box.setChecked(True)
+    # self.box.theme.iconSize = QSize(16,16)
+    self.box.setIconSize(QSize(14,14))
+
+    self.setText    = self.label.setText
+    self.isChecked  = self.box.isChecked
+    self.stateChanged = self.box.clicked
+    self.clicked = self.box.clicked
+    self.setEnabled(enabled)
+    self.setToolTip(tooltip)
+    self.setLayout(newHLayout([self.box, self.label]))
+
+    self.updateStatus()
+    self.stateChanged.connect(self.updateStatus)
+    self.toggled = self.stateChanged
+  
+  def updateStatus(self):
+    if self.box.isChecked():
+      self.box.setIcon(getIcon(P_ICON_SMPLCHECK))
+    else:
+      self.box.setIcon(QIcon())
+  
+  def setEnabled(self, a0):
+    self.label.setEnabled(a0)
+    super().setEnabled(a0)
+    self.box.setEnabled(a0)
+
+  def setChecked(self, a0 : bool):
+    if a0:
+      self.box.setIcon(getIcon(P_ICON_SMPLCHECK))
+    else:
+      self.box.setIcon(QIcon())
+    self.box.setChecked(a0)

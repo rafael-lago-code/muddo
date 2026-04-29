@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 #
 #    μDDO
@@ -18,10 +18,122 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
+import os, sys, subprocess
+
+THIS_PATH  = os.path.dirname(os.path.realpath(__file__))
+VENV_PATH  = os.path.join(THIS_PATH, "env", "μddo")
+VENV_PY    = os.path.join(THIS_PATH, "env", "μddo", "bin", "python")
+REQ_FILES  = os.path.join(THIS_PATH, "requirements.txt")
+SENTINEL_FILE = os.path.join(THIS_PATH, "env", "μddo", ".deps_installed")
+
+BOX_WIDTH = 80
+INTERIOR_WIDTH = BOX_WIDTH - 2   # = 78
+
+MUDDO_TITLE="""
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            ______   ______      ___                          ║
+║                           |_   _ `.|_   _ `.  .'   `.                        ║
+║                      _   _  | | `. \ | | `. \/  .-.  \                       ║
+║                     | | | | | |  | | | |  | || |   |  |                      ║
+║                     | |_| |_| |_.' /_| |_.' /\  `-'  /                       ║
+║                     | ._,_|______.'|______.'  `.___.'                        ║
+║                     | |                                                      ║
+║                     |_|                                                v0.1  ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║                                                                              ║"""
+
+def boxLine(content: str) -> str:
+    if len(content) > INTERIOR_WIDTH:
+        content = content[:INTERIOR_WIDTH]   # truncate if too long
+    return f"║{content:<{INTERIOR_WIDTH}}║"
+
+#---------------------------------------------------------------------------------------------------------------
+def depsMissing() -> bool:
+  if not os.path.isfile(VENV_PY):
+    return True
+  req_t = os.path.getmtime(REQ_FILES) if os.path.isfile(REQ_FILES) else 0
+  sen_t = os.path.getmtime(SENTINEL_FILE) if os.path.isfile(SENTINEL_FILE) else 0
+  return req_t > sen_t
+
+#---------------------------------------------------------------------------------------------------------------
+def installInline():
+  if not os.path.isfile(VENV_PY):
+    print("Creating virtual environment...", flush=True)
+    subprocess.check_call([sys.executable, "-m", "venv", os.path.join(THIS_PATH, "env", "μddo")])
+  print("Installing dependencies...", flush=True)
+  subprocess.check_call([VENV_PY, "-m", "pip", "install", "-r", REQ_FILES])
+  open(SENTINEL_FILE, "w").close()
+
+#---------------------------------------------------------------------------------------------------------------
+def installInTerminal():
+  create   = f'python3 -m venv "{VENV_PATH}"' if not os.path.isfile(VENV_PY) else ""
+  install  = f'"{VENV_PY}" -m pip install -r "{REQ_FILES}"'
+  sentinel = f'touch "{SENTINEL_FILE}"'
+  parts    = [p for p in [create, install, sentinel] if p]
+  on_ok    = 'echo "" && echo "Done. This window will close." && sleep 2'
+  on_fail  = 'echo "" && echo "Installation FAILED. Press Enter to close." && read _'
+  cmd      = "( " + " && ".join(parts) + f' ) && ( {on_ok} ) || ( {on_fail} )'
+
+  terminals = [
+    ["gnome-terminal", "--wait", "--", "bash", "-c", cmd],
+    ["konsole",        "-e",           "bash", "-c", cmd],
+    ["xterm",          "-e",           "bash", "-c", cmd],
+  ]
+  for args in terminals:
+    if subprocess.run(["which", args[0]], capture_output=True).returncode == 0:
+      result = subprocess.run(args)
+      if result.returncode != 0:
+        sys.exit(result.returncode)
+      return
+
+  print("No supported terminal emulator found. Run manually:", file=sys.stderr)
+  print(f"  {' && '.join(parts)}", file=sys.stderr)
+  sys.exit(1)
+
+#---------------------------------------------------------------------------------------------------------------   
+if depsMissing():
+  if sys.stdout.isatty():
+    print(MUDDO_TITLE)
+    print(boxLine(f"  μDDO needs to create or update the python environment and its dependencies."))
+    print(boxLine(f"  This  will not conflict with any existing python environment."))
+    print(boxLine(f" "))
+    print("╚══════════════════════════════════════════════════════════════════════════════╝")
+    response = input("Do you want to continue? [Y/n] ").strip().lower()
+    if response in ('n', 'no'):
+      print("Aborting...")
+      sys.exit(0)
+    elif response not in ('y', 'yes', ''):
+      print("Didn't understand your answer, aborting...")
+      sys.exit(0)
+    installInline()
+  else:
+    installInTerminal()
+
+# If we're not running in μDDO's environment, restart within the environment:
+if os.environ.get("VIRTUAL_ENV") != VENV_PATH:
+  cmd = f"bash -c \"source {VENV_PATH}/bin/activate && {VENV_PY} {" ".join(sys.argv)}\""
+  os.system(cmd)
+  sys.exit(0)
+
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#
+#                                               μ D D O
+#
+#   Starts within the environment
+#
+#---------------------------------------------------------------------------------------------------------------
+from PyQt6.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt6.QtWidgets import QApplication
 from cMainWindow import cMainWindow
-import sys
 
+print(MUDDO_TITLE)
+print(boxLine(f"    ✓ VENV_PYTHON={os.environ.get("VIRTUAL_ENV")}"))
+print(boxLine(f"    ✓ Qt Version={QT_VERSION_STR}"))
+print(boxLine(f"    ✓ PyQtVersion={PYQT_VERSION_STR}"))
+print(boxLine(" "))
+print("╚══════════════════════════════════════════════════════════════════════════════╝")
 
 if __name__ == '__main__':
   app = QApplication(sys.argv)

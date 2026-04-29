@@ -18,12 +18,14 @@
 #
 #
 from PyQt6.QtWidgets import QTextEdit, QTabWidget
-from PyQt6.QtCore import pyqtSignal, Qt
+from PyQt6.QtCore import pyqtSignal, Qt, QObject, QEvent
 from PyQt6.QtCore import QFileSystemWatcher
+from PyQt6.QtGui import QPainter, QColor
 from helpers.util import *
 from widgets.cToggler import cToggler
 from datetime import datetime
 import sys
+
 
 # -------------------------------------------------------------------------------------------------------------
 class cConsole(cToggler):
@@ -57,14 +59,12 @@ class cConsole(cToggler):
       print(f"[FATAL ERROR] Could not open log file {filename} for writing. Aborting...")
       sys.exit(-1)
 
-    self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Window | 
-                        Qt.WindowType.WindowStaysOnTopHint)
-    self.setWindowTitle("μDDO Console")
-
     self.converter = QTextEdit()
     self.content = QTextEdit()
     self.content.setReadOnly(True)
     self.content.setAcceptRichText(True)
+    self.content.setFrameShape(QTextEdit.Shape.NoFrame)
+    setBGColour(self.content.viewport(), QColor(0, 0, 0, 210))
     self.tabWidget.addTab(self.content, "Log")
 
     self.setLayout(newHLayout([self.tabWidget]))
