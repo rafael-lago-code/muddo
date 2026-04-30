@@ -502,7 +502,7 @@ class XHelper(QObject):
           if event.type == X.KeyPress:
             modmask = event.state
             keycode = event.detail
-            
+
             callback = grabbed.get((modmask, keycode))
             if callback: callback()  # Direct call, no extra thread
         else:

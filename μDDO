@@ -29,7 +29,7 @@ SENTINEL_FILE = os.path.join(THIS_PATH, "env", "μddo", ".deps_installed")
 BOX_WIDTH = 80
 INTERIOR_WIDTH = BOX_WIDTH - 2   # = 78
 
-MUDDO_TITLE="""
+MUDDO_TITLE=r"""
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║                            ______   ______      ___                          ║
 ║                           |_   _ `.|_   _ `.  .'   `.                        ║
@@ -127,11 +127,13 @@ if os.environ.get("VIRTUAL_ENV") != VENV_PATH:
 from PyQt6.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt6.QtWidgets import QApplication
 from cMainWindow import cMainWindow
+import Xlib
 
 print(MUDDO_TITLE)
 print(boxLine(f"    ✓ VENV_PYTHON={os.environ.get("VIRTUAL_ENV")}"))
 print(boxLine(f"    ✓ Qt Version={QT_VERSION_STR}"))
 print(boxLine(f"    ✓ PyQtVersion={PYQT_VERSION_STR}"))
+print(boxLine(f"    ✓ XLib={Xlib.__version_string__}"))
 print(boxLine(" "))
 print("╚══════════════════════════════════════════════════════════════════════════════╝")
 

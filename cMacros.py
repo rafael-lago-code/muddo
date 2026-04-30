@@ -106,7 +106,7 @@ class cTableRow(QTableWidgetItem):
 #                                            M A C R O   I T E M
 #
 #---------------------------------------------------------------------------------------------------------------
-class cMacroItem(QListWidgetItem):
+class cMacroSet(QListWidgetItem):
   def __init__(self, parent : cMacros, name : str):
     super().__init__()
     self.parent = parent
@@ -281,6 +281,11 @@ class cMacros(cToggler):
     self.aliasTable.verticalHeader().setVisible(False)
     self.aliasTable.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
     self.aliasTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+    self.aliasTable.setAcceptDrops(True)
+    self.aliasTable.setDragEnabled(True)
+    self.aliasTable.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+    self.aliasTable.setDropIndicatorShown(True)
+    self.aliasTable.setDragDropOverwriteMode(False)
 
     self.aliasFilter = QLineEdit()
 
@@ -344,7 +349,7 @@ class cMacros(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def _saveWhenDropped(self, event):
     QTableWidget.dropEvent(self.table, event)
-    cset : cMacroItem = self.setListWidget.currentItem()
+    cset : cMacroSet = self.setListWidget.currentItem()
     for row in range(self.table.rowCount()):
       for col in range(4):
         cset.sync(row,col)
@@ -468,7 +473,7 @@ class cMacros(cToggler):
   def appendMacroSet(self, name : str):
     if name in self.allMacroItems: return
 
-    self.allMacroItems[name] = cMacroItem(self,name)
+    self.allMacroItems[name] = cMacroSet(self,name)
     self.setListWidget.addItem(self.allMacroItems[name])
 
     filename = P_DEFAULT_MACRODIR+os.sep+name+P_DEFAULT_MACROEXT
@@ -481,7 +486,7 @@ class cMacros(cToggler):
   #----------------------------------------------------------------------------------------------------------
   def getActiveSets(self):
     allActive = []
-    sset : cMacroItem
+    sset : cMacroSet
     for sset in self.allMacroItems.values():
       if sset.checkState() == Qt.CheckState.Checked:
         allActive.append(sset.text())
@@ -493,7 +498,7 @@ class cMacros(cToggler):
       self.toActivate = toActivate
       return
 
-    sset : cMacroItem
+    sset : cMacroSet
     for sset in self.allMacroItems.values():
       if sset.text() in toActivate:
         sset.setActive(True)
@@ -610,7 +615,7 @@ class cMacros(cToggler):
         sset[0].save()
 
   #----------------------------------------------------------------------------------------------------------
-  def renameMacroSetFile(self, sset : cMacroItem):
+  def renameMacroSetFile(self, sset : cMacroSet):
     key = next((k for k, v in self.allMacroItems.items() if v is sset), None)
     if key != sset.text():
       cPrint.info(f"Renaming macro set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")

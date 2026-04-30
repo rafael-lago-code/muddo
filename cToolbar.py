@@ -29,7 +29,7 @@ from helpers.cPrint import cPrint
 from helpers.util import *
 from helpers import cEffects
 from widgets.cOrb import cOrb, cTheme_Toolbar
-from widgets.cToggler import cToggler
+from widgets.cGrid import cGrid
 
 #----------------------------------------------------------------------------------------------------------
 class cToolbarItem(cOrb):
@@ -49,7 +49,6 @@ class cToolbarItem(cOrb):
     self.names    = names
     self.commands = commands
     for step in script:
-      cPrint.info(f"Connection {step} to {toolbar}")
       self.clicked.connect(lambda checked=False, s=step: s())
   
   def index(self):
@@ -97,19 +96,26 @@ class cToolbar(QWidget):
   widgetID = "Toolbar"
   items : list[cToolbarItem] = []
   widget = None
-  grid = None
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
-  def setup(cls, main):
-    cls.widget = QWidget(main)
-    cls.grid = QGridLayout()
-    cls.widget.setLayout(cls.grid)
+  def setup(cls):
+    cSettings.toolbar._macroNCols.valueChanged.connect(cls.widget.setColumns)
+    cSettings.toolbar._macroNRows.valueChanged.connect(cls.widget.setRows)
+    cSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.widget.setFillRowsFirst)
+    cSettings.toolbar._macroNCols.valueChanged.connect(cls.sortLayout)
+    cSettings.toolbar._macroNRows.valueChanged.connect(cls.sortLayout)
+    cSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.sortLayout)
 
   #----------------------------------------------------------------------------------------------------------
   def __init__(self, main):
-    cToolbar.setup(main)
-    super().__init__()
+    cToolbar._instantiateWidget(main)
+    super().__init__(main)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def _instantiateWidget(cls, main):
+    cls.widget = cGrid(main)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -123,6 +129,13 @@ class cToolbar(QWidget):
   @classmethod
   def clearItems(cls):
     cls.items.clear()
+
+  # # #----------------------------------------------------------------------------------------------------------
+  # @classmethod
+  # def TESTITEMS(cls):
+  #   for i in range(10):
+  #     cls.addItems(cToolbarItem(str(i), {}, icon=QIcon(), enabled=True))
+  #   cls.sortLayout()
   
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -132,6 +145,10 @@ class cToolbar(QWidget):
     ncols = cSettings.toolbar.macroNCols()
     macroFillMissing = cSettings.toolbar.macroFillMissing()
     fillRowsFirst= cSettings.toolbar.macroFillRowFirst()
+
+    cls.widget.setColumns(ncols)
+    cls.widget.setRows(ncols)
+    cls.widget.setFillRowsFirst(fillRowsFirst)
     cls.items.sort(key=lambda item: item.index())
 
     if macroFillMissing and cls.items:
@@ -141,24 +158,13 @@ class cToolbar(QWidget):
     else:
       slots = cls.items
 
-    n = len(slots)
-    if fillRowsFirst:
-      ncols = max(ncols, -(-n // nrows))  # extend cols if overflow
-    else:
-      nrows = max(nrows, -(-n // ncols))  # extend rows if overflow
-
-    for pos, item in enumerate(slots):
-      if fillRowsFirst:
-        row, col = divmod(pos, ncols)
-      else:
-        col, row = divmod(pos, nrows)
-      cls.grid.addWidget(item, row, col)
+    for item in slots:
+      cls.widget.addWidget(item)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
   def clearLayout(cls):
-    while cls.grid.count():
-      cls.grid.takeAt(0).widget().setParent(None)
+    cls.widget.clear()
 
 
 

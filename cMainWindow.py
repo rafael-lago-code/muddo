@@ -127,6 +127,8 @@ class cMainWindow(QMainWindow):
     self.patch.initialize()
     cMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
+    cToolbar.setup()
+    # cToolbar.TESTITEMS()
 
   #----------------------------------------------------------------------------------------------------------
   # This will queue everything; once a user is done queuing, it will emit 
