@@ -3,6 +3,7 @@ PyQt6-WebEngine>=6.8
 python-xlib==0.31
 evdev>=1.6
 pynput>=1.7
+numpy
 keyboard
 adblock
 pythonnet

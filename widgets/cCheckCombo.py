@@ -97,8 +97,8 @@ class cCheckCombo(QComboBox):
             insertPos = i
             break
     self.rowModel.insertRow(insertPos,row)
-    self.rowModel.itemChanged.connect(self.onItemChanged)
     self.refreshHeader()
+    self.rowModel.itemChanged.connect(self.onItemChanged)
 
   #----------------------------------------------------------------------------------------------------------
   def getChecked(self) -> list:

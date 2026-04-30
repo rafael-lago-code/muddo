@@ -670,6 +670,7 @@ class cStorageManager(cToggler):
         itemAvail  = struct.unpack('<I', f.read(4))[0]
         favail     = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
+
         itemsCount = 0
         while True:
           itemAvail = struct.unpack('<I', favail[8:12])[0]

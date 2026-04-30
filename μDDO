@@ -129,6 +129,7 @@ from PyQt6.QtWidgets import QApplication
 from cMainWindow import cMainWindow
 import Xlib
 
+
 print(MUDDO_TITLE)
 print(boxLine(f"    ✓ VENV_PYTHON={os.environ.get("VIRTUAL_ENV")}"))
 print(boxLine(f"    ✓ Qt Version={QT_VERSION_STR}"))

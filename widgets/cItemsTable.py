@@ -120,172 +120,172 @@ P_STATUS_BUSY_FEEDJEWEL = 7
 #                                  
 #---------------------------------------------------------------------------------------------------------------
 class cItemData(QTableWidgetItem):
-    _id = 0
-    _name = ""
-    _ownerID = 0
-    _ownerName = ""
-    _container = ""
-    _weenieID = 0
-    _type = ""
-    _quantity = 0
-    _qualifier = ""
-    _valueCopper = 0
-    _hardness = 0
-    _durability = 0
-    _iconId = 0
-    _icon = None
-    _description = ""
-    _minLevel = 0
-    _material = 0
-    _isJunk = 0
-    _isLocked = 0
-    _isSellable = 0
-    _isMinorArtifact = 0
-    _setBonus1 = 0
-    _setBonus2 = 0
-    _currentSlot = 0
-    _binding = 0
-    _equipsTo = ""
-    _augments = []
-    _effects = {}
+  _id = 0
+  _name = ""
+  _ownerID = 0
+  _ownerName = ""
+  _container = ""
+  _weenieID = 0
+  _type = ""
+  _quantity = 0
+  _qualifier = ""
+  _valueCopper = 0
+  _hardness = 0
+  _durability = 0
+  _iconId = 0
+  _icon = None
+  _description = ""
+  _minLevel = 0
+  _material = 0
+  _isJunk = 0
+  _isLocked = 0
+  _isSellable = 0
+  _isMinorArtifact = 0
+  _setBonus1 = 0
+  _setBonus2 = 0
+  _currentSlot = 0
+  _binding = 0
+  _equipsTo = ""
+  _augments = []
+  _effects = {}
 
-    #----------------------------------------------------------------------------------------------------------
-    @staticmethod
-    def readString(f) -> str:
-      count = int.from_bytes(f.read(2), byteorder='little', signed=False)
-      return f.read(count).decode('utf-8')
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def readString(f) -> str:
+    count = int.from_bytes(f.read(2), byteorder='little', signed=False)
+    return f.read(count).decode('utf-8')
 
-    #----------------------------------------------------------------------------------------------------------
-    @staticmethod
-    def readIcon(f) -> QImage:
-      import numpy as np
-      # bg_color=(210, 180, 140)
-      bg_color=(74, 119, 157)
-      width  = int.from_bytes(f.read(4), byteorder='little', signed=False)
-      height = int.from_bytes(f.read(4), byteorder='little', signed=False)
-      count  = int.from_bytes(f.read(4), byteorder='little', signed=False)
-      rawData = f.read(count)
-      if width == 0 or height == 0 or count != width*height*4:
-        return None
+  #----------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def readIcon(f) -> QImage:
+    import numpy as np
+    # bg_color=(210, 180, 140)
+    bg_color=(74, 119, 157)
+    width  = int.from_bytes(f.read(4), byteorder='little', signed=False)
+    height = int.from_bytes(f.read(4), byteorder='little', signed=False)
+    count  = int.from_bytes(f.read(4), byteorder='little', signed=False)
+    rawData = f.read(count)
+    if width == 0 or height == 0 or count != width*height*4:
+      return None
 
-      arr = np.frombuffer(rawData, dtype=np.uint8).reshape(height, width, 4).copy()
-      arr[:, :, [0, 2]] = arr[:, :, [2, 0]] # inverts red and blue channels
-      bg_arr = np.full((height, width, 4), [*bg_color, 255], dtype=np.uint8)
-      alpha = arr[:, :, 3:4] / 255.0        # Normalize alpha to 0-1
-      result = (bg_arr[:, :, :3] * (1 - alpha) + arr[:, :, :3] * alpha).astype(np.uint8)
-      result = np.dstack([result, np.full((height, width), 255, dtype=np.uint8)])
+    arr = np.frombuffer(rawData, dtype=np.uint8).reshape(height, width, 4).copy()
+    arr[:, :, [0, 2]] = arr[:, :, [2, 0]] # inverts red and blue channels
+    bg_arr = np.full((height, width, 4), [*bg_color, 255], dtype=np.uint8)
+    alpha = arr[:, :, 3:4] / 255.0        # Normalize alpha to 0-1
+    result = (bg_arr[:, :, :3] * (1 - alpha) + arr[:, :, :3] * alpha).astype(np.uint8)
+    result = np.dstack([result, np.full((height, width), 255, dtype=np.uint8)])
 
-      # img = Image.frombytes('RGBA', (width, height), rawData)
-      qimage = QImage(result, width, height, QImage.Format.Format_RGBA8888)
-      return qimage
+    # img = Image.frombytes('RGBA', (width, height), rawData)
+    qimage = QImage(result, width, height, QImage.Format.Format_RGBA8888)
+    return qimage
 
-    #----------------------------------------------------------------------------------------------------------
-    def __init__(self):
-        global P_ITEM_UKNOWN_ICON
-        P_ITEM_UKNOWN_ICON = getIcon(P_MUDDO_DIR+'/images/ddo_themes/skill_icons/item_placeholder.png')
-        super().__init__()
+  #----------------------------------------------------------------------------------------------------------
+  def __init__(self):
+      global P_ITEM_UKNOWN_ICON
+      P_ITEM_UKNOWN_ICON = getIcon(P_MUDDO_DIR+'/images/ddo_themes/skill_icons/item_placeholder.png')
+      super().__init__()
 
-    #----------------------------------------------------------------------------------------------------------
-    def digest(self):
-      self.setText(f"{self._name} {" ".join(self.augments(iconsOnly=True))}")
-      self.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-      ttip = ""
-      if self._description: ttip += f"<i>\"{self._description.replace('\n','<br>')}\"</i><br><br>"
-      if self._qualifier: ttip += f"<b>Qualifier:</b> {self._qualifier}<br>"
-      if self._quantity and self._quantity>1: ttip += f"<b>Quantity:</b> {self._quantity}<br>"
-      if self._minLevel: ttip += f"<b>Minimum Level:</b> {self._minLevel}<br>"
-      if self._augments: ttip += f"<b>Augments:</b><br> ● {'<br> ● '.join(self.augments())} <br>"
-      if self._effects: ttip += "<b>Effects:</b><br>" + "<br>".join([f" ● {k}: {v}" for k,v in self._effects.items()]) + "<br>"
-      if self._material: ttip += f"<b>Material:</b> {self._material}<br>"
-      if self._hardness: ttip += f"<b>Hardness:</b> {self._hardness}<br>"
-      if self._valueCopper: ttip += f"<b>Value:</b> {self._valueCopper}CC<br>"
-      if self._qualifier: ttip += f"<b>Instance ID:</b> {self._id}<br>"
-      if ttip == "": ttip = f"<i>(no description)</i>"
-      self.setIcon(self.icon())
-      self.setToolTip(ttip)
-      self.setData(Qt.ItemDataRole.UserRole, self._name)
-    
+  #----------------------------------------------------------------------------------------------------------
+  def digest(self):
+    self.setText(f"{self._name} {" ".join(self.augments(iconsOnly=True))}")
+    self.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+    ttip = ""
+    if self._description: ttip += f"<i>\"{self._description.replace('\n','<br>')}\"</i><br><br>"
+    if self._qualifier: ttip += f"<b>Qualifier:</b> {self._qualifier}<br>"
+    if self._quantity and self._quantity>1: ttip += f"<b>Quantity:</b> {self._quantity}<br>"
+    if self._minLevel: ttip += f"<b>Minimum Level:</b> {self._minLevel}<br>"
+    if self._augments: ttip += f"<b>Augments:</b><br> ● {'<br> ● '.join(self.augments())} <br>"
+    if self._effects: ttip += "<b>Effects:</b><br>" + "<br>".join([f" ● {k}: {v}" for k,v in self._effects.items()]) + "<br>"
+    if self._material: ttip += f"<b>Material:</b> {self._material}<br>"
+    if self._hardness: ttip += f"<b>Hardness:</b> {self._hardness}<br>"
+    if self._valueCopper: ttip += f"<b>Value:</b> {self._valueCopper}CC<br>"
+    if self._qualifier: ttip += f"<b>Instance ID:</b> {self._id}<br>"
+    if ttip == "": ttip = f"<i>(no description)</i>"
+    self.setIcon(self.icon())
+    self.setToolTip(ttip)
+    self.setData(Qt.ItemDataRole.UserRole, self._name)
+  
 #----------------------------------------------------------------------------------------------------------
-    def icon(self) -> QIcon:
-      if self._icon:
-        return QIcon(QPixmap(self._icon))
+  def icon(self) -> QIcon:
+    if self._icon:
+      return QIcon(QPixmap(self._icon))
+    else:
+      return P_ITEM_UKNOWN_ICON
+
+  #----------------------------------------------------------------------------------------------------------
+  def slot(self):
+    if int(self._currentSlot) >= P_ITEM_EQUIPPED_SLOT_BASE:
+      return P_ITEM_EQUIPPED_SLOT.get(int(self._currentSlot)-P_ITEM_EQUIPPED_SLOT_BASE, f"?{self._currentSlot-P_ITEM_EQUIPPED_SLOT_BASE}?")
+    else:
+      # Tab / Row / Col
+      return (self._currentSlot//20, (self._currentSlot % 20) // 5, (self._currentSlot % 20) % 5)
+
+  #----------------------------------------------------------------------------------------------------------
+  def owner(self):
+    return self._ownerName.split()[0]
+
+  #----------------------------------------------------------------------------------------------------------
+  def binding(self):
+    return P_ITEM_BINDING_NAME.get(self._binding, f"?{self._binding}?")
+  
+  #----------------------------------------------------------------------------------------------------------
+  def augments(self, textOnly=False, iconsOnly=False):
+    copyVals = self._augments.copy()
+    text=[]
+    icons=[]
+    while copyVals:
+      v = copyVals.pop(-1)
+      if v == 0: pass
+      elif v in P_ITEM_AUGMENTS_NAME:
+        text  += [P_ITEM_AUGMENTS_NAME[v]] if textOnly else [f"{P_ITEM_AUGMENTS_NAME[v]} {P_ITEM_AUGMENTS_ICON[v]} "]
+        icons += [P_ITEM_AUGMENTS_ICON[v]]
       else:
-        return P_ITEM_UKNOWN_ICON
+        text  += [f"?{v}?"]
+        icons += [f"?{v}?"]
+    return icons if iconsOnly else text
+  
+  #----------------------------------------------------------------------------------------------------------
+  def readFromBin(self, file : BufferedReader):
+    self._id          = int.from_bytes(file.read(8), byteorder='little', signed=False)
+    self._name        = cItemData.readString(file) # f.read(count).decode('utf-8')
+    self._ownerID     = int.from_bytes(file.read(8), byteorder='little', signed=False)
+    self._ownerName   = cItemData.readString(file)
+    self._weenieID    = int.from_bytes(file.read(8), byteorder='little', signed=False)
+    self._type        = cItemData.readString(file)
+    self._quantity    = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._qualifier   = cItemData.readString(file)
+    self._valueCopper = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._hardness    = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._durability  = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._iconId      = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._icon        = cItemData.readIcon(file)
+    self._description = cItemData.readString(file)
+    self._minLevel    = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._material    = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._isJunk      = int.from_bytes(file.read(1), byteorder='little', signed=False)
+    self._isLocked    = int.from_bytes(file.read(1), byteorder='little', signed=False)
+    self._isSellable  = int.from_bytes(file.read(1), byteorder='little', signed=False)
+    self._isMinorArtifact = int.from_bytes(file.read(1), byteorder='little', signed=False)
+    self._setBonus1   = cItemData.readString(file)
+    self._setBonus2   = cItemData.readString(file)
+    self._currentSlot = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._binding     = int.from_bytes(file.read(4), byteorder='little', signed=False)
+    self._equipsTo    = cItemData.readString(file)
 
-    #----------------------------------------------------------------------------------------------------------
-    def slot(self):
-      if int(self._currentSlot) >= P_ITEM_EQUIPPED_SLOT_BASE:
-        return P_ITEM_EQUIPPED_SLOT.get(int(self._currentSlot)-P_ITEM_EQUIPPED_SLOT_BASE, f"?{self._currentSlot-P_ITEM_EQUIPPED_SLOT_BASE}?")
-      else:
-        # Tab / Row / Col
-        return (self._currentSlot//20, (self._currentSlot % 20) // 5, (self._currentSlot % 20) % 5)
-
-    #----------------------------------------------------------------------------------------------------------
-    def owner(self):
-      return self._ownerName.split()[0]
-
-    #----------------------------------------------------------------------------------------------------------
-    def binding(self):
-      return P_ITEM_BINDING_NAME.get(self._binding, f"?{self._binding}?")
+    self._augments = []
+    self._effects  = {}
     
-    #----------------------------------------------------------------------------------------------------------
-    def augments(self, textOnly=False, iconsOnly=False):
-      copyVals = self._augments.copy()
-      text=[]
-      icons=[]
-      while copyVals:
-        v = copyVals.pop(-1)
-        if v == 0: pass
-        elif v in P_ITEM_AUGMENTS_NAME:
-          text  += [P_ITEM_AUGMENTS_NAME[v]] if textOnly else [f"{P_ITEM_AUGMENTS_NAME[v]} {P_ITEM_AUGMENTS_ICON[v]} "]
-          icons += [P_ITEM_AUGMENTS_ICON[v]]
-        else:
-          text  += [f"?{v}?"]
-          icons += [f"?{v}?"]
-      return icons if iconsOnly else text
-    
-    #----------------------------------------------------------------------------------------------------------
-    def readFromBin(self, file : BufferedReader):
-      self._id          = int.from_bytes(file.read(8), byteorder='little', signed=False)
-      self._name        = cItemData.readString(file) # f.read(count).decode('utf-8')
-      self._ownerID     = int.from_bytes(file.read(8), byteorder='little', signed=False)
-      self._ownerName   = cItemData.readString(file)
-      self._weenieID    = int.from_bytes(file.read(8), byteorder='little', signed=False)
-      self._type        = cItemData.readString(file)
-      self._quantity    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._qualifier   = cItemData.readString(file)
-      self._valueCopper = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._hardness    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._durability  = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._iconId      = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._icon        = cItemData.readIcon(file)
-      self._description = cItemData.readString(file)
-      self._minLevel    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._material    = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._isJunk      = int.from_bytes(file.read(1), byteorder='little', signed=False)
-      self._isLocked    = int.from_bytes(file.read(1), byteorder='little', signed=False)
-      self._isSellable  = int.from_bytes(file.read(1), byteorder='little', signed=False)
-      self._isMinorArtifact = int.from_bytes(file.read(1), byteorder='little', signed=False)
-      self._setBonus1   = cItemData.readString(file)
-      self._setBonus2   = cItemData.readString(file)
-      self._currentSlot = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._binding     = int.from_bytes(file.read(4), byteorder='little', signed=False)
-      self._equipsTo    = cItemData.readString(file)
+    count = int.from_bytes(file.read(2), byteorder='little', signed=False)
+    for _ in range(count):
+      self._augments.append(int.from_bytes(file.read(4), byteorder='little', signed=False))
 
-      self._augments = []
-      self._effects  = {}
-      
-      count = int.from_bytes(file.read(2), byteorder='little', signed=False)
-      for _ in range(count):
-        self._augments.append(int.from_bytes(file.read(4), byteorder='little', signed=False))
-
-      count = int.from_bytes(file.read(2), byteorder='little', signed=False)
-      for _ in range(count):
-        countKey = int.from_bytes(file.read(2), byteorder='little', signed=False)
-        key = file.read(countKey).decode('utf-8')
-        countVal = int.from_bytes(file.read(2), byteorder='little', signed=False)
-        self._effects[key] = file.read(countVal).decode('utf-8')
-      return self
+    count = int.from_bytes(file.read(2), byteorder='little', signed=False)
+    for _ in range(count):
+      countKey = int.from_bytes(file.read(2), byteorder='little', signed=False)
+      key = file.read(countKey).decode('utf-8')
+      countVal = int.from_bytes(file.read(2), byteorder='little', signed=False)
+      self._effects[key] = file.read(countVal).decode('utf-8')
+    return self
 
 #---------------------------------------------------------------------------------------------------------------
 #
