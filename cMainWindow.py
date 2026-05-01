@@ -48,7 +48,7 @@ class cMainWindow(QMainWindow):
     self.setWindowTitle("μDDO")
     self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-    self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+    self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
 
     self.btnLaunch = cOrb("Launch", P_ICON_D20, tooltip="Launches Dungeons & Dragons Online for all selected" \
                           " accounts in the selected world. <br><b><i>Right-click for more options</i></b>")

@@ -18,6 +18,7 @@
 #
 #
 import os
+import re
 from PyQt6.QtWidgets import QLabel, QPushButton, QSizePolicy, QFrame, QHBoxLayout, QSplitter, \
                             QVBoxLayout, QLayout, QFrame
 from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap, QImage
@@ -105,6 +106,7 @@ P_ICON_GEARHIER  = "gears-hierarchy"
 P_ICON_GEARSTACK = "gears-stack"
 P_ICON_BACKPACK  = "backpack"
 P_ICON_CHEST     = "chest"
+P_ICON_BLACKSCREEN = "blackscreen"
 
 P_ICON_HARDDISK  = "drive-harddisk"
 P_ICON_PASTE     = "edit-paste"
@@ -353,6 +355,10 @@ def pathLinux2Windows(linuxPath : str):
 def getPrefix(linuxPath : str):
   tmp = linuxPath.split('/')
   return "/".join(tmp[0:tmp.index('drive_c')])
+
+#----------------------------------------------------------------------------------------------------------
+def splitQuotes(text : str):
+  return re.findall(r'"([^"]*)"', text)
 
 #----------------------------------------------------------------------------------------------------------
 class setBGColour(QObject):

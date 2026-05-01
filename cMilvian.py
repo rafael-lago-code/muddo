@@ -23,7 +23,7 @@ import sys, mmap, time, struct
 import os, threading
 from typing import TYPE_CHECKING
 from PyQt6.QtCore import pyqtSignal, QObject
-from helpers.cMilvianPacket import cMilvianPacket, cPhonyPacket, packetCommand, packetStatus, packetSignal
+from helpers.cMilvianPacket import cMilvianPacket, cPacker, cPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
 from helpers.cPrint import cPrint
 from helpers.cDispatcher import cDispatcher
@@ -246,28 +246,89 @@ class cMilvian():
     #                  len(data) | item_1_len | item_1_cmd | item_1_data | item_2_len |...
     inData = len(data).to_bytes(4, byteorder='little', signed=False)
     for item in data:
-      newReq = self.newStringRequest(item)
+      newReq = self.requestFromString(item)
       itemData = newReq.pack()
       inData += struct.pack('<I',len(itemData[4:])) + itemData[4:] # ditches the id for the length
     return cMilvianPacket(packetCommand.list, self, inData)
 
-  
   #---------------------------------------------------------------------------------------------------------------
   def newDebugCircularRequest(self, nentries: int) -> cMilvianPacket:
     # I know this looks silly, but I will re-use this later on
     cPrint.debug(f"[cMilvian:DebugCircular] {self.charName} - debugCircular({nentries})")
     return cMilvianPacket(packetCommand.debugCircular, self, struct.pack("<I",nentries))
-
+  
   #---------------------------------------------------------------------------------------------------------------
-  def newStringRequest(self, cmd : str) -> cMilvianPacket:
+  def requestFromString(self, cmd : str) -> cMilvianPacket:
     cmd = cmd.strip().lower()
     if cmd.startswith('sleep_'):
       return self.newSleepRequest(float(cmd[6:]))
+    elif cmd.startswith('chat'):
+      return self.newChat(cmd[5:-1])
     elif cmd in cMilvian.inputActions.keys():
       return self.newInputActionRequest(cmd)
+    elif cmd.startswith("multi"):
+      return self.newMultiActorFromString(cmd)
     else:
       return self.newCommandRequest(cmd)
+    
+  #---------------------------------------------------------------------------------------------------------------
+  def sendFromString(self, cmd: str) -> cMilvianPacket:
+    self.send(self.requestFromString(cmd))
+    
+  #---------------------------------------------------------------------------------------------------------------
+  def sendFromList(self, data: list) -> cMilvianPacket:
+    return self.send(self.requestFromList(data))
   
+  #---------------------------------------------------------------------------------------------------------------
+  def requestFromList(self, data: list) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
+    while isinstance(data,(list,tuple)) and len(data)==1:
+      data = data[0]
+    if isinstance(data,list):
+      # check if it is really a list or if it was split somewhere else by accident
+      if isinstance(data[0],str) and data[0].strip().startswith("chat("):
+        return self.requestFromString(" ".join(data))
+      elif isinstance(data[0],str) and data[0].strip().startswith("multi("):
+        return self.requestFromString(" ".join(data))
+      else:
+        return self.newListRequest(data)
+    else:
+      return self.requestFromString(data)
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def newMultiActorFromString(self, content) -> cMilvianPacket:
+    # example input: multi("A, B, C", "A, B, C", "b4k2 b4k1 b10k5", "filterA && filterB", "filterC or filterD")
+    content = content.strip()[6:-1]
+    fields = splitQuotes(content)
+    if len(fields)<3:
+      cPrint.error(f"[cMilvian] got strange multiActors request: {content}")
+    filterActors  = fields[3] if len(fields) > 3 else ""
+    filterTargets = fields[4] if len(fields) > 4 else ""
+
+    return self.newMultiActor(fields[0], fields[1], fields[2], filterActors, filterTargets)
+
+  #---------------------------------------------------------------------------------------------------------------
+  def newMultiActor(self, actors, targets, action, filterActors="", filterTargets="") -> cMilvianPacket:
+    if isinstance(actors,str): actors = actors.replace(" ","").split(',')
+    if isinstance(targets,str): targets = targets.replace(" ","").split(',')
+    actors = [a for a in actors if a]
+    targets = [t for t in targets if t]
+    cPrint.debug(f"[cMilvian:Debug] {self.charName} - packMultiActor({actors}, {targets}, {action}, {filterActors}, {filterTargets})")
+
+    if not isinstance(action, cMilvianPacket): action = self.requestFromList(action)
+
+    inData  = cPacker.pack(actors)
+    inData += cPacker.pack(targets)
+    inData += cPacker.pack(filterActors)
+    inData += cPacker.pack(filterTargets)
+    inData += cPacker.pack(action)
+
+    return cMilvianPacket(packetCommand.multiActor, self, inData)
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def newChat(self, text : str) -> cMilvianPacket:
+    return cMilvianPacket(packetCommand.chat, self, cPacker.pack(text))
+
   #---------------------------------------------------------------------------------------------------------------
   def isAlive(self):
     newStatus = os.path.exists(self.pathRequest)
@@ -278,39 +339,39 @@ class cMilvian():
         cPrint.warning(f"[cMilvian] bridge for \"{self.charName}\" ({self.pathRequest}) is back online")
     self._lastAlive = newStatus
     return newStatus
-
-  #---------------------------------------------------------------------------------------------------------------
-  def sendList(self, data: list) -> cMilvianPacket:
-    if not self.isAlive(): return cPhonyPacket
-    while isinstance(data,(list,tuple)) and len(data)==1:
-      data = data[0]
-    if isinstance(data,list):
-      return self.sendRequest(self.newListRequest(data))
-    else:
-      return self.sendRequest(self.newStringRequest(data))
-    
+  
   #---------------------------------------------------------------------------------------------------------------
   def sendDebugCircular(self, nentries: str) -> cMilvianPacket:
     if not self.isAlive(): return cPhonyPacket
-    return self.sendRequest(self.newDebugCircularRequest(int(nentries)))
+    return self.send(self.newDebugCircularRequest(int(nentries)))
       
   #---------------------------------------------------------------------------------------------------------------
   def sendInputAction(self, cmd: str) -> cMilvianPacket:
     if not self.isAlive(): return cPhonyPacket
-    return self.sendRequest(self.newInputActionRequest(cmd))
+    return self.send(self.newInputActionRequest(cmd))
 
   #---------------------------------------------------------------------------------------------------------------
   def sendSleep(self, nsec: float) -> cMilvianPacket:
     if not self.isAlive(): return cPhonyPacket
-    return self.sendRequest(self.newSleepRequest(nsec))
+    return self.send(self.newSleepRequest(nsec))
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def sendMultiActor(self, content) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
+    return self.send(self.newMultiActor(content))
+  
+  #---------------------------------------------------------------------------------------------------------------
+  def sendChat(self, text: str) -> cMilvianPacket:
+    if not self.isAlive(): return cPhonyPacket
+    return self.send(self.newChat(text))
 
   #---------------------------------------------------------------------------------------------------------------
   def sendCommand(self, command: str) -> cMilvianPacket:
     if not self.isAlive(): return cPhonyPacket
-    return self.sendRequest(self.newCommandRequest(command))
+    return self.send(self.newCommandRequest(command))
 
   #---------------------------------------------------------------------------------------------------------------
-  def sendRequest(self, packet: cMilvianPacket) -> cMilvianPacket:
+  def send(self, packet: cMilvianPacket) -> cMilvianPacket:
     if not self.isAlive(): return cPhonyPacket
     cDispatcher.fate((self.id, packet.id, packetSignal.gotResponse), lambda data, p=packet: p.parseRawData(data))
     message = packet.pack()

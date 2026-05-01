@@ -65,7 +65,7 @@ class cProcessManager(cToggler):
     self.btnCleanAll   = cOrbSmall(icon=P_ICON_CLEAR,   tooltip="Clear all processes<br>Ctrl+click: kill and clear all processes")
     self.btnAudioAll   = cOrbSmall(icon=P_ICON_MUTE,    tooltip="Toggles audio on/off for all processes")
     self.btnLogAll     = cOrbSmall(icon=P_ICON_NOTES,   tooltip="Toggles logs on/off for all processes")
-    self.btnFixBlackScreen = cOrbSmall(icon=P_ICON_CONSOLE, tooltip="Attempt to solve the blackscreen bug in all running instances.")
+    self.btnFixBlackScreen = cOrbSmall(icon=P_ICON_BLACKSCREEN, tooltip="Attempt to solve the blackscreen bug in all running instances.")
     self.btnCaptureOrphans = cOrbSmall(icon=getIcon(P_MUDDO_DIR+'/images/custom-icons/link.png'), tooltip="Attempts to find running instances of DDO and capture them"\
                                      " into our own process manager.\n<b><i>WARNING</i></b>: this will not try to guess which"\
                                      " profile (if any) was used to launch the original DDO instance!")

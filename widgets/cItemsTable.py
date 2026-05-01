@@ -366,8 +366,11 @@ class cItemsTable(QTableWidget):
     for item in list(self.staleData[charName]):
       try: del self.itemsById[item._id]
       except: pass
-      self.removeRow(item.row())
-      npurged += 1
+      try:
+        self.removeRow(item.row())
+        npurged += 1
+      except RuntimeError:
+        pass  # item was already replaced/deleted by Qt via setItem in append()
     self.staleData[charName] = []
     if (npurged): cPrint.info(f"[cItemsTable] cleaned {npurged} stale items from {C_ORANGE}{charName}</font>")
 

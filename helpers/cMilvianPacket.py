@@ -48,6 +48,8 @@ class packetCommand(Enum):
   debugId        = struct.pack('<I', 10)
   dissolveItems  = struct.pack('<I', 20)
   sellItems      = struct.pack('<I', 21)
+  multiActor     = struct.pack('<I', 30)
+  chat           = struct.pack('<I', 31)
   debugCircular  = struct.pack('<I', 90)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)
@@ -66,6 +68,54 @@ class packetSignal(Enum):
   gotResponse  = struct.pack('<I', 1)
   running      = struct.pack('<I', 2)
   statusUpdate = struct.pack('<I', 3)
+
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#                                                    P A C K E R 
+#
+#---------------------------------------------------------------------------------------------------------------
+class cPacker():
+
+  #---------------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def packString(a0 : str) -> bytes:
+    e = a0.encode('utf-8')
+    out  = struct.pack('<I',len(e))
+    out += struct.pack(f'<{len(e)}s',e)
+    return out
+
+  #---------------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def packList(a0 : list) -> bytes:
+    out  = struct.pack('<I',len(a0))
+    for i in a0:
+      out += cPacker.pack(i)
+    return out
+
+  #---------------------------------------------------------------------------------------------------------------
+  @staticmethod
+  def pack(a0) -> bytes:
+    if isinstance(a0,str):
+      return cPacker.packString(a0)
+    elif isinstance(a0,(list,tuple)):
+      return cPacker.packList(a0)
+    elif isinstance(a0,int):
+      return struct.pack("<i",a0)  # problematic if I'm trying to send unsigned ints...
+    elif isinstance(a0,float):
+      return struct.pack("<d",a0)
+    elif isinstance(a0,float):
+      return struct.pack("<d",a0)
+    elif isinstance(a0,bytes):
+      return a0
+    elif isinstance(a0,(packetSignal,packetStatus,packetCommand)):
+      return a0.value
+    elif isinstance(a0,cMilvianPacket):
+      return a0.pack()
+    else:
+      print(f"[cPacker] no idea what you passed me, what is this?\n  ->{a0} | {type(a0)}")
+      cPrint.error(f"[cPacker] no idea what you passed me, what is this?\n  ->{a0} | {type(a0)}")
+
 
 #---------------------------------------------------------------------------------------------------------------
 #
@@ -95,7 +145,7 @@ class cMilvianPacket():
   #     return len(self.inData)+8
   #   else:
   #     return len(self.inData.encode('utf-8'))+8
-    
+  
   #---------------------------------------------------------------------------------------------------------------
   def pack(self) -> bytes:
     message  = self.id+self.command.value

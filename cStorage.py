@@ -436,7 +436,7 @@ class cStorageManager(cToggler):
       p = cMilvianPacket(packetCommand.queryinventory, bridge, inData)
       cDispatcher.connect((bridge.id, p.id, packetSignal.gotResponse), lambda data, p=p: self.storageStatusUpdate(p, data))
       # cDispatcher.fate((bridge.id, p.id, packetSignal.running), self.loadStorageData)
-      bridge.sendRequest(p)
+      bridge.send(p)
       self.refreshStorage(bridge)
 
   #----------------------------------------------------------------------------------------------------------
@@ -475,7 +475,7 @@ class cStorageManager(cToggler):
         inData += struct.pack('<Q',item._id)
       p = cMilvianPacket(packetCommand.dissolveItems, bridges[c], inData)
       packets[c] = p
-      bridges[c].sendRequest(packets[c])
+      bridges[c].send(packets[c])
       cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageDissolveUpdate(p, data))
   
   #----------------------------------------------------------------------------------------------------------
@@ -516,7 +516,7 @@ class cStorageManager(cToggler):
         inData += struct.pack('<Q',item._id)
       p = cMilvianPacket(packetCommand.sellItems, bridges[c], inData)
       packets[c] = p
-      bridges[c].sendRequest(packets[c])
+      bridges[c].send(packets[c])
       cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageSellUpdate(p, data))
   
   #----------------------------------------------------------------------------------------------------------
@@ -654,7 +654,7 @@ class cStorageManager(cToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def refreshStorage(self, bridge : cMilvian):
-    self.table.staleData[bridge] = []
+    self.table.staleData[bridge.charName] = []
     for i in range(self.table.rowCount()):
       if self.table.item(i,P_ITEM_COLUMNS.index("Owner")).text() == bridge.charName:
         self.table.staleData[bridge.charName].append(self.table.item(i,P_ITEM_COLUMNS.index("Name")))

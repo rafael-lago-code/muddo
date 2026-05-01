@@ -42,6 +42,9 @@ Currently implemented features:
     - enable storing list of itemIds to currently opened container/bank
     - enable trading
     - enable tracking of last known state for each container/character/bank (like Trove Plugin)
+  - cToolbar:
+    - re-implement "fill rows first"
+    - make all buttons "turn off" when milvian bridge stops
   - Other 
     - aProcessItems refactor?
       - use a QTableWidget or QListWidget instead?
