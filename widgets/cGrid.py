@@ -36,6 +36,7 @@ import helpers.cEffects as cEffects
 #---------------------------------------------------------------------------------------------------------------
 class cGrid(QWidget):
   orderChanged = pyqtSignal()
+  itemsSwapped = pyqtSignal(object, object)
   columns = 0
   rows = 2
   fillRowsFirst = True
@@ -135,30 +136,26 @@ class cGrid(QWidget):
       return
 
     pos = event.position().toPoint()
-    targetIndex = -1
-
     for i, widget in enumerate(self.contents):
       if widget is self.draggedWidget:
         continue
       if widget.geometry().contains(pos):
-        targetIndex = i
+        self.lastTargetIndex = i
         break
-
-    if targetIndex != -1 and targetIndex != self.lastTargetIndex:
-      src = self.originalIndex
-      tgt = targetIndex
-      self.contents[src], self.contents[tgt] = self.contents[tgt], self.contents[src]
-      self.originalIndex = tgt
-      self.lastTargetIndex = tgt
-
-      self._refreshGrid()
-      self.orderChanged.emit()
 
     event.acceptProposedAction()
 
   def dropEvent(self, event):
     self.refreshSentinel = False
     if event.mimeData().hasFormat("application/x-draggablegrid"):
+      src = self.originalIndex
+      tgt = self.lastTargetIndex
+      if src != -1 and tgt != -1 and src != tgt:
+        item_a, item_b = self.contents[src], self.contents[tgt]
+        self.contents[src], self.contents[tgt] = item_b, item_a
+        self._refreshGrid()
+        self.itemsSwapped.emit(item_a, item_b)
+      self.lastTargetIndex = -1
       event.acceptProposedAction()
       self.orderChanged.emit()
 

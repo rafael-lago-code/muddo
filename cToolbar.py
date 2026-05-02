@@ -42,6 +42,7 @@ class cToolbarItem(cOrb):
     return cls.theme
 
   def __init__(self, toolbar, script, enabled=True, icon=None, names=frozenset(), commands=[]):
+    self.trigger = toolbar
     title = toolbar.replace("_","").replace("toolbar", "")
     resolved_icon = QIcon(icon) if icon else QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png')
     tooltip = ", ".join(sorted(names)) if names else "<i><no description></i>"
@@ -106,9 +107,17 @@ class cToolbar(QWidget):
     cSettings.toolbar._macroNCols.valueChanged.connect(cls.sortLayout)
     cSettings.toolbar._macroNRows.valueChanged.connect(cls.sortLayout)
     cSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.sortLayout)
+    cls.widget.itemsSwapped.connect(cls.onItemsSwapped)
+
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def onItemsSwapped(cls, item_a, item_b):
+    if isinstance(item_a, cToolbarItem) and isinstance(item_b, cToolbarItem):
+      cls.main.macros.swapTriggers(item_a.trigger, item_b.trigger)
 
   #----------------------------------------------------------------------------------------------------------
   def __init__(self, main):
+    cToolbar.main = main
     cToolbar._instantiateWidget(main)
     super().__init__(main)
 

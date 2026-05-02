@@ -615,6 +615,21 @@ class cMacros(cToggler):
         sset[0].save()
 
   #----------------------------------------------------------------------------------------------------------
+  def swapTriggers(self, trigger_a: str, trigger_b: str):
+    for cset in self.allMacroItems.values():
+      modified = False
+      for row in cset.data:
+        if row[2] == trigger_a:
+          row[2] = trigger_b
+          modified = True
+        elif row[2] == trigger_b:
+          row[2] = trigger_a
+          modified = True
+      if modified:
+        cset.save()
+    self.updateTable()
+
+  #----------------------------------------------------------------------------------------------------------
   def renameMacroSetFile(self, sset : cMacroSet):
     key = next((k for k, v in self.allMacroItems.items() if v is sset), None)
     if key != sset.text():

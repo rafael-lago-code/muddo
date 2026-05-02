@@ -115,7 +115,7 @@ class cMacrosDaemon(aProcessItem):
         if not consolidated[trigger][target]: continue
         action = consolidated[trigger][target]
         if not isinstance(action, list): action = list(action)
-        item = lambda t=target,a=action: bridges[t].sendFromList(a)
+        item = lambda t=target,a=action: bridges[t].execute(a)
         item.char = target
         item.cmd = action
         parsed[trigger].append(item)
