@@ -27,6 +27,7 @@ from helpers.tStoppableThread import tStoppableThread
 from helpers.cPrint import cPrint
 from helpers.cDispatcher import cDispatcher
 from helpers.util import *
+from helpers.strings import *
 if TYPE_CHECKING:
   from cSettings import cSettings
 
@@ -50,7 +51,7 @@ def _parseCommandString(cmd: str, bridge) -> cMilvianPacket:
   cmd       = cmd.strip()
   cmd_lower = cmd.lower()
 
-  parts = [p.strip() for p in splitUnquoted(cmd, ',') if p.strip()]
+  parts = [p.strip() for p in splitGroups(cmd, ',') if p.strip()]
   if len(parts) > 1:
     return _buildFromList(bridge, parts)
 
@@ -73,7 +74,7 @@ def _parseCommandString(cmd: str, bridge) -> cMilvianPacket:
 
 def _parseMultiActor(cmd: str, bridge) -> cMilvianPacket:
   """Parse a multi(...) string into a multiActor packet. Does not send."""
-  fields = splitQuotes(cmd.strip()[6:-1])  # strip "multi(" and ")"
+  fields = [s.strip().strip('"') for s in splitGroups(cmd.strip()[6:-1], ',')]
   if len(fields) < 3:
     cPrint.error(f"[cMilvian] malformed multi() command: {cmd!r}")
     return cPhonyPacket
@@ -100,7 +101,16 @@ def _buildMultiActor(bridge, actors, targets, action, filterActors="", filterTar
 
 def _buildFromList(bridge, data) -> cMilvianPacket:
   """Build from a list of command strings. Unwraps single-element lists.
+  Expands brace patterns per item ('b4k{1-3}' -> ['b4k1','b4k2','b4k3']).
   For multi-element lists, produces a list packet. Does not send."""
+  if isinstance(data, str):
+    data = expandRepeaters(data)
+  else:
+    expanded = []
+    for item in data:
+      expanded.extend(expandRepeaters(item) if isinstance(item, str) else [item])
+    data = expanded
+
   while isinstance(data, (list, tuple)) and len(data) == 1:
     data = data[0]
 

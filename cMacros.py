@@ -46,26 +46,11 @@ def aliasRegex(alias: str) -> str:
   right = r'(?![\w$])'  if re.match(r'[\w$]', alias[-1:]) else ''
   return left + body + right
 
-
-def _expandList(raw: str) -> list[str]:
-  """Parse '{1-3}' or '{2,3,1}' into a list of strings. Returns [raw] if not a {...} literal."""
-  if not (raw.startswith('{') and raw.endswith('}')): return [raw]
-  out = []
-  for p in raw[1:-1].split(','):
-    p = p.strip()
-    if '-' in p:
-      a, b = p.split('-', 1)
-      out += [str(i) for i in range(int(a), int(b) + 1)]
-    else:
-      out.append(p)
-  return out
-
-
 def aliasReplace(translation: str):
   """re.sub callable. A captured group of the form {1-3} or {a,b,c} expands into a list;
   multiple list-captures zip (singletons broadcast), yielding space-joined translations."""
   def repl(m: re.Match) -> str:
-    lists = [_expandList(g) for g in m.groups()]
+    lists = [expandRange(g.strip('{}')) for g in m.groups()]
     if not lists: return translation
     n = max(len(l) for l in lists)
     lists = [l * n if len(l) == 1 else l for l in lists]
@@ -77,16 +62,6 @@ def aliasReplace(translation: str):
       parts.append(s)
     return ', '.join(parts)
   return repl
-
-
-def expandBraces(text: str) -> str:
-  """Expand every `prefix{list}` in `text` into comma-joined variants.
-  e.g. 'b4k{2-5}' -> 'b4k2, b4k3, b4k4, b4k5'. No-op when no `{...}` remains."""
-  def repl(m: re.Match) -> str:
-    prefix, body = m.group(1), m.group(2)
-    return ', '.join(prefix + item for item in _expandList('{' + body + '}'))
-  return re.sub(r'([^\s{,}]*)\{([^}]+)\}', repl, text)
-
 
 #---------------------------------------------------------------------------------------------------------------
 #
@@ -209,8 +184,7 @@ class cMacroSet(QListWidgetItem):
       scripts = row[3]
       for k,a in validAliases.items():
         scripts = re.sub(aliasRegex(k), aliasReplace(a), scripts)
-      scripts = expandBraces(scripts)
-      scripts = [e.strip() for e in (scripts).split(";") if e.strip()]
+      scripts = [e.strip() for e in scripts.split(";") if e.strip()]
 
       if hotkey in consolidated.keys():
         cs = consolidated[hotkey]
@@ -226,11 +200,7 @@ class cMacroSet(QListWidgetItem):
           actors = [a.strip().lower() for a in actors]
         commands = [s[0].strip()]
 
-        for a in actors:
-          if a in cs.keys():
-            cs[a] += commands
-          else:
-            cs[a] = commands
+        for a in actors: cs[a] = cs.get(a, []) + commands
 
     # todo: check if "all" is scripting the same action; if yes, then the individual characters don't need to do it by themselves
       consolidated[hotkey] = cs
