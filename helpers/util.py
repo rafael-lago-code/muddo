@@ -361,6 +361,33 @@ def splitQuotes(text : str):
   return re.findall(r'"([^"]*)"', text)
 
 #----------------------------------------------------------------------------------------------------------
+def splitUnquoted(text: str, delim: str) -> list[str]:
+  """Split `text` on `delim`, ignoring occurrences inside double-quoted strings or parentheses."""
+  parts, buf, in_q, depth = [], [], False, 0
+  i = 0
+  while i < len(text):
+    c = text[i]
+    if c == '"':
+      in_q = not in_q
+      buf.append(c)
+    elif not in_q and c == '(':
+      depth += 1
+      buf.append(c)
+    elif not in_q and c == ')':
+      depth -= 1
+      buf.append(c)
+    elif not in_q and depth == 0 and text[i:i+len(delim)] == delim:
+      parts.append(''.join(buf))
+      buf = []
+      i += len(delim)
+      continue
+    else:
+      buf.append(c)
+    i += 1
+  parts.append(''.join(buf))
+  return parts
+
+#----------------------------------------------------------------------------------------------------------
 class setBGColour(QObject):
   def __init__(self, viewport, color: QColor):
     super().__init__(viewport)

@@ -46,9 +46,13 @@ P_RESPONSE_READER_POS    = 0
 # ---------------------------------------------------------------------------------------------------------------
 
 def _parseCommandString(cmd: str, bridge) -> cMilvianPacket:
-  """Parse a single command string into a packet. Does not send."""
+  """Parse a command string into a packet. Handles comma-separated lists of commands. Does not send."""
   cmd       = cmd.strip()
   cmd_lower = cmd.lower()
+
+  parts = [p.strip() for p in splitUnquoted(cmd, ',') if p.strip()]
+  if len(parts) > 1:
+    return _buildFromList(bridge, parts)
 
   if cmd_lower.startswith('sleep_'):
     return cMilvianPacket(packetCommand.sleep, bridge, struct.pack("<f", float(cmd_lower[6:])))
@@ -63,11 +67,8 @@ def _parseCommandString(cmd: str, bridge) -> cMilvianPacket:
     inData = cMilvian.inputActions[cmd_lower] + struct.pack('<I', 10000)
     return cMilvianPacket(packetCommand.inputaction, bridge, inData)
 
-  try:
-    return cMilvianPacket(packetCommand[cmd_lower], bridge)
-  except KeyError:
-    cPrint.error(f"[cMilvian] unknown command: {cmd!r}")
-    return cPhonyPacket
+  # Fall back to namedAction — C# will resolve the name (supports * wildcards)
+  return cMilvianPacket(packetCommand.namedaction, bridge, cPacker.pack(cmd))
 
 
 def _parseMultiActor(cmd: str, bridge) -> cMilvianPacket:
@@ -105,11 +106,6 @@ def _buildFromList(bridge, data) -> cMilvianPacket:
 
   if not isinstance(data, (list, tuple)):
     return _parseCommandString(data, bridge)
-
-  # fragmented single command (e.g. chat or multi split across list items)
-  first = data[0].strip().lower() if isinstance(data[0], str) else ""
-  if first.startswith("chat(") or first.startswith("multi("):
-    return _parseCommandString(" ".join(data), bridge)
 
   # true list: pack as a list packet
   # format: count(4) | [item_length(4) | command(4) | payload] ...
@@ -301,6 +297,9 @@ class cMilvian():
   #
   # ----------------------------------------------------------------------------------------------------------
 
+  def debug(self, subcmd: str = "selected") -> cMilvianPacket:
+    return self.send(cMilvianPacket(packetCommand.debug, self, cPacker.pack(subcmd)))
+
   def inputAction(self, cmd: str, timeout: int = 10000) -> cMilvianPacket:
     inData = cMilvian.inputActions[cmd.lower()]
     if timeout > 0: inData += struct.pack('<I', timeout)
@@ -368,6 +367,7 @@ class cMilvian():
   @classmethod
   def scanBridges(cls, path=None, getUnknown=False, purgeUnknown=False) -> dict:
     if not path: path = cls.bridgePath
+    if not os.path.exists(path): return
     files  = [f for f in os.listdir(path) if f.startswith("bridge")]
     filesO = [os.path.join(path, f) for f in files if f.endswith("O")]
 

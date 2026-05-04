@@ -42,6 +42,8 @@ Currently implemented features:
     - enable storing list of itemIds to currently opened container/bank
     - enable trading
     - enable tracking of last known state for each container/character/bank (like Trove Plugin)
+  - cDispatcher:
+    - improve and make it "signal-like"
   - cToolbar:
     - re-implement "fill rows first"
     - make all buttons "turn off" when milvian bridge stops

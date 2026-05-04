@@ -23,6 +23,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
                               QTableWidget, QTableWidgetItem, QLabel, QDialog)
 from helpers.cPrint import cPrint
 from helpers.util import *
+from helpers.strings import *
 from cSettings import cSettings
 from cSettingsProfile import cSettingsProfile
 from widgets.cToggler import cToggler
@@ -74,17 +75,17 @@ def aliasReplace(translation: str):
       s = translation
       for i, v in enumerate(tup, 1): s = s.replace(f'${i}', v)
       parts.append(s)
-    return ' '.join(parts)
+    return ', '.join(parts)
   return repl
 
 
 def expandBraces(text: str) -> str:
-  """Expand every `prefix{list}` in `text` into space-joined variants.
-  e.g. 'b4k{2-5}' -> 'b4k2 b4k3 b4k4 b4k5'. No-op when no `{...}` remains."""
+  """Expand every `prefix{list}` in `text` into comma-joined variants.
+  e.g. 'b4k{2-5}' -> 'b4k2, b4k3, b4k4, b4k5'. No-op when no `{...}` remains."""
   def repl(m: re.Match) -> str:
     prefix, body = m.group(1), m.group(2)
-    return ' '.join(prefix + item for item in _expandList('{' + body + '}'))
-  return re.sub(r'([^\s{}]*)\{([^}]+)\}', repl, text)
+    return ', '.join(prefix + item for item in _expandList('{' + body + '}'))
+  return re.sub(r'([^\s{,}]*)\{([^}]+)\}', repl, text)
 
 
 #---------------------------------------------------------------------------------------------------------------
@@ -219,18 +220,17 @@ class cMacroSet(QListWidgetItem):
       for s in scripts:
         s = s.split(':')
         if len(s) == 1:
-          targets = ["self"]
+          actors = ["self"]
         else:
-          targets = (s.pop(0)).split(',')
-          targets = [t.strip().lower() for t in targets]
-        actions = s[0].split()
-        actions = [a.strip() for a in actions]
+          actors = (s.pop(0)).split(',')
+          actors = [a.strip().lower() for a in actors]
+        commands = [s[0].strip()]
 
-        for t in targets:
-          if t in cs.keys():
-            cs[t] += actions
+        for a in actors:
+          if a in cs.keys():
+            cs[a] += commands
           else:
-            cs[t] = actions
+            cs[a] = commands
 
     # todo: check if "all" is scripting the same action; if yes, then the individual characters don't need to do it by themselves
       consolidated[hotkey] = cs

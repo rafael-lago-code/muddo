@@ -645,7 +645,10 @@ class cStorageManager(cToggler):
       self.table.setRowHidden(row, False)
 
     if isinstance(item, cItemData):
-      row = item.row()
+      try:
+        row = item.row()
+      except RuntimeError:
+        return  # Qt object was deleted before we could use it
       _filterItem(item)
     else:
       for row in range(self.table.rowCount()):
