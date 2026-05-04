@@ -30,7 +30,7 @@ import subprocess
 from typing import TYPE_CHECKING
 import threading
 from datetime import datetime
-from helpers.util import *
+from helpers.cImageFactory import *
 from helpers.cPrint import cPrint
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
@@ -43,7 +43,7 @@ class cPatch(cToggler):
   sigPatchDone = pyqtSignal(bool)
 
   def __init__(self, main : cMainWindow):
-    super().__init__("Patch", P_ICON_DOWNLOAD)
+    super().__init__("Patch", P_ICON_UPDATE)
     self.toggler.setToolTip("Patch Client<br><b><i>Last update: NA</i></b>")
     self.main = main
     self.console = main.console
@@ -54,7 +54,7 @@ class cPatch(cToggler):
     self.log.setReadOnly(True)
     self.log.setAcceptRichText(True)
 
-    self.btnPatch = cOrbSmall(icon=P_ICON_DOWNLOAD, tooltip="Quick patch.<br>Ctrl+click: calls the original launcher to start the full patch. Use this when the quick patch fails (e.g. the very first patching after installing the game")
+    self.btnPatch = cOrbSmall(icon=P_ICON_UPDATE, tooltip="Quick patch.<br>Ctrl+click: calls the original launcher to start the full patch. Use this when the quick patch fails (e.g. the very first patching after installing the game")
     self.comboPatchWhen = QComboBox()
     self.comboPatchWhen.setEnabled(False)
     self.comboPatchWhen.addItem('Never (WIP)')

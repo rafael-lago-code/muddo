@@ -21,7 +21,7 @@ from __future__ import annotations
 from io import BufferedReader
 from PyQt6.QtWidgets import QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView
 from PyQt6.QtCore import Qt, pyqtSignal
-from helpers.util import *
+from helpers.cImageFactory import *
 from helpers.cPrint import cPrint
 from typing import TYPE_CHECKING
 # if TYPE_CHECKING:

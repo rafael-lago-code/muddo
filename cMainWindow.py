@@ -32,7 +32,7 @@ from cStorage import cStorageManager
 from cDDO import cDDO
 from cToolbar import cToolbar
 from widgets.cOrb import cOrb
-from helpers.util import *
+from helpers.cImageFactory import *
 from helpers.cPrint import cPrint
 
 class cMainWindow(QMainWindow):

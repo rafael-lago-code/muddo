@@ -20,7 +20,7 @@
 import math
 from PyQt6.QtGui import QPixmap, QColor, qGray, QImage
 from PyQt6.QtCore import Qt
-from helpers.util import *
+from helpers.cImageFactory import *
 
 P_EFFECT_NONE = 0
 P_EFFECT_GREY = 1

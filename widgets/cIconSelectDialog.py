@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (QDialog, QFileDialog, QInputDialog,
                               QWidget, QHBoxLayout, QVBoxLayout, QApplication)
 from PyQt6.QtGui import QIcon, QPixmap, QImage, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, QSize
-from helpers.util import *
+from helpers.cImageFactory import *
 from helpers.cPrint import cPrint
 from widgets.cOrb import cOrbSmall
 
@@ -114,9 +114,12 @@ class cIconSelectDialog(QDialog):
     self.preview.setFixedSize(P_PREVIEW_SIZE)
     self.preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
     self.preview.setStyleSheet("border: 1px solid #555;")
+    self.meta = QLabel()
+    self.meta.setWordWrap(True)
+    self.meta.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    self.meta.setFixedWidth(100)
 
     self.filter = QLineEdit()
-    self.filter.setPlaceholderText("Filter by filename…")
     self.filter.setClearButtonEnabled(True)
 
     self.tabs = QTabWidget()
@@ -130,50 +133,23 @@ class cIconSelectDialog(QDialog):
     # --- url fetch bar (hidden until needed) ---
     self.urlBar = QWidget()
     self.urlEdit = QLineEdit()
-    self.urlEdit.setPlaceholderText("https://...")
     self.urlFetch = QPushButton("Fetch")
-    urlRow = QHBoxLayout()
+    urlRow = newHLayout(["URL:", self.urlEdit, self.urlFetch])
     urlRow.setContentsMargins(0, 0, 0, 0)
-    urlRow.addWidget(QLabel("URL:"))
-    urlRow.addWidget(self.urlEdit)
-    urlRow.addWidget(self.urlFetch)
     self.urlBar.setLayout(urlRow)
     self.urlBar.setVisible(False)
 
     self.btnFile  = cOrbSmall(icon=P_ICON_HARDDISK,  tooltip="Select image from a local file")
     self.btnURL   = cOrbSmall(icon=P_ICON_DOWNLOAD,  tooltip="Download image from a url and save it locally")
     self.btnPaste = cOrbSmall(icon=P_ICON_PASTE,     tooltip="Paste from clipboard")
-
-    btnRow = QHBoxLayout()
-    btnRow.addWidget(self.btnFile)
-    btnRow.addWidget(self.btnURL)
-    btnRow.addWidget(self.btnPaste)
-    btnRow.addStretch()
-
-    # --- dialog buttons ---
     self.btnOk     = cOrbSmall(icon=P_ICON_CHECKMARK, tooltip="Accept")
     self.btnCancel = cOrbSmall(icon=P_ICON_CLEAR,     tooltip="Cancel")
 
-    # --- right panel ---
-    rightPanel = QVBoxLayout()
-    rightPanel.addWidget(QLabel("Preview:"))
-    rightPanel.addWidget(self.preview)
-    rightPanel.addStretch()
-
-    # --- main layout ---
-    leftPanel = QVBoxLayout()
-    leftPanel.addWidget(self.filter)
-    leftPanel.addWidget(self.tabs)
-
-    centerRow = QHBoxLayout()
-    centerRow.addLayout(leftPanel, stretch=1)
-    centerRow.addLayout(rightPanel)
-
     root = QVBoxLayout(self)
-    root.addLayout(centerRow)
+    root.addLayout(newHLayout([newVLayout(["Preview:", self.preview, self.meta, "__stretch__"]), 
+                               newVLayout([self.filter, self.tabs])]))
     root.addWidget(self.urlBar)
-    root.addLayout(btnRow)
-    root.addLayout(newHLayout(["__stretch__", self.btnOk, self.btnCancel]))
+    root.addLayout(newHLayout([self.btnFile, self.btnURL, self.btnPaste, "__stretch__", self.btnOk, self.btnCancel]))
 
     # --- populate ---
     self.populateList(self.listBuiltin, scanIcons(P_BUILTIN_ICONS_DIR))
@@ -235,8 +211,10 @@ class cIconSelectDialog(QDialog):
       self.preview.setPixmap(px.scaled(P_PREVIEW_SIZE,
                                         Qt.AspectRatioMode.KeepAspectRatio,
                                         Qt.TransformationMode.SmoothTransformation))
+      self.meta.setText(f"{os.path.basename(path)}\n{px.width()}×{px.height()} px\n{path}")
     else:
       self.preview.setText("(no preview)")
+      self.meta.setText("")
 
   #----------------------------------------------------------------------------------------------------------
   def fromFile(self):

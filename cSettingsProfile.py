@@ -20,7 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QTabWidget, QWidget
 from PyQt6.QtCore import QSettings
-from helpers.util import *
+from helpers.cImageFactory import *
 from helpers.cPrint import cPrint
 from widgets.cOrb import cOrbSmall
 from widgets.cOrb import cBoxCheck

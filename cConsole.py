@@ -21,7 +21,7 @@ from PyQt6.QtWidgets import QTextEdit, QTabWidget
 from PyQt6.QtCore import pyqtSignal, Qt, QObject, QEvent
 from PyQt6.QtCore import QFileSystemWatcher
 from PyQt6.QtGui import QPainter, QColor
-from helpers.util import *
+from helpers.cImageFactory import *
 from widgets.cToggler import cToggler
 from datetime import datetime
 import sys

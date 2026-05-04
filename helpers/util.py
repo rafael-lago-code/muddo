@@ -265,33 +265,6 @@ def getArrow():
   return f"&nbsp;&nbsp;&nbsp;<span style='font-size:{fs+4}pt'>▾</span>"
 
 #----------------------------------------------------------------------------------------------------------  
-def getPixmap(a0 : str) -> QPixmap:
-  if isinstance(a0, str):
-    if a0 in _iconScheme.keys():
-      return QPixmap(_iconScheme[a0])
-    elif os.path.exists(a0):
-      return QPixmap(a0)
-    else:
-      return QPixmap()
-  if isinstance(a0, QIcon):
-    return a0.pixmap(a0.actualSize())
-  elif isinstance(a0, QPixmap):
-     return a0
-  else:
-    return QPixmap()
-
-#----------------------------------------------------------------------------------------------------------  
-def getIcon(a0) -> QIcon:
-  if isinstance(a0, QIcon):
-    return a0
-  elif isinstance(a0, QPixmap):
-     return QIcon(a0)
-  elif isinstance(a0, str):
-     return QIcon(getPixmap(a0))
-  else:
-    return QIcon()
-
-#----------------------------------------------------------------------------------------------------------  
 def getConnection(urlIn):
   if urlIn.upper().find("HTTP://") >= 0:
     url = urlIn[7:].split("/")[0]

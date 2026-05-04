@@ -22,7 +22,7 @@
 #
 #
 from PyQt6.QtWidgets import QTextEdit, QVBoxLayout
-from helpers.util import *
+from helpers.cImageFactory import *
 from widgets.cToggler import cToggler
 
 class cNews(cToggler):

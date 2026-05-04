@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
                               QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit,
                               QTableWidget, QTableWidgetItem, QLabel, QDialog)
 from helpers.cPrint import cPrint
-from helpers.util import *
+from helpers.cImageFactory import *
 from helpers.strings import *
 from cSettings import cSettings
 from cSettingsProfile import cSettingsProfile
@@ -37,31 +37,6 @@ from widgets.cIconSelectDialog import cIconSelectDialog
 if TYPE_CHECKING:
    from cMainWindow import cMainWindow
 
-def aliasRegex(alias: str) -> str:
-  """Build regex for `alias`. $N tokens (single-digit) match either a word or a {list} expansion.
-  Boundary checks are only enforced on word-like edges — non-word edges (:, !, etc) act as
-  natural boundaries on their own."""
-  body = re.sub(r'\\\$\d', lambda m: r'(\w+|\{[^}]+\})', re.escape(alias))
-  left  = r'(?<![\w$])' if re.match(r'[\w$]', alias[:1])  else ''
-  right = r'(?![\w$])'  if re.match(r'[\w$]', alias[-1:]) else ''
-  return left + body + right
-
-def aliasReplace(translation: str):
-  """re.sub callable. A captured group of the form {1-3} or {a,b,c} expands into a list;
-  multiple list-captures zip (singletons broadcast), yielding space-joined translations."""
-  def repl(m: re.Match) -> str:
-    lists = [expandRange(g.strip('{}')) for g in m.groups()]
-    if not lists: return translation
-    n = max(len(l) for l in lists)
-    lists = [l * n if len(l) == 1 else l for l in lists]
-    if any(len(l) != n for l in lists): return m.group(0)
-    parts = []
-    for tup in zip(*lists):
-      s = translation
-      for i, v in enumerate(tup, 1): s = s.replace(f'${i}', v)
-      parts.append(s)
-    return ', '.join(parts)
-  return repl
 
 #---------------------------------------------------------------------------------------------------------------
 #
@@ -176,14 +151,14 @@ class cMacroSet(QListWidgetItem):
       icon, name = row[0], row[1]
       hotkey  = row[2]
       for k,a in validAliases.items():
-        hotkey = re.sub(aliasRegex(k), aliasReplace(a), hotkey)
+        hotkey = translateAlias(hotkey, k, a)
       hotkey  = (hotkey.replace(" ", "")).lower()
       entry = meta.setdefault(hotkey, {'icon': None, 'names': set()})
       if icon: entry['icon'] = icon
       if name: entry['names'].add(name)
       scripts = row[3]
       for k,a in validAliases.items():
-        scripts = re.sub(aliasRegex(k), aliasReplace(a), scripts)
+        scripts = translateAlias(scripts, k, a)
       scripts = [e.strip() for e in scripts.split(";") if e.strip()]
 
       if hotkey in consolidated.keys():

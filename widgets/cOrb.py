@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from helpers.util import *
+from helpers.cImageFactory import *
 from PyQt6.QtWidgets import QPushButton, QSizePolicy, QToolTip, QApplication
 from PyQt6.QtGui import QPainter, QPixmap, QColor, QFont, QMouseEvent, QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt, pyqtSignal, QPoint, QEvent

@@ -88,3 +88,22 @@ def splitGroups(text: str, delim: str) -> list[str]:
     j+=1
   parts.append(text[i:])
   return parts
+
+#----------------------------------------------------------------------------------------------------------
+#    translateAlias
+#    Expands one alias and replaces eventual tokens:
+#
+#    translateAlias('m6a','m$1a','my_$1_alias')   = 'my_6_alias'
+#    translateAlias('m{1-3}a','m$1a','my_$1_alias')   = 'my_{1-3}_alias'
+#         
+def translateAlias(text: str, key: str, translation: str) -> str:
+  """Apply one alias substitution to text. $N tokens in key match a word or {list} (braces
+  pass through intact for later expansion by expandRepeaters in _buildFromList)."""
+  body  = re.sub(r'\\\$\d', lambda m: r'(\w+|\{[^}]+\})', re.escape(key))
+  left  = r'(?<![\w$])' if re.match(r'[\w$]', key[:1])  else ''
+  right = r'(?![\w$])'  if re.match(r'[\w$]', key[-1:]) else ''
+  def repl(m: re.Match) -> str:
+    s = translation
+    for i, v in enumerate(m.groups(), 1): s = s.replace(f'${i}', v)
+    return s
+  return re.sub(left + body + right, repl, text)

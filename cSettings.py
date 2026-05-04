@@ -23,7 +23,7 @@ from PyQt6.QtCore import pyqtSignal
 from cSettingsProfile import cSettingsProfile
 from helpers.cPrint import cPrint
 from widgets.cOrb import cOrbSmall
-from helpers.util import *
+from helpers.cImageFactory import *
 from widgets.cToggler import cToggler
 import os, json, glob, shutil
 from typing import TYPE_CHECKING

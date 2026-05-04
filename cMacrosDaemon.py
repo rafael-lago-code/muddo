@@ -24,7 +24,7 @@ from cProcess import aProcessItem
 from cToolbar import cToolbar, cToolbarItem
 from widgets.cOrb import cOrb
 from helpers.XHelper import XHelper
-from helpers.util import *
+from helpers.cImageFactory import *
 from helpers.cPrint import cPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

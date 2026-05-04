@@ -30,7 +30,7 @@ from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
 from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
 from widgets.cOrb import cBoxCheck
-from helpers.util import *
+from helpers.cImageFactory import *
 from widgets.cToggler import cToggler
 from widgets.cCheckCombo import cCheckCombo
 from widgets.cItemsTable import *

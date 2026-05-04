@@ -20,7 +20,7 @@
 from PyQt6.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QSizePolicy
 from PyQt6.QtGui import QPainter, QFont, QColor, QPixmap
 from PyQt6.QtCore import QSettings, QRect, QSize, Qt
-from helpers.util import *
+from helpers.cImageFactory import *
 
 # -----------------------------------------------------------------------------
 class cFloatingTitleBar(QWidget):
