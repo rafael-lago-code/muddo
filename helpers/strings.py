@@ -73,7 +73,7 @@ P_GROUPING={"\"":"\"", "(":")", "{":"}", "[":"]", "<":">"}
 #----------------------------------------------------------------------------------------------------------
 #    splitGroups
 #    Splits a string by a delimiter while respecting groups such as "<a,b,c>, {d,e,f}, [g,h,i]"
-def splitGroups(text: str, delim: str) -> list[str]:
+def splitGroups(text: str, delim: str, strip: str = " ") -> list[str]:
   parts = []
   i = 0
   j = 0
@@ -87,18 +87,17 @@ def splitGroups(text: str, delim: str) -> list[str]:
       j+=1
     j+=1
   parts.append(text[i:])
-  return parts
+  if strip: return [p.strip(strip) for p in parts if p.strip(strip)]
+  else:     return parts
 
 #----------------------------------------------------------------------------------------------------------
-#    translateAlias
+#    replaceAlias
 #    Expands one alias and replaces eventual tokens:
 #
-#    translateAlias('m6a','m$1a','my_$1_alias')   = 'my_6_alias'
-#    translateAlias('m{1-3}a','m$1a','my_$1_alias')   = 'my_{1-3}_alias'
+#    replaceAlias('m6a','m$1a','my_$1_alias')   = 'my_6_alias'
+#    replaceAlias('m{1-3}a','m$1a','my_$1_alias')   = 'my_{1-3}_alias'
 #         
-def translateAlias(text: str, key: str, translation: str) -> str:
-  """Apply one alias substitution to text. $N tokens in key match a word or {list} (braces
-  pass through intact for later expansion by expandRepeaters in _buildFromList)."""
+def replaceAlias(text: str, key: str, translation: str) -> str:
   body  = re.sub(r'\\\$\d', lambda m: r'(\w+|\{[^}]+\})', re.escape(key))
   left  = r'(?<![\w$])' if re.match(r'[\w$]', key[:1])  else ''
   right = r'(?![\w$])'  if re.match(r'[\w$]', key[-1:]) else ''
@@ -107,3 +106,58 @@ def translateAlias(text: str, key: str, translation: str) -> str:
     for i, v in enumerate(m.groups(), 1): s = s.replace(f'${i}', v)
     return s
   return re.sub(left + body + right, repl, text)
+
+#----------------------------------------------------------------------------------------------------------
+#    globmatch
+#    Match s against a glob pattern or tuple of patterns. * matches any substring.
+def globmatch(s: str, pattern, case: bool = False) -> bool:
+  if isinstance(pattern, (list, tuple)): return any(globmatch(s, p, case) for p in pattern)
+  regex = re.escape(str(pattern)).replace(r'\*', '.*')
+  flags = 0 if case else re.IGNORECASE
+  return bool(re.fullmatch(regex, str(s), flags=flags))
+
+#----------------------------------------------------------------------------------------------------------
+#    contains
+#    Check if s contains sub (or any element if sub is a tuple).
+def contains(s: str, sub) -> bool:
+  if isinstance(sub, (list, tuple)): return any(str(x) in str(s) for x in sub)
+  return str(sub) in str(s)
+
+#----------------------------------------------------------------------------------------------------------
+#    fileContents
+#    returns a tuple containing each line in a file
+def fileContents(path) -> tuple[str]:
+  with open(path, 'r') as f:
+    return tuple(line.rstrip('\n') for line in f if line.strip())
+
+#---------------------------------------------------------------------------------------------------------------
+#
+#
+#                                            S T R I N G
+#
+#     Not hasheable; helpful for string manipulation, but don't use it for dict keys or sets.
+#                                  
+#---------------------------------------------------------------------------------------------------------------
+class cString(str):
+  def __new__(cls, value):
+    return super().__new__(cls, value)
+    
+  __hash__ = str.__hash__
+
+  def __eq__(self, other):
+    return globmatch(self, other)
+
+  def __ne__(self, other):
+    return not self.__eq__(other)
+  
+  def __contains__(self, sub):
+    return contains(self, sub) 
+  
+  def expand(self):
+    return expandRepeaters(self)
+  
+  def split(self, sep : str = None, strip: str = " "):
+    return splitGroups(self, sep, strip)
+  
+  def replace(self, key: str, translation: str):
+    return replaceAlias(self, key, translation)

@@ -24,11 +24,12 @@ from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
 from helpers.cPrint import cPrint
 from helpers.cImageFactory import *
 from helpers.strings import *
+from helpers.cAliases import cAliases
 from cSettings import cSettings
 from cSettingsProfile import cSettingsProfile
 from widgets.cToggler import cToggler
 from widgets.cOrb import cOrbSmall
-from PyQt6.QtGui import QIcon
+from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt
 import glob, re, os
 from typing import TYPE_CHECKING
@@ -151,15 +152,12 @@ class cMacroSet(QListWidgetItem):
       icon, name = row[0], row[1]
       hotkey  = row[2]
       for k,a in validAliases.items():
-        hotkey = translateAlias(hotkey, k, a)
+        hotkey = replaceAlias(hotkey, k, a)
       hotkey  = (hotkey.replace(" ", "")).lower()
       entry = meta.setdefault(hotkey, {'icon': None, 'names': set()})
       if icon: entry['icon'] = icon
       if name: entry['names'].add(name)
-      scripts = row[3]
-      for k,a in validAliases.items():
-        scripts = translateAlias(scripts, k, a)
-      scripts = [e.strip() for e in scripts.split(";") if e.strip()]
+      scripts = [e.strip() for e in row[3].split(";") if e.strip()]
 
       if hotkey in consolidated.keys():
         cs = consolidated[hotkey]
@@ -173,6 +171,12 @@ class cMacroSet(QListWidgetItem):
         else:
           actors = (s.pop(0)).split(',')
           actors = [a.strip().lower() for a in actors]
+          translated = []
+          for a in actors:
+            for k, v in validAliases.items():
+              a = replaceAlias(a, k, v)
+            translated.append(a)
+          actors = translated
         commands = [s[0].strip()]
 
         for a in actors: cs[a] = cs.get(a, []) + commands
@@ -238,6 +242,7 @@ class cMacros(cToggler):
     self.activeSetLabel = QLabel("Macros in selected set:")
     self._loading = False
     self._aliasLoading = False
+    self._actionLoading = False
 
     self.table = QTableWidget(0, 4)
     self.table.setIconSize(QSize(32, 32))
@@ -251,21 +256,27 @@ class cMacros(cToggler):
     self.table.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
     self.table.setDropIndicatorShown(True)
     self.table.setDragDropOverwriteMode(False)
+    self.table.setColumnHidden(3, True)
+
+    self.actionEditor = QTextEdit()
+    _asplitter = QSplitter(Qt.Orientation.Horizontal)
+    _asplitter.addWidget(self.table)
+    _asplitter.addWidget(self.actionEditor)
 
     _vsplitter = QSplitter(Qt.Orientation.Vertical)
-    _bottomSplitter = QSplitter()
-    _bottomSplitter.addWidget(newVFrame([ "Sets:",
+    _topSplitter = QSplitter()
+    _topSplitter.addWidget(newVFrame([ "Sets:",
                               newHLayout([self.setListWidget,
                                 newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, self.btnHelp, "__stretch__"])])]))
-    _bottomSplitter.addWidget(newVFrame([self.activeSetLabel,
-                         newHLayout([self.table,newVLayout(["__stretch__", self.btnAddEntry,
-                                     self.btnRemoveEntry, self.btnEditIcon, "__stretch__"])])]))
-
-    _bottomSplitter.setSizes([100,400])
-
-    _vsplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]),
+    _topSplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]),
                            newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias, "__stretch__"])]))
-    _vsplitter.addWidget(_bottomSplitter)
+
+    _topSplitter.setSizes([100,400])
+
+    _vsplitter.addWidget(_topSplitter)
+    _vsplitter.addWidget(newVFrame([self.activeSetLabel,
+                         newHLayout([_asplitter, newVLayout(["__stretch__", self.btnAddEntry,
+                                     self.btnRemoveEntry, self.btnEditIcon, "__stretch__"])])]))
     _vsplitter.setSizes([100,300])
 
     self.setLayout(newVLayout([_vsplitter]))
@@ -277,8 +288,12 @@ class cMacros(cToggler):
     self.btnHelp.clicked.connect(self.showHelpWindow)
     self.setListWidget.itemChanged.connect(self.renameMacroSetFile)
     self.setListWidget.itemSelectionChanged.connect(self.updateTable)
+    self.setListWidget.itemSelectionChanged.connect(self._ensureSetListSelection)
     self.table.cellChanged.connect(self.syncTable2Data)
     self.table.cellDoubleClicked.connect(self._onCellDoubleClicked)
+    self.table.itemSelectionChanged.connect(self._onSelectionChanged)
+    self.actionEditor.textChanged.connect(self._saveAction)
+    QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._saveAction)
     self.aliasTable.cellChanged.connect(self._onAliasCellChanged)
 
     self.btnAddAlias.clicked.connect(self.addAlias)
@@ -315,10 +330,16 @@ class cMacros(cToggler):
     if self.toActivate:
       self.setActiveSets(self.toActivate)
       self.toActivate = None
+    self._ensureSetListSelection()
 
   #----------------------------------------------------------------------------------------------------------
   def updateProfile(self, prof : cSettingsProfile, last : str):
     if prof.session.macroSets: self.setActiveSets(prof.session.macroSets)
+
+  #----------------------------------------------------------------------------------------------------------
+  def _ensureSetListSelection(self):
+    if not self.setListWidget.selectedItems() and self.setListWidget.count() > 0:
+      self.setListWidget.setCurrentRow(0)
 
   #----------------------------------------------------------------------------------------------------------
   def updateTable(self):
@@ -326,10 +347,16 @@ class cMacros(cToggler):
     if not sset:
       return
     self._loading = True
+    self._actionLoading = True
     self.table.clearContents()
     self.table.setRowCount(0)
     sset[0].display()
     self._loading = False
+    self._actionLoading = False
+    self.actionEditor.setEnabled(False)
+    self.actionEditor.setPlainText("")
+    if self.table.rowCount() > 0:
+      self.table.selectRow(0)
 
   #----------------------------------------------------------------------------------------------------------
   def addMacroEntry(self):
@@ -382,12 +409,14 @@ class cMacros(cToggler):
     for k in data.keys():
       self.addAlias(k, data[k])
     self._aliasLoading = False
+    cAliases.set(data)
 
   #----------------------------------------------------------------------------------------------------------
   def saveAlias(self):
     d = self.getAliases()
     filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
     json.dump(d, open(filename,'w'), cls=muJSONEncoder)
+    cAliases.set(d)
 
   #----------------------------------------------------------------------------------------------------------
   def getAliases(self):
@@ -403,8 +432,9 @@ class cMacros(cToggler):
   def filterAlias(self, text: str):
     text = text.lower()
     for row in range(self.aliasTable.rowCount()):
-      item = self.aliasTable.item(row, 0)
-      match = text in (item.text().lower() if item else "")
+      alias       = self.aliasTable.item(row, 0)
+      translation = self.aliasTable.item(row, 1)
+      match = (text in (alias.text().lower() if alias else "")) or (text in (translation.text().lower() if translation else ""))
       self.aliasTable.setRowHidden(row, bool(text) and not match)
 
   #----------------------------------------------------------------------------------------------------------
@@ -558,6 +588,33 @@ class cMacros(cToggler):
         icon_item.setIcon(QIcon(path))
         sset[0].sync(crow, 0)
         sset[0].save()
+
+  #----------------------------------------------------------------------------------------------------------
+  def _onSelectionChanged(self):
+    indexes = self.table.selectionModel().selectedRows()
+    self._actionLoading = True
+    if not indexes:
+      self.actionEditor.setEnabled(False)
+      self.actionEditor.setPlainText("")
+    else:
+      last_row = max(idx.row() for idx in indexes)
+      item = self.table.item(last_row, 3)
+      self.actionEditor.setPlainText(item.text() if item else "")
+      self.actionEditor.setEnabled(len(indexes) == 1)
+    self._actionLoading = False
+
+  #----------------------------------------------------------------------------------------------------------
+  def _saveAction(self):
+    if self._actionLoading or self._loading: return
+    indexes = self.table.selectionModel().selectedRows()
+    if len(indexes) != 1: return
+    row = indexes[0].row()
+    item = self.table.item(row, 3)
+    text = self.actionEditor.toPlainText()
+    if item:
+      if item.text() != text: item.setText(text)
+    else:
+      self.table.setItem(row, 3, cTableRow(text))
 
   #----------------------------------------------------------------------------------------------------------
   def swapTriggers(self, trigger_a: str, trigger_b: str):

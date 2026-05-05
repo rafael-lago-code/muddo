@@ -138,6 +138,7 @@ class cToolbar(QWidget):
   @classmethod
   def clearItems(cls):
     cls.items.clear()
+    cls.clearLayout()
 
   # # #----------------------------------------------------------------------------------------------------------
   # @classmethod

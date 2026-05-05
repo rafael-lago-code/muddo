@@ -25,10 +25,10 @@ from __future__ import annotations
 import glob
 import threading
 from types import SimpleNamespace
-from PyQt6.QtWidgets import QCheckBox, QDialog, QGridLayout, QLineEdit, QListWidgetItem, QMenu, QListWidget, QTextEdit
+from PyQt6.QtWidgets import QDialog, QGridLayout, QLineEdit, QListWidgetItem, QMenu, QListWidget, QTextEdit
 from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
-from widgets.cOrb import cOrb, cOrbCheck, cOrbSmall
+from widgets.cOrb import cOrb, cOrbSmall
 from widgets.cOrb import cBoxCheck
 from helpers.cImageFactory import *
 from widgets.cToggler import cToggler
@@ -37,6 +37,7 @@ from widgets.cItemsTable import *
 from helpers.cMilvianPacket import cMilvianPacket, packetCommand, packetStatus, packetSignal
 from helpers.cDispatcher import cDispatcher
 from helpers.cPrint import cPrint
+from helpers.strings import *
 import time, struct, mmap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -122,17 +123,17 @@ class cStorageManager(cToggler):
     
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
     self.btnRefresh   = cOrb("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
-    self.btnFeedJewel = cOrb("Feed\nJewel", icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_feed_jewel.svg'),
+    self.btnFeedJewel = cOrb("Feed\nJewel", icon=getIcon('cannith_feed_jewel'),
                              tooltip="Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
-    self.btnDissolve  = cOrb("Dissolve",    icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_dissolve_lean.svg'),
+    self.btnDissolve  = cOrb("Dissolve",    icon=getIcon('cannith_dissolve_lean'),
                              tooltip="Dissolve all selected items. Item Deconstruction UI must be open. <br><b>Ctrl+Click</b> to skip confirmation<b>.")
-    self.btnSell      = cOrb("Sell",        icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_vendor_lean.svg'),
+    self.btnSell      = cOrb("Sell",        icon=getIcon('cannith_vendor_lean'),
                              tooltip="Sell all selected items to the currently open vendor UI. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnTrade     = cOrb("Trade",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_trade_lean.svg'),
+    self.btnTrade     = cOrb("Trade",       icon=getIcon('cannith_trade_lean'),
                              tooltip="Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnSort      = cOrb("Sort",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/sort.png'),
+    self.btnSort      = cOrb("Sort",       icon=getIcon('sort'),
                              tooltip="Sort selected items by type. <br><b>Right+Click</b> to sort by name<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnStore     = cOrb("Store",       icon=getIcon(P_DEFAULT_ICON_PATHS[0]+'/cannith_bank_lean.svg'),
+    self.btnStore     = cOrb("Store",       icon=getIcon('cannith_bank_lean'),
                              tooltip="Store selected items in the currently open bank/chest UI. <br><b><i>Right-click for more options</i></b>")
 
     self.filterCB = SimpleNamespace()
@@ -539,6 +540,7 @@ class cStorageManager(cToggler):
   def applyFilters(self, item : cItemData = None):
     scriptText = self.filterScriptEdit.toPlainText().lower()
     scriptText = " ".join(scriptText.strip().split())
+
     safeContext = {
       "__builtins__": {},
 
@@ -548,14 +550,12 @@ class cStorageManager(cToggler):
       "all": all,
       "true": True,
       "false": False,
-      "str": str,
+      "str": cString,
       "int": int,
       "float": float,
 
       # String helpers (very useful for items)
-      "startswith": lambda s, prefix: str(s).startswith(prefix if isinstance(prefix, tuple) else str(prefix)),
-      "endswith":   lambda s, suffix: str(s).endswith(suffix if isinstance(suffix, tuple) else str(suffix)),
-      "contains":   lambda s, sub: str(sub) in str(s),
+      "file":    lambda name: fileContents(P_DEFAULT_FILTERSDIR+"/"+name+".list"),
     }
 
     filterText = self.filterText.text().lower().strip()
@@ -568,41 +568,42 @@ class cStorageManager(cToggler):
       # --- script filter (runs first)
       if len(scriptText) > 0:
         try:
+          S = cString
           itemContext = {
             "id"              : item._id               ,
-            "name"            : item._name.lower()     ,
+            "name"            : S(item._name.lower())  ,
             "ownerid"         : item._ownerID          ,
-            "owner"           : item.owner().lower(),
+            "owner"           : S(item.owner().lower()),
             # "container"       : item._container      ,
             "weenieid"        : item._weenieID       ,
-            "type"            : item._type.lower()   ,
+            "type"            : S(item._type.lower())  ,
             "quantity"        : item._quantity       ,
-            "qualifier"       : item._qualifier.lower(),
+            "qualifier"       : S(item._qualifier.lower()),
             "valuecopper"     : item._valueCopper    ,
             "hardness"        : item._hardness       ,
             "durability"      : item._durability     ,
             "iconid"          : item._iconId         ,
             "icon"            : item._icon           ,
-            "description"     : item._description.lower(),
+            "description"     : S(item._description.lower()),
             "minlevel"        : item._minLevel       ,
             "material"        : item._material       ,
             "isJunk"          : item._isJunk        ,
             "islocked"        : item._isLocked       ,
             "issellable"      : item._isSellable     ,
             "isminorartifact" : item._isMinorArtifact,
-            "setbonus1"       : item._setBonus1.lower(),
-            "setbonus2"       : item._setBonus2.lower(),
+            "setbonus1"       : S(item._setBonus1.lower()),
+            "setbonus2"       : S(item._setBonus2.lower()),
             "currentslot"     : item._currentSlot    ,
             "isequipped"      : isinstance(item.slot(), str),
-            "binding"         : "unbound" if item._binding==0 else item.binding(),
-            "equipsto"        : item._equipsTo.lower(),
-            "augments"        : [a.lower() for a in item.augments()],
-            "effects"         : {k.lower(): v.lower() for k, v in item._effects.items()},
+            "binding"         : S("unbound" if item._binding==0 else item.binding()),
+            "equipsto"        : S(item._equipsTo.lower()),
+            "augments"        : [S(a.lower()) for a in item.augments()],
+            "effects"         : {k.lower(): S(v.lower()) for k, v in item._effects.items()},
             "slot"            : item.slot(),
-            "effectname"      : [k.lower() for k in item._effects.keys()],
-            "effectdesc"      : [v.lower() for v in item._effects.values()],
-            "effectfull"      : " ".join([k.lower() + " " + v.lower() for k, v in item._effects.items()]),
-            "text"            : item.toolTip().lower().replace("<br>","").replace("<b>","").replace("</b>","").replace("<i>","").replace("</i>","")
+            "effectname"      : [S(k.lower()) for k in item._effects.keys()],
+            "effectdesc"      : [S(v.lower()) for v in item._effects.values()],
+            "effectfull"      : S(" ".join([k.lower() + " " + v.lower() for k, v in item._effects.items()])),
+            "text"            : S(item.toolTip().lower().replace("<br>","").replace("<b>","").replace("</b>","").replace("<i>","").replace("</i>",""))
           }
           itemContext.update(safeContext)
           if not bool(eval(scriptText, itemContext)):
@@ -672,7 +673,6 @@ class cStorageManager(cToggler):
         nItems     = struct.unpack('<I', f.read(4))[0]
         itemAvail  = struct.unpack('<I', f.read(4))[0]
         favail     = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-
 
         itemsCount = 0
         while True:

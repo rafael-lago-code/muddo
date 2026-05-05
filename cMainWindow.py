@@ -78,10 +78,9 @@ class cMainWindow(QMainWindow):
     self.summary = QWidget()
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)
-    lButtonsBar = newHLayout([self.toolbar.widget, self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
-                              "__stretch__", self.summary, "__stretch__", 
-                              self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler, 
-                              self.macros.toggler, self.settings.toggler, self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit])
+    lButtonsBar = newHLayout(["__stretch__",self.toolbar.widget, self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
+                              self.summary, self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler, 
+                              self.macros.toggler, self.settings.toggler, self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit,"__stretch__"])
 
     aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
     aKillAll = self.btnLaunch.menu.addAction("Kill all")

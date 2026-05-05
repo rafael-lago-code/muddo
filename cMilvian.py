@@ -28,6 +28,8 @@ from helpers.cPrint import cPrint
 from helpers.cDispatcher import cDispatcher
 from helpers.util import *
 from helpers.strings import *
+from helpers.strings import cString
+from helpers.cAliases import cAliases
 if TYPE_CHECKING:
   from cSettings import cSettings
 
@@ -45,36 +47,59 @@ P_RESPONSE_READER_POS    = 0
 # Used by cMilvian.execute() and internally by the list/multi-actor builders.
 #
 # ---------------------------------------------------------------------------------------------------------------
+def parseCommand(cmd: str, bridge) -> cMilvianPacket:
+  # Parses a command string into a packet. Handles comma-separated lists and brace expansion. Does not send.
+  cmd = cString(cmd.strip())
 
-def _parseCommandString(cmd: str, bridge) -> cMilvianPacket:
-  """Parse a command string into a packet. Handles comma-separated lists of commands. Does not send."""
-  cmd       = cmd.strip()
-  cmd_lower = cmd.lower()
+  parts = cmd.split(',')
+  if len(parts) > 1: return parseList(bridge, parts)
 
-  parts = [p.strip() for p in splitGroups(cmd, ',') if p.strip()]
-  if len(parts) > 1:
-    return _buildFromList(bridge, parts)
+  expanded = cmd.expand()
+  if len(expanded) > 1: return parseList(bridge, expanded)
+  cmd = cString(expanded[0])
+  for k, a in cAliases.get().items():
+    cmd = cString(cmd.replace(k, a))
 
-  if cmd_lower.startswith('sleep_'):
-    return cMilvianPacket(packetCommand.sleep, bridge, struct.pack("<f", float(cmd_lower[6:])))
+  parts = cmd.split(',')
+  if len(parts) > 1: return parseList(bridge, parts)
+  expanded = cmd.expand()
+  if len(expanded) > 1: return parseList(bridge, expanded)
+  cmd = cString(expanded[0].lower())
 
-  if cmd_lower.startswith('chat(') and cmd_lower.endswith(')'):
+  if cmd == 'sleep_*':
+    return cMilvianPacket(packetCommand.sleep, bridge, struct.pack("<f", float(cmd[6:])))
+
+  if cmd == 'chat(*)':
     return cMilvianPacket(packetCommand.chat, bridge, cPacker.pack(cmd[5:-1]))
 
-  if cmd_lower.startswith('multi(') and cmd_lower.endswith(')'):
+  if cmd == 'multi(*)':
     return _parseMultiActor(cmd, bridge)
 
-  if cmd_lower in cMilvian.inputActions:
-    inData = cMilvian.inputActions[cmd_lower] + struct.pack('<I', 10000)
+  if cmd in cMilvian.inputActions:
+    inData = cMilvian.inputActions[cmd] + struct.pack('<I', 10000)
     return cMilvianPacket(packetCommand.inputaction, bridge, inData)
 
   # Fall back to namedAction — C# will resolve the name (supports * wildcards)
   return cMilvianPacket(packetCommand.namedaction, bridge, cPacker.pack(cmd))
 
+# ----------------------------------------------------------------------------------------------------------
+def parseList(bridge, data) -> cMilvianPacket:
+  # Builds a list packet from a list of command strings. Unwraps single-element lists. Does not send.
+  while isinstance(data, (list, tuple)) and len(data) == 1: data = data[0]
+  if not isinstance(data, (list, tuple)): return parseCommand(data, bridge)
 
+  # true list: pack as a list packet
+  # format: count(4) | [item_length(4) | command(4) | payload] ...
+  inData = len(data).to_bytes(4, byteorder='little', signed=False)
+  for item in data:
+    packed = parseCommand(item, bridge).pack()  # id(4) + command(4) + payload
+    inData += struct.pack('<I', len(packed) - 4) + packed[4:]  # drop id, prepend length
+  return cMilvianPacket(packetCommand.list, bridge, inData)
+
+# ----------------------------------------------------------------------------------------------------------
 def _parseMultiActor(cmd: str, bridge) -> cMilvianPacket:
-  """Parse a multi(...) string into a multiActor packet. Does not send."""
-  fields = [s.strip().strip('"') for s in splitGroups(cmd.strip()[6:-1], ',')]
+  # Parses a multi(...) string into a multiActor packet. Does not send.
+  fields = [s.strip('"') for s in splitGroups(cmd.strip()[6:-1], ',')]
   if len(fields) < 3:
     cPrint.error(f"[cMilvian] malformed multi() command: {cmd!r}")
     return cPhonyPacket
@@ -82,14 +107,14 @@ def _parseMultiActor(cmd: str, bridge) -> cMilvianPacket:
   filterTargets = fields[4] if len(fields) > 4 else ""
   return _buildMultiActor(bridge, fields[0], fields[1], fields[2], filterActors, filterTargets)
 
-
+# ----------------------------------------------------------------------------------------------------------
 def _buildMultiActor(bridge, actors, targets, action, filterActors="", filterTargets="") -> cMilvianPacket:
-  """Build a multiActor packet from parsed arguments. Does not send."""
+  # Builds a multiActor packet from parsed arguments. Does not send.
   if isinstance(actors,  str): actors  = [a.strip() for a in actors.split(',')  if a.strip()]
   if isinstance(targets, str): targets = [t.strip() for t in targets.split(',') if t.strip()]
 
   if not isinstance(action, cMilvianPacket):
-    action = _buildFromList(bridge, action) if isinstance(action, (list, tuple)) else _parseCommandString(action, bridge)
+    action = parseList(bridge, action) if isinstance(action, (list, tuple)) else parseCommand(action, bridge)
 
   inData  = cPacker.pack(actors)
   inData += cPacker.pack(targets)
@@ -97,34 +122,6 @@ def _buildMultiActor(bridge, actors, targets, action, filterActors="", filterTar
   inData += cPacker.pack(filterTargets)
   inData += cPacker.pack(action)
   return cMilvianPacket(packetCommand.multiActor, bridge, inData)
-
-
-def _buildFromList(bridge, data) -> cMilvianPacket:
-  """Build from a list of command strings. Unwraps single-element lists.
-  Expands brace patterns per item ('b4k{1-3}' -> ['b4k1','b4k2','b4k3']).
-  For multi-element lists, produces a list packet. Does not send."""
-  if isinstance(data, str):
-    data = expandRepeaters(data)
-  else:
-    expanded = []
-    for item in data:
-      expanded.extend(expandRepeaters(item) if isinstance(item, str) else [item])
-    data = expanded
-
-  while isinstance(data, (list, tuple)) and len(data) == 1:
-    data = data[0]
-
-  if not isinstance(data, (list, tuple)):
-    return _parseCommandString(data, bridge)
-
-  # true list: pack as a list packet
-  # format: count(4) | [item_length(4) | command(4) | payload] ...
-  inData = len(data).to_bytes(4, byteorder='little', signed=False)
-  for item in data:
-    packed = _parseCommandString(item, bridge).pack()  # id(4) + command(4) + payload
-    inData += struct.pack('<I', len(packed) - 4) + packed[4:]  # drop id, prepend length
-  return cMilvianPacket(packetCommand.list, bridge, inData)
-
 
 # ---------------------------------------------------------------------------------------------------------------
 #
@@ -329,12 +326,12 @@ class cMilvian():
     return self.send(_buildMultiActor(self, actors, targets, action, filterActors, filterTargets))
 
   def execute(self, cmd) -> cMilvianPacket:
-    """Send any command: a string, a list of strings, or a cMilvianPacket."""
+    # Sends any command: a string, a list of strings, or a cMilvianPacket.
     if isinstance(cmd, cMilvianPacket):
       return self.send(cmd)
     if isinstance(cmd, (list, tuple)):
-      return self.send(_buildFromList(self, cmd))
-    return self.send(_parseCommandString(cmd, self))
+      return self.send(parseList(self, cmd))
+    return self.send(parseCommand(cmd, self))
 
   # ----------------------------------------------------------------------------------------------------------
   def send(self, packet: cMilvianPacket) -> cMilvianPacket:

@@ -44,9 +44,8 @@ Currently implemented features:
     - enable tracking of last known state for each container/character/bank (like Trove Plugin)
   - cDispatcher:
     - improve and make it "signal-like"
-  - cToolbar:
-    - re-implement "fill rows first"
-    - make all buttons "turn off" when milvian bridge stops
+  - MiniBrowser
+    - a low-feature ad-blocking minibrowser that automatically opens to the wiki page of the current quest or currently selected item
   - Other 
     - aProcessItems refactor?
       - use a QTableWidget or QListWidget instead?

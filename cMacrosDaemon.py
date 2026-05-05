@@ -39,7 +39,7 @@ class cMacrosDaemon(aProcessItem):
 
   def __init__(self, main : cMainWindow):
     super().__init__()
-    self.orb = cOrb("Milvian\nBridge", getIcon(P_DEFAULT_ICON_PATHS[0]+'/dm_orien.svg'),
+    self.orb = cOrb("Milvian\nBridge", getIcon('dm_orien'),
                            tooltip="Toggle on/off all shortcuts from all active sets" \
                            "<br><b>Ctrl+Click</b> to purge all shortcuts and restart daemon<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
@@ -215,6 +215,7 @@ class cMacrosDaemon(aProcessItem):
       self.bridges[k].close()
       del self.bridges[k]
     self.bridges = {}
+    cToolbar.clearItems()
     # if remove: self.clear()
 
   #----------------------------------------------------------------------------------------------------------
@@ -225,6 +226,7 @@ class cMacrosDaemon(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def cleanup(self):
     cPrint.info("Purging all possible shortcuts combinations...")
+    cToolbar.clearItems()
     XHelper().forceCleanup()
 
   
