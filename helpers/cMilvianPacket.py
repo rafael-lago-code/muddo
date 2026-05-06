@@ -46,6 +46,7 @@ class packetCommand(Enum):
   debug          = struct.pack('<I', 7)
   dissolveItems  = struct.pack('<I', 20)
   sellItems      = struct.pack('<I', 21)
+  storeItems     = struct.pack('<I', 22)
   multiActor     = struct.pack('<I', 30)
   chat           = struct.pack('<I', 31)
   namedaction    = struct.pack('<I', 32)

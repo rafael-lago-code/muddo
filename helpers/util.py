@@ -158,22 +158,12 @@ def getConnection(urlIn):
     return HTTPSConnection(url, context=P_CERTCTX), post
     
 #----------------------------------------------------------------------------------------------------------
-def getText(nodelist):
+def getNodeText(nodelist):
 	rc = ""
 	for node in nodelist:
 		if node.nodeType == node.TEXT_NODE or node.nodeType == node.CDATA_SECTION_NODE:
 			rc = rc + node.data
 	return rc
-
-#----------------------------------------------------------------------------------------------------------
-def newToolbarButton(icon, tooltip, connection):
-  btn = QPushButton()
-  btn.setIcon(getIcon(icon))
-  btn.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-  btn.setEnabled(False)
-  btn.setToolTip(tooltip)
-  btn.clicked.connect(connection)
-  return btn
 
 #----------------------------------------------------------------------------------------------------------
 def newHeaderLabel(title, width=80):

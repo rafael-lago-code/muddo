@@ -143,14 +143,14 @@ class tWorldChecker(QRunnable):
       else:
         doc = xml.dom.minidom.parseString(tempxml)
         try:
-          self.world.nowServing = getText(doc.getElementsByTagName("nowservingqueuenumber")[0].childNodes)
+          self.world.nowServing = getNodeText(doc.getElementsByTagName("nowservingqueuenumber")[0].childNodes)
         except:
           self.world.nowServing = None
         try:
-          self.world.queueURL = getText(doc.getElementsByTagName("queueurls")[0].childNodes).split(";")[0]
+          self.world.queueURL = getNodeText(doc.getElementsByTagName("queueurls")[0].childNodes).split(";")[0]
         except:
           self.world.queueURL = None
-        self.world.loginServer = getText(doc.getElementsByTagName("loginservers")[0].childNodes).split(";")[0]
+        self.world.loginServer = getNodeText(doc.getElementsByTagName("loginservers")[0].childNodes).split(";")[0]
         self.world.status = cWorld.UP
         self.world.update()
     except Exception as e:

@@ -88,7 +88,7 @@ class tAuthenticator():
         return False
       else:
         doc = xml.dom.minidom.parseString(tempxml)
-        self.ticket = getText(doc.getElementsByTagName("Ticket")[0].childNodes)
+        self.ticket = getNodeText(doc.getElementsByTagName("Ticket")[0].childNodes)
         for nodes in doc.getElementsByTagName("GameSubscription"):
           game = ""
           # status = ""
@@ -97,11 +97,11 @@ class tAuthenticator():
 
           for node in nodes.childNodes:
             if node.nodeName == "Game":
-              game = getText(node.childNodes)
+              game = getNodeText(node.childNodes)
             # elif node.nodeName == "Status":
               # status = getText(node.childNodes)
             elif node.nodeName == "Name":
-              subscription = getText(node.childNodes)
+              subscription = getNodeText(node.childNodes)
             # elif node.nodeName == "Description":
               # desc = getText(node.childNodes)
 
@@ -156,9 +156,9 @@ class tAuthenticator():
 
       if tempxml != "":
         doc = xml.dom.minidom.parseString(tempxml)
-        if getText(doc.getElementsByTagName("HResult")[0].childNodes) == "0x00000000":
-          number  = getText(doc.getElementsByTagName("QueueNumber")[0].childNodes)
-          serving = getText(doc.getElementsByTagName("NowServingNumber")[0].childNodes)
+        if getNodeText(doc.getElementsByTagName("HResult")[0].childNodes) == "0x00000000":
+          number  = getNodeText(doc.getElementsByTagName("QueueNumber")[0].childNodes)
+          serving = getNodeText(doc.getElementsByTagName("NowServingNumber")[0].childNodes)
 
     except Exception as e:
       self.console.error(f"Error checking the queue for \"{C_SILVER}{self.ddo.username.text()}</font>\"<br>\

@@ -134,7 +134,7 @@ class cStorageManager(cToggler):
     self.btnSort      = cOrb("Sort",       icon=getIcon('sort'),
                              tooltip="Sort selected items by type. <br><b>Right+Click</b> to sort by name<b>.<br><b><i>Right-click for more options</i></b>")
     self.btnStore     = cOrb("Store",       icon=getIcon('cannith_bank_lean'),
-                             tooltip="Store selected items in the currently open bank/chest UI. <br><b><i>Right-click for more options</i></b>")
+                             tooltip="Store selected items in the currently open bank/chest. <br><b><i>Ctrl+click</i></b> to send to character bank (guild or shared banks preferred otherwise)")
 
     self.filterCB = SimpleNamespace()
     for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Sellable", "Unsellable", "Name", "Description"]:
@@ -215,8 +215,14 @@ class cStorageManager(cToggler):
     self.btnSell.ctrlClicked.connect(lambda : self.requestSell(True, True))
     self.btnSell.clicked.connect(self.requestSell)
     self.btnDissolve.clicked.connect(self.requestDissolve)
+    self.btnStore.clicked.connect(self.requestStore)
+    self.btnStore.ctrlClicked.connect(lambda : self.requestStore(destUI=3))
     self.btnFeedJewel.clicked.connect(self.requestFeedJewel)
     self.btnFeedJewel.ctrlClicked.connect(lambda : self.requestFeedJewel(force=True))
+
+    self.btnSort.setEnabled(False)
+    self.btnFeedJewel.setEnabled(False)
+    self.btnTrade.setEnabled(False)
 
     self.filterScriptList.itemChanged.connect(self.renameFilterScript)
     self.filterBtnApplyScript.clicked.connect(self.applyFilters)
@@ -312,7 +318,7 @@ class cStorageManager(cToggler):
       self.btnDissolve.setEnabled(True)
       self.btnSell.setEnabled(True)
       self.btnTrade.setEnabled(False)
-      self.btnStore.setEnabled(False)
+      self.btnStore.setEnabled(True)
       self.btnFeedJewel.setEnabled(False)
       self.btnSort.setEnabled(False)
 
@@ -476,6 +482,7 @@ class cStorageManager(cToggler):
         inData += struct.pack('<Q',item._id)
       p = cMilvianPacket(packetCommand.dissolveItems, bridges[c], inData)
       packets[c] = p
+      self.setStatus(bridges[c], P_STATUS_BUSY_DISSOLVE)
       bridges[c].send(packets[c])
       cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageDissolveUpdate(p, data))
   
@@ -486,15 +493,52 @@ class cStorageManager(cToggler):
     if packet.status == packetStatus.success:
       cPrint.info(f"[cStorage] Finished dissolving requested items for {C_SILVER}{packet.bridge.charName}</font>")
       cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
+    elif packet.status == packetStatus.error:
+      cPrint.error(f"[cStorage] Error dissolving items for {C_SILVER}{packet.bridge.charName}</font>")
+      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       dissolved = packet.outData[0]
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
       cPrint.info(f"[cStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
 
   #----------------------------------------------------------------------------------------------------------
-  def requestStore(self, force=False):
-    # force ignores checks if item is storeable e.g. bound items
-    pass
+  def requestStore(self, destUI : int = 0, force=False):
+    # TO IMPLEMENT: force ignores checks if item is no bankeable
+    selectedItems = self.getSelectedIDs()
+    if not selectedItems: return
+    packets = {}
+    bridges : cMilvian = self.daemon.getBridges()
+    for c in selectedItems.keys():
+      inData = struct.pack('<?',True)     # sendStatus flag, requests frequent status update always for now
+      inData += struct.pack('<I',3)       # number of retries
+      inData += struct.pack('<I',destUI)  # which UI to store to (0=auto, 1=guild bank, 2=shared bank, 3=personal bank)
+      inData += struct.pack('<I',len(selectedItems[c]))
+      for item in list(selectedItems[c]):
+        inData += struct.pack('<Q',item._id)
+      p = cMilvianPacket(packetCommand.storeItems, bridges[c], inData)
+      packets[c] = p
+      self.setStatus(bridges[c], P_STATUS_BUSY_STORE)
+      bridges[c].send(packets[c])
+      cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageStoreUpdate(p, data))
+ 
+   #----------------------------------------------------------------------------------------------------------
+  def storageStoreUpdate(self, packet : cMilvianPacket, rawData : bytes):
+    packet.status = packetStatus(rawData[4:8])
+    packet.outData = rawData[12:]
+    if packet.status == packetStatus.success:
+      cPrint.info(f"[cStorage] Finished storing requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
+    elif packet.status == packetStatus.error:
+      cPrint.error(f"[cStorage] Error storing items for {C_SILVER}{packet.bridge.charName}</font>")
+      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
+    else:
+      stored = packet.outData[0]
+      iID = struct.unpack('<Q',packet.outData[1:9])[0]
+      cPrint.info(f"[cStorage] {"stored" if stored else "failed to store"} {C_ORANGE}{iID}</font>")
 
   #----------------------------------------------------------------------------------------------------------
   def requestTrade(self, force=False):
@@ -517,6 +561,7 @@ class cStorageManager(cToggler):
         inData += struct.pack('<Q',item._id)
       p = cMilvianPacket(packetCommand.sellItems, bridges[c], inData)
       packets[c] = p
+      self.setStatus(bridges[c], P_STATUS_BUSY_SELL)
       bridges[c].send(packets[c])
       cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageSellUpdate(p, data))
   
@@ -527,6 +572,11 @@ class cStorageManager(cToggler):
     if packet.status == packetStatus.success:
       cPrint.info(f"[cStorage] Finished selling requested items for {C_SILVER}{packet.bridge.charName}</font>")
       cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
+    elif packet.status == packetStatus.error:
+      cPrint.error(f"[cStorage] Error selling items for {C_SILVER}{packet.bridge.charName}</font>")
+      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       iID = struct.unpack('<Q',packet.outData[0:8])[0]
       cPrint.info(f"[cStorage] sold {C_ORANGE}{iID}</font>")

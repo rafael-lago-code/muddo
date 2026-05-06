@@ -132,9 +132,9 @@ class tServerInfo(QRunnable):
       else:
         doc = xml.dom.minidom.parseString(tempxml)
 
-        self.authServer = getText(doc.getElementsByTagName("AuthServer")[0].childNodes)
-        self.patchServer = getText(doc.getElementsByTagName("PatchServer")[0].childNodes)
-        self.launchConfigServer = getText(doc.getElementsByTagName("LauncherConfigurationServer")[0].childNodes)
+        self.authServer = getNodeText(doc.getElementsByTagName("AuthServer")[0].childNodes)
+        self.patchServer = getNodeText(doc.getElementsByTagName("PatchServer")[0].childNodes)
+        self.launchConfigServer = getNodeText(doc.getElementsByTagName("LauncherConfigurationServer")[0].childNodes)
 
         self.realmList = []
 

@@ -72,6 +72,9 @@ def parseCommand(cmd: str, bridge) -> cMilvianPacket:
   if cmd == 'chat(*)':
     return cMilvianPacket(packetCommand.chat, bridge, cPacker.pack(cmd[5:-1]))
 
+  if cmd == 'debug(*)':
+    return cMilvianPacket(packetCommand.debug, bridge, cPacker.pack(cmd[6:-1]))
+
   if cmd == 'multi(*)':
     return _parseMultiActor(cmd, bridge)
 
