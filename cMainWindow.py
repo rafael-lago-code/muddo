@@ -17,13 +17,12 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QMenu, QSplitter, QGridLayout
+from PyQt6.QtWidgets import QMainWindow, QWidget, QGridLayout
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from cCredentials import cCredentials
 from cSettingsProfile import cSettingsProfile
 from cSettings import cSettings
 from cMacros import cMacros
-from cNews import cNews
 from cPatch import cPatch
 from cConsole import cConsole
 from cDungeonHelper import cDungeonHelper
@@ -57,7 +56,6 @@ class cMainWindow(QMainWindow):
     self.console = cConsole(P_DEFAULT_LOGSDIR+'/log')
     cPrint.attachConsole(self.console)
     self.credentials = cCredentials(self)
-    self.news = cNews(self)
     self.patch = cPatch(self)
     self.settings = cSettings(self)
     self.macros = cMacros(self)
@@ -80,7 +78,7 @@ class cMainWindow(QMainWindow):
     self.summary.setLayout(g)
     lButtonsBar = newHLayout(["__stretch__",self.toolbar.widget, self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
                               self.summary, self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler, 
-                              self.macros.toggler, self.settings.toggler, self.patch.toggler, self.news.toggler, self.console.toggler, btnQuit,"__stretch__"])
+                              self.macros.toggler, self.settings.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
 
     aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
     aKillAll = self.btnLaunch.menu.addAction("Kill all")
@@ -97,7 +95,7 @@ class cMainWindow(QMainWindow):
     self.setCentralWidget(newVFrame([lButtonsBar]))
 
     self._docks = [self.credentials, self.settings, self.macros, self.processManager,
-                   self.storageManager, self.patch, self.news, self.console]
+                   self.storageManager, self.patch, self.console]
     for dock in self._docks:
       self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
       dock.setFloating(True)
@@ -122,7 +120,6 @@ class cMainWindow(QMainWindow):
       self.console.abort("No valid profile loaded!")
     self.credentials.initialize()
     self.macros.initialize()
-    self.news.initialize()
     self.patch.initialize()
     cMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
@@ -186,7 +183,6 @@ class cMainWindow(QMainWindow):
     self.macros.close()
     self.processManager.close()
     self.patch.close()
-    self.news.close()
     self.credentials.close()
     self.console.close()
     self.storageManager.close()

@@ -12,9 +12,11 @@ Currently implemented features:
  - manages all processes/instances launched, including terminate, kill, restart, etc
  - basic X window management of game windows: save position and border status and restores them
    - no Wayland support and no plans for it
+   - fixes blackscreen bug for WMs which suffer from it
  - basic Pipewire support for Audio muting/unmuting (you don't want all game instances narrating the dungeon, do you?)
- - patching
-    - quick or full patching (calls original launcher)
+ - patching & news
+    - quick patching or full patching (calls original launcher)
+    - displays same news as the original launcher
  - basic [Dungeon Helper](https://dungeonhelper.com/) integration (must be installed separately)
  - basic [Macro'ing](docs/Macros.md) capabilities, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
     - set to global shortcuts
@@ -49,7 +51,6 @@ Currently implemented features:
   - Other 
     - aProcessItems refactor?
       - use a QTableWidget or QListWidget instead?
-    - implement news visualization
     - use keyring to store passwords instead of plain text format
     - test the launcher with Wine (currently tested with Steam Proton)
     - add cmd line option for verbosity

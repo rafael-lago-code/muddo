@@ -35,6 +35,12 @@ P_STATUS_DISBLD=7
 P_STATUS_CHECKD=8
 P_STATUS_CHECKD_HOVERD=9
 
+P_COLOUR_GOLD=(215,120,0)
+P_COLOUR_RED=(200,10,10)
+
+P_COLOUR_HIGHLIGHT=P_COLOUR_GOLD
+P_COLOUR_ORB_GLOW=P_COLOUR_RED
+
 #-------------------------------------------------------------------------------------------------------------
 class cOrbTheme_RedMedium():
   _instance = None
@@ -52,11 +58,11 @@ class cOrbTheme_RedMedium():
       BG_RED_PIX  = BG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
       FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
       PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-      ICON_EFFECT = cEffects.cTint((215,120,0),0.5)
-      TEXT_EFFECT = cEffects.cTint((215,120,0),0.2)
+      ICON_EFFECT = cEffects.cTint(P_COLOUR_HIGHLIGHT,0.5)
+      TEXT_EFFECT = cEffects.cTint(P_COLOUR_HIGHLIGHT,0.2)
 
       self._instance.setBg(BG_RED_PIX, PRESSED_RED)
-      self._instance.setFg(FG_RED_PIX, QPixmap())
+      self._instance.setFg(FG_RED_PIX, cEffects.opacity(FG_RED_PIX,0.6))
       self._instance.setIconEffect(ICON_EFFECT)
       self._instance.setTextEffect(TEXT_EFFECT)
 
@@ -66,11 +72,11 @@ class cOrbTheme_RedMedium():
   def setBg(self, bg, pressed):
     self.bg = {}
     self.bg[P_STATUS_NORMAL] = bg
-    self.bg[P_STATUS_HOVERD] = cEffects.tint(bg,(200,10,10),1.0)
-    self.bg[P_STATUS_COVERD] = cEffects.tint(bg,(215,120,0),0.3)
+    self.bg[P_STATUS_HOVERD] = cEffects.tint(bg,P_COLOUR_ORB_GLOW,1.0)
+    self.bg[P_STATUS_COVERD] = cEffects.tint(bg,P_COLOUR_HIGHLIGHT,0.3)
     self.bg[P_STATUS_LCLICK] = cEffects.desaturate(bg,0.3)
-    self.bg[P_STATUS_RCLICK] = cEffects.tint(bg,(215,120,0),1.0)
-    self.bg[P_STATUS_CCLICK] = cEffects.tint(bg,(215,120,0),1.0)
+    self.bg[P_STATUS_RCLICK] = cEffects.tint(bg,P_COLOUR_HIGHLIGHT,1.0)
+    self.bg[P_STATUS_CCLICK] = cEffects.tint(bg,P_COLOUR_HIGHLIGHT,1.0)
     self.bg[P_STATUS_CRLICK] = cEffects.invert(bg)
     self.bg[P_STATUS_DISBLD] = cEffects.desaturate(bg,1.0)
     self.bg[P_STATUS_CHECKD] = pressed
@@ -116,7 +122,7 @@ class cOrbTheme_RedMedium():
     self.fg[P_STATUS_CRLICK] = fg
     self.fg[P_STATUS_DISBLD] = fg
     self.fg[P_STATUS_CHECKD] = pressed
-    self.fg[P_STATUS_CHECKD_HOVERD] = cEffects.tint(fg,(215,120,0),0.3)
+    self.fg[P_STATUS_CHECKD_HOVERD] = cEffects.tint(fg,P_COLOUR_HIGHLIGHT,0.3)
 
 #-------------------------------------------------------------------------------------------------------------
 class cOrbTheme_RedSmall(cOrbTheme_RedMedium):
@@ -147,10 +153,10 @@ class cTheme_Checkbox(cOrbTheme_RedMedium):
       FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
       PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
       ICON_EFFECT = cEffects.cNone()
-      TEXT_EFFECT = cEffects.cTint((215,120,0),0.2)
+      TEXT_EFFECT = cEffects.cTint(P_COLOUR_HIGHLIGHT,0.2)
 
       self._instance.setBg(BG_RED_PIX, PRESSED_RED)
-      self._instance.setFg(FG_RED_PIX, QPixmap())
+      self._instance.setFg(FG_RED_PIX, cEffects.opacity(FG_RED_PIX,0.5))
       self._instance.setIconEffect(ICON_EFFECT)
       self._instance.setTextEffect(TEXT_EFFECT)
 
@@ -173,7 +179,7 @@ class cTheme_Toolbar(cOrbTheme_RedMedium):
       FG_RED_PIX  = FG_RED_PIX.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
       PRESSED_RED = PRESSED_RED.scaled(self.orbSize, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
       ICON_EFFECT = cEffects.cNone()
-      TEXT_EFFECT = cEffects.cTint((215,120,0),0.2)
+      TEXT_EFFECT = cEffects.cTint(P_COLOUR_HIGHLIGHT,0.2)
 
       self._instance.setBg(BG_RED_PIX, PRESSED_RED)
       self._instance.setFg(FG_RED_PIX, QPixmap())

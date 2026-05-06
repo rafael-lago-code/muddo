@@ -147,7 +147,7 @@ class cMilvian():
     from cSettings import cSettings
     shmPath = cSettings.plugins.milvianSHMPath()
     dhPath  = os.path.dirname(cSettings.plugins.dhExec())
-    cPrint.debug(f"[cMilvian.setup] shmPath={shmPath!r} dhPath={dhPath!r}")
+    cPrint.debug(f"[cMilvian.setup] shmPath={shmPath!r} | dhPath={dhPath!r}")
     cls.setBridgePath(shmPath)
     cls.getInputActions(dhPath)
 

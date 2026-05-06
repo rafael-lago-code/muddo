@@ -172,8 +172,7 @@ class tServerInfo(QRunnable):
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
 
-      filename = P_DEFAULT_SERVERDIR+"/dndlauncher.server.xml"
-      with open(filename, "w") as f:
+      with open(P_DEFAULT_SERVERCONFIG, "w") as f:
         f.write(tempxml)
 
       if tempxml == "":
