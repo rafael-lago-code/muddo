@@ -136,9 +136,7 @@ class cSettings(cToggler):
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
     self.btnNew = cOrbSmall(icon=P_ICON_DUPDOC, tooltip="Duplicate current settings and profile into a new one.<br>You can rename it directly from the ComboBox after creating it.")
-    # self.btnSave = cOrbSmall(icon=P_ICON_SAVE, tooltip="Save current settings and profile")
     self.btnRemoveProfile = cOrbSmall(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
-    # self.btnReload = cOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload current profile and all settings from file")
 
     self.setLayout(newVLayout([self.hiddenLayer, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnNew,
                                self.btnRemoveProfile, "__stretch__"]), "__stretch__"]))

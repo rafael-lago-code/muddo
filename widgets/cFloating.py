@@ -23,7 +23,61 @@ from PyQt6.QtCore import QSettings, QRect, QSize, Qt
 from helpers.cImageFactory import *
 
 # -----------------------------------------------------------------------------
-class cFloatingTitleBar(QWidget):
+class cCanvas(QWidget):
+
+  def __init__(self, parent=None):
+    super().__init__(parent)
+    self.setObjectName("floatingCanvas")
+    self.setAutoFillBackground(False)
+    self._bg_colour = QColor(27, 30, 32, 240)
+    self._bg_images = {}
+
+  def setBackground(self, images: dict):
+    self._bg_colour = None
+    self._bg_images = {}
+    for key, val in images.items():
+      if key == 'colour':
+        self._bg_colour = val if isinstance(val, QColor) else QColor(val)
+      else:
+        self._bg_images[key] = val if isinstance(val, QPixmap) else getPixmap(val)
+    self.update()
+
+  def paintEvent(self, event):
+    painter = QPainter(self)
+    W, H = self.width(), self.height()
+
+    left_w   = max((self._bg_images[k].width()  for k in ('NW', 'W', 'SW') if k in self._bg_images), default=0)
+    right_w  = max((self._bg_images[k].width()  for k in ('NE', 'E', 'SE') if k in self._bg_images), default=0)
+    top_h    = max((self._bg_images[k].height() for k in ('NW', 'N', 'NE') if k in self._bg_images), default=0)
+    bottom_h = max((self._bg_images[k].height() for k in ('SW', 'S', 'SE') if k in self._bg_images), default=0)
+
+    cx = left_w
+    cy = top_h
+    cw = W - left_w - right_w
+    ch = H - top_h - bottom_h
+
+    if self._bg_colour:
+      painter.fillRect(0, 0, W, H, self._bg_colour)
+
+    def draw(key, x, y, w, h):
+      pix = self._bg_images.get(key)
+      if pix and w > 0 and h > 0:
+        painter.drawPixmap(QRect(x, y, w, h), pix)
+
+    draw('NW',     0,           0,            left_w,   top_h)
+    draw('N',      cx,          0,            cw,       top_h)
+    draw('NE',     W - right_w, 0,            right_w,  top_h)
+    draw('W',      0,           cy,           left_w,   ch)
+    draw('center', cx,          cy,           cw,       ch)
+    draw('E',      W - right_w, cy,           right_w,  ch)
+    draw('SW',     0,           H - bottom_h, left_w,   bottom_h)
+    draw('S',      cx,          H - bottom_h, cw,       bottom_h)
+    draw('SE',     W - right_w, H - bottom_h, right_w,  bottom_h)
+
+    painter.end()
+
+# -----------------------------------------------------------------------------
+class cBar(QWidget):
 
   _BAR_H = 24
 
@@ -102,8 +156,9 @@ class cFloating(QDockWidget):
     self.setObjectName(self.widgetID)
     self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
     self.setStyleSheet("QDockWidget { border: none; }")
+    self._pending_bg = None
 
-    self._titleBar = cFloatingTitleBar(title, self)
+    self._titleBar = cBar(title, self)
     self._titleBar.btnClose.clicked.connect(self.hide)
     self.setTitleBarWidget(self._titleBar)
 
@@ -111,12 +166,18 @@ class cFloating(QDockWidget):
     super().setWindowTitle(title)
     self._titleBar.setTitle(title)
 
+  def setBackground(self, images: dict):
+    self._pending_bg = images
+    if isinstance(self.widget(), cCanvas):
+      self.widget().setBackground(images)
+
   def setLayout(self, layout):
-    content = QWidget()
-    content.setObjectName("floatingContent")
-    content.setStyleSheet("QWidget#floatingContent { background: rgba(27, 30, 32, 240); border: none; }")
+    content = cCanvas()
+    content.setStyleSheet("QWidget#floatingCanvas { border: none; }")
     content.setLayout(layout)
     self.setWidget(content)
+    if self._pending_bg is not None:
+      content.setBackground(self._pending_bg)
 
   def initialize(self):
     pass

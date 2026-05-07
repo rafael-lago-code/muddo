@@ -25,9 +25,11 @@ from PyQt6.QtWidgets import QGridLayout, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QPainter, QPixmap, QColor
 from PyQt6.QtCore import Qt, QPoint
 from cSettings import cSettings
+from helpers.cImageFactory import getPixmap
 from helpers.cPrint import cPrint
 from helpers.util import *
 from helpers import cEffects
+from widgets.cFloating import cFloating
 from widgets.cOrb import cOrb, cTheme_Toolbar
 from widgets.cGrid import cGrid
 
@@ -96,18 +98,19 @@ class cToolbarItem(cOrb):
 class cToolbar(QWidget):
   widgetID = "Toolbar"
   items : list[cToolbarItem] = []
-  widget = None
+  grid = None
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
   def setup(cls):
-    cSettings.toolbar._macroNCols.valueChanged.connect(cls.widget.setColumns)
-    cSettings.toolbar._macroNRows.valueChanged.connect(cls.widget.setRows)
-    cSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.widget.setFillRowsFirst)
+    cSettings.toolbar._macroNCols.valueChanged.connect(cls.grid.setColumns)
+    cSettings.toolbar._macroNRows.valueChanged.connect(cls.grid.setRows)
+    cSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.grid.setFillRowsFirst)
     cSettings.toolbar._macroNCols.valueChanged.connect(cls.sortLayout)
     cSettings.toolbar._macroNRows.valueChanged.connect(cls.sortLayout)
     cSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.sortLayout)
-    cls.widget.itemsSwapped.connect(cls.onItemsSwapped)
+    cls.grid.itemsSwapped.connect(cls.onItemsSwapped)
+    cls.widget.setVisible(False)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -124,7 +127,24 @@ class cToolbar(QWidget):
   #----------------------------------------------------------------------------------------------------------
   @classmethod
   def _instantiateWidget(cls, main):
-    cls.widget = cGrid(main)
+    cls.widget = cFloating("Toolbar", main)
+    cls.grid = cGrid(cls.widget)
+
+    cls.widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+    cls.widget.setTitleBarWidget(QWidget())
+    cls.widget.setLayout(newVLayout([cls.grid]))
+    # cls.widget.setBackground({})
+    # theme = {d: f"ornate_frame_{d}" for d in ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE']}
+    theme : dict[str, QPixmap]= {}
+    for d in ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE']:
+      pm = getPixmap(f"ornate_frame_{d}")
+      pm = pm.scaled(int(pm.width()*0.25), int(pm.height()*0.25), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      theme[d] = cEffects.cBrightContrast(-0.2,2.0).apply(cEffects.cOpacity(0.75).apply(pm))
+    cls.widget.setBackground(theme)
+
+    main.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, cls.widget)
+    cls.widget.setFloating(True)
+    cls.widget.setVisible(False)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -139,6 +159,7 @@ class cToolbar(QWidget):
   def clearItems(cls):
     cls.items.clear()
     cls.clearLayout()
+    cls.widget.setVisible(False)
 
   # # #----------------------------------------------------------------------------------------------------------
   # @classmethod
@@ -151,14 +172,15 @@ class cToolbar(QWidget):
   @classmethod
   def sortLayout(cls):
     cls.clearLayout()
+    cls.widget.setVisible(True)
     nrows = cSettings.toolbar.macroNRows()
     ncols = cSettings.toolbar.macroNCols()
     macroFillMissing = cSettings.toolbar.macroFillMissing()
     fillRowsFirst= cSettings.toolbar.macroFillRowFirst()
 
-    cls.widget.setColumns(ncols)
-    cls.widget.setRows(ncols)
-    cls.widget.setFillRowsFirst(fillRowsFirst)
+    cls.grid.setColumns(ncols)
+    cls.grid.setRows(ncols)
+    cls.grid.setFillRowsFirst(fillRowsFirst)
     cls.items.sort(key=lambda item: item.index())
 
     if macroFillMissing and cls.items:
@@ -169,12 +191,13 @@ class cToolbar(QWidget):
       slots = cls.items
 
     for item in slots:
-      cls.widget.addWidget(item)
+      cls.grid.addWidget(item)
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
   def clearLayout(cls):
-    cls.widget.clear()
+    cls.grid.clear()
+    cls.widget.setVisible(False)
 
 
 

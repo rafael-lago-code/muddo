@@ -66,17 +66,11 @@ def parseCommand(cmd: str, bridge) -> cMilvianPacket:
   if len(expanded) > 1: return parseList(bridge, expanded)
   cmd = cString(expanded[0].lower())
 
-  if cmd == 'sleep_*':
-    return cMilvianPacket(packetCommand.sleep, bridge, struct.pack("<f", float(cmd[6:])))
-
-  if cmd == 'chat(*)':
-    return cMilvianPacket(packetCommand.chat, bridge, cPacker.pack(cmd[5:-1]))
-
-  if cmd == 'debug(*)':
-    return cMilvianPacket(packetCommand.debug, bridge, cPacker.pack(cmd[6:-1]))
-
-  if cmd == 'multi(*)':
-    return _parseMultiActor(cmd, bridge)
+  if cmd == 'sleep_*': return cMilvianPacket(packetCommand.sleep, bridge, struct.pack("<f", float(cmd[6:])))
+  if cmd == 'chat(*)': return cMilvianPacket(packetCommand.chat, bridge, cPacker.pack(cmd[5:-1]))
+  if cmd == 'strategy(*)': return _parseStrategy(cmd, bridge)
+  if cmd == 'debug(*)': return cMilvianPacket(packetCommand.debug, bridge, cPacker.pack(cmd[6:-1]))
+  if cmd == 'multi(*)': return _parseMultiActor(cmd, bridge)
 
   if cmd in cMilvian.inputActions:
     inData = cMilvian.inputActions[cmd] + struct.pack('<I', 10000)
@@ -109,6 +103,15 @@ def _parseMultiActor(cmd: str, bridge) -> cMilvianPacket:
   filterActors  = fields[3] if len(fields) > 3 else ""
   filterTargets = fields[4] if len(fields) > 4 else ""
   return _buildMultiActor(bridge, fields[0], fields[1], fields[2], filterActors, filterTargets)
+
+# ----------------------------------------------------------------------------------------------------------
+def _parseStrategy(cmd, bridge) -> cMilvianPacket:
+  if isinstance(cmd, str): cmd = cString(cmd[9:-1]).dictionary()
+  print(f"STRATEGY CMD: {cmd}")
+  inData  = struct.pack('<I', cmd.get('follow', 2))
+  inData += struct.pack('<f', cmd.get('distance', 1.0))
+  inData += struct.pack('<I', cmd.get('strategy', 0))
+  cMilvianPacket(packetCommand.strategy, bridge, inData)
 
 # ----------------------------------------------------------------------------------------------------------
 def _buildMultiActor(bridge, actors, targets, action, filterActors="", filterTargets="") -> cMilvianPacket:
@@ -320,6 +323,9 @@ class cMilvian():
 
   def chat(self, text: str) -> cMilvianPacket:
     return self.send(cMilvianPacket(packetCommand.chat, self, cPacker.pack(text)))
+  
+  def strategy(self, data: dict) -> cMilvianPacket:
+    return self.send(_parseStrategy(data, self))
 
   def query(self, command) -> cMilvianPacket:
     cmd = command if isinstance(command, packetCommand) else packetCommand[str(command)]

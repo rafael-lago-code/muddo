@@ -177,7 +177,7 @@ class cMacroSet(QListWidgetItem):
               a = replaceAlias(a, k, v)
             translated.append(a)
           actors = translated
-        commands = [s[0].strip()]
+        commands = [s[0].replace("\n", "").strip()]
 
         for a in actors: cs[a] = cs.get(a, []) + commands
 

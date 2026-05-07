@@ -50,6 +50,7 @@ class packetCommand(Enum):
   multiActor     = struct.pack('<I', 30)
   chat           = struct.pack('<I', 31)
   namedaction    = struct.pack('<I', 32)
+  strategy       = struct.pack('<I', 40)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)
 

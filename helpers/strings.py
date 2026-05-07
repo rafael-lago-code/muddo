@@ -73,7 +73,7 @@ P_GROUPING={"\"":"\"", "(":")", "{":"}", "[":"]", "<":">"}
 #----------------------------------------------------------------------------------------------------------
 #    splitGroups
 #    Splits a string by a delimiter while respecting groups such as "<a,b,c>, {d,e,f}, [g,h,i]"
-def splitGroups(text: str, delim: str, strip: str = " ") -> list[str]:
+def splitGroups(text: str, delim : str = ",", strip: str = " ") -> list[str]:
   parts = []
   i = 0
   j = 0
@@ -89,6 +89,41 @@ def splitGroups(text: str, delim: str, strip: str = " ") -> list[str]:
   parts.append(text[i:])
   if strip: return [p.strip(strip) for p in parts if p.strip(strip)]
   else:     return parts
+
+#----------------------------------------------------------------------------------------------------------
+#    dictionary
+#    Turns a string into a dictionary by splitting it by a delimiter and then automagically figuring out
+#    key-value pairs. For example, "a=1,b=2,c=3" with delim "," would return {"a":"1", "b":"2", "c":"3"}
+def dictionary(text: str, delim : str = ",", strip: str = " ") -> dict:
+  out = {}
+  for p in splitGroups(text, delim, strip):
+    if "=" in p:
+      k,v = p.split("=",1)
+      out[k.strip(strip)] = guess(v.strip(strip))
+    elif ":" in p:
+      k,v = p.split(":",1)
+      out[k.strip(strip)] = guess(v.strip(strip))
+    else:
+      out[p.strip(strip)] = None
+  return out
+
+#----------------------------------------------------------------------------------------------------------
+#    guess
+#    Tries to guess the type of a string by trying to convert it to int, then float, and if all fails, string
+def guess(text: str):
+  try:
+    return int(text)
+  except: pass
+  try:
+    return float(text)
+  except: pass
+  text = text.strip()
+  if text.startswith(tuple(P_GROUPING.keys())) and text.endswith(tuple(P_GROUPING.values())):
+    if text.startswith("\"") and text.endswith("\""):
+      return text[1:-1]
+    else:
+      return splitGroups(text[1:-1])
+  return text
 
 #----------------------------------------------------------------------------------------------------------
 #    replaceAlias
@@ -143,21 +178,12 @@ class cString(str):
     return super().__new__(cls, value)
     
   __hash__ = str.__hash__
-
-  def __eq__(self, other):
-    return globmatch(self, other)
-
-  def __ne__(self, other):
-    return not self.__eq__(other)
+  def __eq__(self, other): return globmatch(self, other)
+  def __ne__(self, other): return not self.__eq__(other)
+  def __contains__(self, sub): return contains(self, sub) 
+  def expand(self): return expandRepeaters(self)
+  def split(self, sep : str = None, strip: str = " "): return splitGroups(self, sep, strip)
+  def replace(self, key: str, translation: str): return replaceAlias(self, key, translation)
+  def guess(self): return guess(self)
+  def dictionary(self, delim : str = ",", strip: str = " "): return dictionary(self, delim, strip)
   
-  def __contains__(self, sub):
-    return contains(self, sub) 
-  
-  def expand(self):
-    return expandRepeaters(self)
-  
-  def split(self, sep : str = None, strip: str = " "):
-    return splitGroups(self, sep, strip)
-  
-  def replace(self, key: str, translation: str):
-    return replaceAlias(self, key, translation)
