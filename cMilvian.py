@@ -114,6 +114,8 @@ class StrategyFlags(IntFlag):
   acceptQuest         = 1 << 4
   autoExplorerJournal = 1 << 5
   followJump          = 1 << 6
+  followSelect        = 1 << 7
+  followAttack        = 1 << 8
 
 _STRATEGY_FLAG_DEFAULTS = (
   StrategyFlags.followMount |
@@ -122,7 +124,9 @@ _STRATEGY_FLAG_DEFAULTS = (
   StrategyFlags.acceptRess |
   StrategyFlags.acceptQuest |
   StrategyFlags.autoExplorerJournal |
-  StrategyFlags.followJump
+  StrategyFlags.followJump |
+  StrategyFlags.followSelect |
+  StrategyFlags.followAttack
 )
 
 # ----------------------------------------------------------------------------------------------------------

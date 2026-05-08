@@ -58,10 +58,12 @@ Currently implemented features:
       - implement dismount as well
     - implement "followBlock" (and most importantly: UNBLOCK!!!!)
     - implement "mimicNPC"
-    - implement "mimicPortal"
-    - implement "mimicTeleport"
+    - implement "followPortal"
+    - implement "followTeleport"
+    - implement "followSneak"
     - implement "shareLoot"
     - test "autoExplorerJournals"
+    - test if "isSameMap" implementation also works when leader is in another machine!
 
 
   - Inventory Manager
