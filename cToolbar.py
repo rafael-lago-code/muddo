@@ -173,6 +173,7 @@ class cToolbar(QWidget):
   def sortLayout(cls):
     cls.clearLayout()
     cls.widget.setVisible(True)
+    cSettings.toolbar.loadWidgetGeometry(cls.widget)
     nrows = cSettings.toolbar.macroNRows()
     ncols = cSettings.toolbar.macroNCols()
     macroFillMissing = cSettings.toolbar.macroFillMissing()
@@ -196,6 +197,8 @@ class cToolbar(QWidget):
   #----------------------------------------------------------------------------------------------------------
   @classmethod
   def clearLayout(cls):
+    if cls.widget.isVisible():
+      cSettings.toolbar.saveWidgetGeometry(cls.widget)
     cls.grid.clear()
     cls.widget.setVisible(False)
 

@@ -215,6 +215,26 @@ class dToolbar(dSection):
     self._macroFillMissing = cBoxCheck("fill missing/inactive macros")
     super().__init__(state)
 
+  def saveWidgetGeometry(self, widget):
+    p = widget.pos()
+    s = widget.size()
+    self._state.setValue("toolbar/x", p.x())
+    self._state.setValue("toolbar/y", p.y())
+    self._state.setValue("toolbar/w", s.width())
+    self._state.setValue("toolbar/h", s.height())
+    self._state.sync()
+
+  def loadWidgetGeometry(self, widget):
+    x = self._state.value("toolbar/x", None)
+    y = self._state.value("toolbar/y", None)
+    w = self._state.value("toolbar/w", None)
+    h = self._state.value("toolbar/h", None)
+    if x is None: return
+    try:
+      widget.move(int(x), int(y))
+      widget.resize(int(w), int(h))
+    except (TypeError, ValueError): pass
+
 #---------------------------------------------------------------------------------------------------------------
 class dSession(dSection):
   name = "session"

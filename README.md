@@ -27,6 +27,14 @@ Currently implemented features:
     - batch-dissolving of selected items
     - batch-selling (mark as junk) of selected items
     - repair-all, sell gems also enabled
+    - store selected items into open container
+ - support for Strategy
+    - basic follow (though equivalent to AAF)
+    - basic followJump
+    - acceptQuest
+    - acceptParty
+    - acceptRess
+
 
 ## TODO
   - update README's screenshot
@@ -40,8 +48,23 @@ Currently implemented features:
     - UI improvements
       - create context menu with all existing macros (so that they don't need a keyboard shortcut)
       - vizualize keyboard with its macros
+  - Strategy
+    - implement "followRecall"
+    - implement "followJump"
+      - currently jump detection relies on δZ
+      - requires the user to manually set jump shortcut to "space" (even if default is space, it needs to be manually set)
+    - implement "followMount"
+      - currently detects but fails to send the "mount" input
+      - implement dismount as well
+    - implement "followBlock" (and most importantly: UNBLOCK!!!!)
+    - implement "mimicNPC"
+    - implement "mimicPortal"
+    - implement "mimicTeleport"
+    - implement "shareLoot"
+    - test "autoExplorerJournals"
+
+
   - Inventory Manager
-    - enable storing list of itemIds to currently opened container/bank
     - enable trading
     - enable tracking of last known state for each container/character/bank (like Trove Plugin)
   - cDispatcher:

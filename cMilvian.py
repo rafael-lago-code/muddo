@@ -21,6 +21,7 @@
 
 import sys, mmap, time, struct
 import os, threading
+from enum import IntFlag
 from typing import TYPE_CHECKING
 from helpers.cMilvianPacket import cMilvianPacket, cPacker, cPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
@@ -104,14 +105,60 @@ def _parseMultiActor(cmd: str, bridge) -> cMilvianPacket:
   filterTargets = fields[4] if len(fields) > 4 else ""
   return _buildMultiActor(bridge, fields[0], fields[1], fields[2], filterActors, filterTargets)
 
+# Flags packed into a single uint — must match StrategyFlags enum in Strategy.cs
+class StrategyFlags(IntFlag):
+  followMount         = 1 << 0
+  followRecall        = 1 << 1
+  acceptParty         = 1 << 2
+  acceptRess          = 1 << 3
+  acceptQuest         = 1 << 4
+  autoExplorerJournal = 1 << 5
+  followJump          = 1 << 6
+
+_STRATEGY_FLAG_DEFAULTS = (
+  StrategyFlags.followMount |
+  StrategyFlags.followRecall |
+  StrategyFlags.acceptParty |
+  StrategyFlags.acceptRess |
+  StrategyFlags.acceptQuest |
+  StrategyFlags.autoExplorerJournal |
+  StrategyFlags.followJump
+)
+
 # ----------------------------------------------------------------------------------------------------------
+# Packet layout (little-endian):
+#   [4]   uint  follow       – 0=stop, 1=start, 2=toggle
+#   [4]   float distance     – stop distance
+#   [4]   uint  strategy     – 0=entity, 1=party-location
+#   [4]   uint  flags        – StrategyFlags bitmask
+#   [4]   float formation_x  – offset from target (X)
+#   [4]   float formation_y  – offset from target (Y)
+#   [4+n] str   target       – "selected", "leader", or party member first name
 def _parseStrategy(cmd, bridge) -> cMilvianPacket:
   if isinstance(cmd, str): cmd = cString(cmd[9:-1]).dictionary()
-  print(f"STRATEGY CMD: {cmd}")
-  inData  = struct.pack('<I', cmd.get('follow', 2))
+
+  flags = int(_STRATEGY_FLAG_DEFAULTS)
+  for flag in StrategyFlags:
+    key = flag.name
+    if key in cmd:
+      if cmd[key]: flags |=  int(flag)
+      else:        flags &= ~int(flag)
+
+  formation = cmd.get('formation', None)
+  if isinstance(formation, (list, tuple)) and len(formation) >= 2:
+    fx, fy = float(formation[0]), float(formation[1])
+  else:
+    fx = float(cmd.get('formation_x', 0.0))
+    fy = float(cmd.get('formation_y', 0.0))
+
+  inData  = struct.pack('<I', cmd.get('follow',   2))
   inData += struct.pack('<f', cmd.get('distance', 1.0))
   inData += struct.pack('<I', cmd.get('strategy', 0))
-  cMilvianPacket(packetCommand.strategy, bridge, inData)
+  inData += struct.pack('<I', flags)
+  inData += struct.pack('<f', fx)
+  inData += struct.pack('<f', fy)
+  inData += cPacker.packString(str(cmd.get('target', 'leader')))
+  return cMilvianPacket(packetCommand.strategy, bridge, inData)
 
 # ----------------------------------------------------------------------------------------------------------
 def _buildMultiActor(bridge, actors, targets, action, filterActors="", filterTargets="") -> cMilvianPacket:

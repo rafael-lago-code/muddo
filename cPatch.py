@@ -186,15 +186,6 @@ class cPatch(cToggler):
       cPrint.info("cPatch.fullLauncherThread.run: Error launching, check logs for details!")
       exitCode = 1
 
-    # this locks until the launcher process ends, and it is intentional!
-    # If it does end, then it was closed by the user (or some error...)
-    # if exitCode==137:
-    #   self.sigChangeRequest.emit(self.P_STATUS_KILLED)
-    # elif exitCode in (1,2,126,127):
-    #   self.sigChangeRequest.emit(self.P_STATUS_ERROR)
-    # else:
-    #   self.sigChangeRequest.emit(self.P_STATUS_TERMINATED)
-
 
 #----------------------------------------------------------------------------------------------------------
 # TODO reimplement this using threading

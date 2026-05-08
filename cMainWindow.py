@@ -159,6 +159,7 @@ class cMainWindow(QMainWindow):
     dockState = self._state.value("μDDO/dockState")
     if dockState:
       QMainWindow.restoreState(self, dockState)
+    cToolbar.widget.setVisible(False)
   
   #----------------------------------------------------------------------------------------------------------
   def saveState(self):
@@ -172,6 +173,7 @@ class cMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def showEvent(self, event):
     super().showEvent(event)
+    cToolbar.widget.setVisible(False)
     for dock in self._docks:
       dock.setVisible(self._state.value(f"{dock.widgetID}/visible", False, type=bool))
 
