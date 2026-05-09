@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-#
-#
-#    μDDO
-#    Copyright (C) 2025  Rafael Lago
-#
-#    This program is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    This program is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
-#
-#
+"""
+  🭃🭏🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭃🭎🬭🬭🭄🭎
+  🭔🭠                                                                         🭕🭟
+   █    μilvian & μDDO                                                          █                                                                   
+   █    Copyright (C) 2025  Rafael Lago                                         █                                                                     
+   █                                                                            █                                                                   
+   █    This program is free software: you can redistribute it and/or modify    █
+   █    it under the terms of the GNU General Public License as published by    █
+   █    the Free Software Foundation, either version 3 of the License, or       █
+   █    (at your option) any later version.                                     █
+   █                                                                            █
+   █    This program is distributed in the hope that it will be useful,         █
+   █    but WITHOUT ANY WARRANTY; without even the implied warranty of          █
+   █    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the           █
+   █    GNU General Public License for more details.                            █
+   █                                                                            █
+   █    You should have received a copy of the GNU General Public License       █
+   █    along with this program.  If not, see <https://www.gnu.org/licenses/>.  █
+   █                                                                            █
+  🭃🭏                                                                         🭄🭎
+  🭔🭠🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭕🭟
+"""
 import os, sys, subprocess
 
 THIS_PATH  = os.path.dirname(os.path.realpath(__file__))
@@ -126,7 +129,7 @@ if os.environ.get("VIRTUAL_ENV") != VENV_PATH:
 #---------------------------------------------------------------------------------------------------------------
 from PyQt6.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt6.QtWidgets import QApplication
-from cMainWindow import cMainWindow
+from μMainWindow import μMainWindow
 import Xlib
 
 
@@ -150,7 +153,7 @@ if __name__ == '__main__':
         selection-color: white;
     }
   """)
-  window = cMainWindow()
+  window = μMainWindow()
   window.initialize()
   window.show()
   app.exec()
