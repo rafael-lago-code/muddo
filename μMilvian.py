@@ -132,6 +132,7 @@ _STRATEGY_SETTING_KEYS = {
   'class', 'captain', 'commander', 'leader', 'stopDistance', 'refreshIntervalMs',
   'followMount', 'followRecall', 'acceptParty', 'acceptRess', 'acceptQuest',
   'closeExplorerJournal', 'followJump', 'followSelect', 'followAttack', 'followPortal', 'followDirection',
+  'autonomyTime',
 }
 
 # ----------------------------------------------------------------------------------------------------------
