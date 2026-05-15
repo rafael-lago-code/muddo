@@ -170,8 +170,8 @@ class μProcessManager(μToggler):
 
   #----------------------------------------------------------------------------------------------------------
   def fixBlackScreenAll(self):
-    from helpers.χHelper import XHelper
-    xh = XHelper()
+    from helpers.χHelper import χHelper
+    xh = χHelper()
     for p in self.selectedItems():
       winID = p.winID.text()
       if winID.isdigit():

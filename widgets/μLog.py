@@ -66,9 +66,14 @@ class μLog(QTextEdit):
 
   #------------------------------------------------------------------------------------ 
   def deleteLater(self):
+    if self.name is None: return
     μPrint.info(f"Stopped following log for {C_SILVER}{self.name}</font>...")
-    self.watcher.removePath(self.filePath)
-    self.watcher.deleteLater()
-    μPrint.console.removeTab(self)
     self.name = None
+    try:
+      self.watcher.fileChanged.disconnect(self.onFileUpdated)
+      self.watcher.removePath(self.filePath)
+      self.watcher.deleteLater()
+    except RuntimeError:
+      pass
+    μPrint.console.removeTab(self)
     super().deleteLater()

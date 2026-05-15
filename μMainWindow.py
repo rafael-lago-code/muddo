@@ -43,6 +43,7 @@ class μMainWindow(QMainWindow):
 
   def __init__(self):
     super().__init__()
+    μImageFactory.setMask((255,128,255))
     self._state = QSettings(P_DEFAULT_CONF)
     self.setWindowTitle("μDDO")
     self.setWindowIcon(getIcon(P_MUDDO_DIR+'/images/icon.png'))

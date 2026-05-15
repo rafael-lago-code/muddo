@@ -259,12 +259,18 @@ class μStorage(μToggler):
   
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, bridge, newStatus):
-    if newStatus == P_STATUS_IDLE:
-      if bridge in self.status: del self.status[bridge]
-      if len(self.status)>0: newStatus=list(self.status.values())[0]
-    else:
+    print(f"STARTING STATUS {bridge} {newStatus}")
+    if newStatus != P_STATUS_IDLE:
       self.status[bridge]=newStatus
+      if len(self.status.keys())>1:
+        return  # assume that status was already set before by some other bridge
+    else:
+      if bridge in self.status: del self.status[bridge]
+      if len(self.status)>0:
+        # someone is still doing something; set newStatus to the first one found
+        newStatus=list(self.status.values())[0]
 
+    print(f"CONTINUING STATUS {bridge} {newStatus}")
     if newStatus == P_STATUS_BUSY_REFRESH:
       self.btnRefresh.setEnabled(True)
       self.btnDissolve.setEnabled(False)

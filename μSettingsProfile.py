@@ -204,7 +204,8 @@ class dPlugins(dSection):
 
 #---------------------------------------------------------------------------------------------------------------
 class dToolbar(dSection):
-  name = "toolbar"
+  name      = "toolbar"
+  _raw_keys = {'x', 'y', 'w', 'h', 'geometry'}
   def __init__(self, state):
     self._macroNRows        = QSpinBox()
     self._macroNCols        = QSpinBox()
@@ -212,7 +213,8 @@ class dToolbar(dSection):
     self._macroNCols.setMinimum(1)
     self._macroFloating     = μBoxCheck("floating macros bar")
     self._macroFillRowFirst = μBoxCheck("fill rows first")
-    self._macroFillMissing = μBoxCheck("fill missing/inactive macros")
+    self._macroFillMissing  = μBoxCheck("fill missing/inactive macros")
+    self._transparentIcon   = μBoxCheck("enable transparent icons (magenta mask)")
     super().__init__(state)
 
   def saveWidgetGeometry(self, widget):
@@ -329,7 +331,7 @@ class μSettingsProfile(QWidget):
 
     gtoolbar = μGridLayout()
     gtoolbar.appendRow(["Number of Rows:", self.toolbar._macroNRows, "Number of Columns:", self.toolbar._macroNCols, self.toolbar._macroFillRowFirst])
-    gtoolbar.appendRow([">", self.toolbar._macroFloating, ">", self.toolbar._macroFillMissing])
+    gtoolbar.appendRow([self.toolbar._macroFloating, ">", self.toolbar._macroFillMissing, ">", self.toolbar._transparentIcon])
 
     self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")
     self.tab.addTab(newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"]), "X && Audio")
@@ -388,6 +390,7 @@ class μSettingsProfile(QWidget):
         if sname == "session": continue
         sobj = getattr(self, sname, None)
         if not isinstance(sobj, dSection): continue
+        if wname in getattr(sobj, '_raw_keys', set()): continue
         wobj = getattr(sobj, f"_{wname}", None) or getattr(sobj, wname, None)
         if isinstance(wobj, P_SERIALIZABLE):
           _setValue(wobj, self._state.value(key))

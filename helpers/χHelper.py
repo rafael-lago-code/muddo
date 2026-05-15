@@ -130,7 +130,7 @@ class windowData():
 #   TODO MAKE THIS STATIC!!! Need to remove __init__ and put it somewhere else
 #   TODO get rid of Qt requirement (i.e. pyqtSignal) and use cDispatcher instead
 #---------------------------------------------------------------------------------------------------------------
-class XHelper(QObject):
+class χHelper(QObject):
   sigGotWinID = pyqtSignal((int,list))
   KEYSYM = _parseKeysymHeader(P_DEFAULT_KEYSYM) 
   MODIFIERS, MODIFIER_MASKS = _buildModifiers()
@@ -208,6 +208,15 @@ class XHelper(QObject):
     try:
       focus = self.disp.get_input_focus().focus
       return focus.id if focus else None
+    except:
+      return None
+
+  #----------------------------------------------------------------------------------------------------------
+  def getFocusedPID(self) -> int:
+    try:
+      winID = self.getFocusedWindow()
+      if winID is None: return None
+      return self.getPID(winID)
     except:
       return None
   

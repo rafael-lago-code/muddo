@@ -29,11 +29,12 @@ Currently implemented features:
     - repair-all, sell gems also enabled
     - store selected items into open container
  - support for Strategy
-    - basic follow (though equivalent to AAF)
-    - basic followJump
-    - acceptQuest
-    - acceptParty
-    - acceptRess
+    - basic follow (equivalent to AAF)
+    - basic follows jump, direction, target selection and ladder behaviour
+    - accept quest share, party invite and ressurrection
+    - local leader only:
+      - follows into most quests instance ("followPortal" but not really a portal)
+      - follows recall
 
 
 ## TODO
@@ -45,25 +46,36 @@ Currently implemented features:
       - allow branches
       - allow asynchronous behaviour
       - allow check state (e.g. cooldown)
+      - allow check effect and equipment (i.e. cast Flame Arrow, change gear, cast initial buffs at the beginning of each dungeon)
+      - improve pets reachability
+        - for {r} ranges (i.e. "if pet exists, cast this spell on it")
+        - support healing and ressurrecting of pets (currently only players work)
+
     - UI improvements
       - create context menu with all existing macros (so that they don't need a keyboard shortcut)
       - vizualize keyboard with its macros
   - Strategy
-    - implement "followRecall"
-    - implement "followJump"
-      - currently jump detection relies on δZ
-      - requires the user to manually set jump shortcut to "space" (even if default is space, it needs to be manually set)
-    - implement "followMount"
-      - currently detects but fails to send the "mount" input
-      - implement dismount as well
-    - implement "followBlock" (and most importantly: UNBLOCK!!!!)
+    - detect party leader
+    - implement overrideFlag() and setFlag() macros
+    - implement withFlag() macro: sets a flag to a value only when executing the next commands; once they are done, restore the flag to its original value
+      - VERY useful for doing things as "withFlag(followSelect=false), selectA, executeA, selectB, executeB, ...", to prevent following the leader from ruining target selection
     - implement "mimicNPC"
-    - implement "followPortal"
-    - implement "followTeleport"
-    - implement "followSneak"
-    - implement "shareLoot"
-    - test "autoExplorerJournals"
-    - test if "isSameMap" implementation also works when leader is in another machine!
+    - implement "closeExplorerJournals"
+      - OnExplorer event is for something else, explorer journals seem to have no property, they are not fired when OnSelectedObject... I have no idea how to proceed here.
+    - test better behaviour when leader is in another computer
+    - nice to have:
+      - improve "followJump"
+        - currently jump detection relies on δZ
+          - for local leader: use "canjump" flag instead, no δZ shenenigans. Keep δZ for nonlocal      
+        - requires the user to manually set jump shortcut to "space" (even if default is space, it needs to be manually set)
+      - implement "followMount"
+        - currently detects but fails to send the "mount" input
+        - implement dismount as well
+        - maybe unnecessary for this framework
+      - implement "followBlock" (and most importantly: UNBLOCK!!!!)
+      - implement "followTeleport" (items like key to estar and the D12)
+      - implement "followSneak"
+      - implement "shareLoot"
 
 
   - Inventory Manager

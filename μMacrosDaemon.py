@@ -23,7 +23,7 @@ from PyQt6.QtGui import QAction
 from μProcess import aProcessItem
 from μToolbar import μToolbar, cToolbarItem
 from widgets.μOrb import μOrb
-from helpers.χHelper import XHelper
+from helpers.χHelper import χHelper
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from typing import TYPE_CHECKING
@@ -83,13 +83,16 @@ class cMacrosDaemon(aProcessItem):
       return True
     
   #----------------------------------------------------------------------------------------------------------
-  def getBridges(self) -> list:
+  _META_KEYS = {'self', 'any'}
+
+  def getBridges(self, returnMeta=False) -> dict:
     if not self.isInitialized():  self.initialize()
     if not self.isInitialized():
       μPrint.warning("[cMacrosDaemon] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
       return {}
-    else:
+    if returnMeta:
       return self.bridges
+    return {k: v for k, v in self.bridges.items() if k not in self._META_KEYS}
 
   #----------------------------------------------------------------------------------------------------------
   def convert(self, consolidated : dict) -> dict:
@@ -168,7 +171,7 @@ class cMacrosDaemon(aProcessItem):
       else:
         toolbarMacros = {k: parsed.pop(k) for k in list(parsed) if k.startswith('toolbar')}
 
-        xh = XHelper()
+        xh = χHelper()
         for hk, script in parsed.items():
           parsed[hk] = lambda x=script : xh.execute(x)
         self.process = xh.getShortcutsDaemon(parsed)
@@ -227,6 +230,6 @@ class cMacrosDaemon(aProcessItem):
   def cleanup(self):
     μPrint.info("Purging all possible shortcuts combinations...")
     μToolbar.clearItems()
-    XHelper().forceCleanup()
+    χHelper().forceCleanup()
 
   

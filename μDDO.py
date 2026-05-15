@@ -22,7 +22,7 @@ from PyQt6.QtCore import QRunnable, pyqtSignal
 from μProcess import aProcessItem
 from μSettings import μSettings
 from μAuthenticator import μAuthenticator
-from helpers.χHelper import XHelper, windowData
+from helpers.χHelper import χHelper, windowData
 from helpers.μTop import μTop
 import subprocess
 import os, time, glob, threading
@@ -149,7 +149,7 @@ class μDDO(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def watchWinID(self):
     def validateWinID(pid : int, winIDList : list):
-      xh = XHelper()
+      xh = χHelper()
       if int(self.pid.text()) != pid:
         print(" --------------> watchWinID: ERROR WRONG PID!!!")
         return
@@ -159,7 +159,7 @@ class μDDO(aProcessItem):
         if title == 'Dungeons and Dragons Online' or worldPrefix in title:
           self.winID.setText(str(w))
           self.sigGotWinID.emit(str(w))
-    xh = XHelper()
+    xh = χHelper()
     xh.sigGotWinID.connect(validateWinID)
     xh.requestWinID(self.pid.text(), 10.0)
 
@@ -185,7 +185,7 @@ class μDDO(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def audioToggle(self):
     if self.pid.text().isdigit():
-      if XHelper.audioQueryMuted(self.pid.text()):
+      if χHelper.audioQueryMuted(self.pid.text()):
         self.audioUnmute()
       else:
         self.audioMute()  
@@ -194,14 +194,14 @@ class μDDO(aProcessItem):
   def audioMute(self):
     if self.pid.text().isdigit():
       μPrint.info(f"{C_SILVER}Muting</font> {self.pid.text()}...")
-      XHelper.audioMute(str(self.pid.text()))
+      χHelper.audioMute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_UNMUTE))
 
   #----------------------------------------------------------------------------------------------------------
   def audioUnmute(self):
     if self.pid.text().isdigit():
       μPrint.info(f"{C_SILVER}Unmuting</font> {self.pid.text()}...")
-      XHelper.audioUnmute(str(self.pid.text()))
+      χHelper.audioUnmute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
   
   #----------------------------------------------------------------------------------------------------------
@@ -223,7 +223,7 @@ class μDDO(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def saveWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
-    xh = XHelper()
+    xh = χHelper()
     winData = xh.getWindowsData(int(self.winID.text()))
     prefs = self.frozenProfile.session.windowsPreferences
     prefs[self.username.text()] = (winData.posx, winData.posy, winData.width, winData.height, winData.desktop, winData.borderless, winData.audio, False)
@@ -237,7 +237,7 @@ class μDDO(aProcessItem):
     if self.username.text() not in prefs:
       return
     winData = windowData(prefs[self.username.text()])
-    xh = XHelper()
+    xh = χHelper()
     if self.frozenProfile.xsettings.position():
       xh.moveWindow(winID, winData.posx, winData.posy)
     if self.frozenProfile.xsettings.size():

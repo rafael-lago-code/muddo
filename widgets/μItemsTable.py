@@ -182,7 +182,7 @@ class μItemData(QTableWidgetItem):
   #----------------------------------------------------------------------------------------------------------
   def __init__(self):
       global P_ITEM_UKNOWN_ICON
-      P_ITEM_UKNOWN_ICON = getIcon(P_MUDDO_DIR+'/images/ddo_themes/skill_icons/item_placeholder.png')
+      P_ITEM_UKNOWN_ICON = getIcon(P_ICON_PLACEHOLDER)
       super().__init__()
 
   #----------------------------------------------------------------------------------------------------------
@@ -208,7 +208,7 @@ class μItemData(QTableWidgetItem):
 #----------------------------------------------------------------------------------------------------------
   def icon(self) -> QIcon:
     if self._icon:
-      return QIcon(QPixmap(self._icon))
+      return getIcon(self._icon)
     else:
       return P_ITEM_UKNOWN_ICON
 

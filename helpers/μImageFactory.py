@@ -81,6 +81,8 @@ P_ICON_BACKPACK  = "backpack"
 P_ICON_CHEST     = "chest"
 P_ICON_BLACKSCREEN = "blackscreen"
 
+P_ICON_PLACEHOLDER = "placeholder"
+
 P_ICON_HARDDISK  = "drive-harddisk"
 P_ICON_PASTE     = "edit-paste"
 
@@ -114,7 +116,7 @@ P_BG_REDFRAME = "redframe_bg"
 #                                  
 #   This is a static class. Don't instantiate it.
 #---------------------------------------------------------------------------------------------------------------
-class cImageFactory():
+class μImageFactory():
   
   # Order matters here!
   paths = [P_MUDDO_DIR+'/images/custom-icons/',
@@ -128,6 +130,7 @@ class cImageFactory():
            '/usr/share/icons/Humanity']
   extensions = ['.svg', '.png']  
   _theme = None
+  _maskColour = None
 
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -155,18 +158,31 @@ class cImageFactory():
   @classmethod
   def prependExtensions(cls, ext):
     cls.extensions = [ext] + cls.extensions
+  
+  #----------------------------------------------------------------------------------------------------------
+  @classmethod
+  def setMask(cls, mask):
+    if isinstance(mask, QColor): cls._maskColour = mask
+    else: cls._maskColour = QColor(mask[0], mask[1], mask[2])
+
   #----------------------------------------------------------------------------------------------------------
   @classmethod
   def find(cls, name : str) -> QPixmap:
-    if os.path.exists(name): return QPixmap(name)
-    for e in [""] + cls.extensions:
-      for d in cls.paths:
-        if os.path.exists(d+name+e): return QPixmap(d+name+e)
-        elif os.path.exists(d+"/actions/"+name+e): return QPixmap(d+"/actions/"+name+e)
-        else:
-          for s in ["64", "32", "16"]:
-            if os.path.exists(d+"/actions/"+s+"/"+name+e): return QPixmap(d+"/actions/"+s+"/"+name+e)
-    return None
+    def _findFile() -> QPixmap:
+      if os.path.exists(name): return QPixmap(name)
+      for e in [""] + cls.extensions:
+        for d in cls.paths:
+          if os.path.exists(d+name+e): return QPixmap(d+name+e)
+          elif os.path.exists(d+"/actions/"+name+e): return QPixmap(d+"/actions/"+name+e)
+          else:
+            for s in ["64", "32", "16"]:
+              if os.path.exists(d+"/actions/"+s+"/"+name+e): return QPixmap(d+"/actions/"+s+"/"+name+e)
+      return None
+    
+    pmap : QPixmap = _findFile()
+    if pmap is not None and cls._maskColour is not None:
+      pmap.setMask(pmap.createMaskFromColor(cls._maskColour, Qt.MaskMode.MaskInColor))
+    return pmap
   
   #----------------------------------------------------------------------------------------------------------
   @classmethod
@@ -209,5 +225,5 @@ class cImageFactory():
 #
 #
 #---------------------------------------------------------------------------------------------------------------
-def getPixmap(a0 : str) -> QPixmap: return cImageFactory.getPixmap(a0)
-def getIcon(a0) -> QIcon: return cImageFactory.getIcon(a0)
+def getPixmap(a0 : str) -> QPixmap: return μImageFactory.getPixmap(a0)
+def getIcon(a0) -> QIcon: return μImageFactory.getIcon(a0)

@@ -31,7 +31,7 @@ from widgets.μToggler import μToggler
 from widgets.μOrb import μOrbSmall
 from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt
-import glob, re, os
+import glob, re, os, random
 from typing import TYPE_CHECKING
 from μMacrosDaemon import cMacrosDaemon
 from widgets.μIconSelectDialog import μIconSelectDialog
@@ -95,9 +95,9 @@ class cMacroSet(QListWidgetItem):
       icon_item.setData(Qt.ItemDataRole.UserRole, row[0] or "")
       icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
       if row[0]:
-        icon_item.setIcon(QIcon(row[0]))
+        icon_item.setIcon(getIcon(row[0]))
       else:
-        icon_item.setIcon(QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png')) #TODO
+        icon_item.setIcon(getIcon(P_ICON_PLACEHOLDER)) #TODO
       table.setItem(pos, 0, icon_item)
       table.setItem(pos, 1, cTableRow(str(row[1])))
       table.setItem(pos, 2, cTableRow(str(row[2])))
@@ -154,6 +154,7 @@ class cMacroSet(QListWidgetItem):
       for k,a in validAliases.items():
         hotkey = replaceAlias(hotkey, k, a)
       hotkey  = (hotkey.replace(" ", "")).lower()
+      if not hotkey or hotkey == 'none': continue
       entry = meta.setdefault(hotkey, {'icon': None, 'names': set()})
       if icon: entry['icon'] = icon
       if name: entry['names'].add(name)
@@ -210,6 +211,7 @@ class μMacros(μToggler):
     self.btnRemoveEntry = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected macro from the currently selected set")
     self.btnEditIcon    = μOrbSmall(icon=P_ICON_IMAGE, tooltip="Set icon for the selected macro")
     self.btnHelp        = μOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how macros work here (lol)")
+    self.btnPlay        = μOrbSmall(icon=P_ICON_PLAY, tooltip="Executes current text as-is, if Milvian is running already. <b><i>Ctrl+Enter</i></b> is a shortcut for that.")
 
     self.btnAddAlias    = μOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
     self.btnRemoveAlias = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
@@ -276,7 +278,7 @@ class μMacros(μToggler):
     _vsplitter.addWidget(_topSplitter)
     _vsplitter.addWidget(newVFrame([self.activeSetLabel,
                          newHLayout([_asplitter, newVLayout(["__stretch__", self.btnAddEntry,
-                                     self.btnRemoveEntry, self.btnEditIcon, "__stretch__"])])]))
+                                     self.btnRemoveEntry, self.btnEditIcon, "__stretch__", self.btnPlay])])]))
     _vsplitter.setSizes([100,300])
 
     self.setLayout(newVLayout([_vsplitter]))
@@ -286,6 +288,7 @@ class μMacros(μToggler):
     self.btnNewSet.clicked.connect(self.newMacroSet)
     self.btnDeleteSet.clicked.connect(self.deleteMacroSet)
     self.btnHelp.clicked.connect(self.showHelpWindow)
+    self.btnPlay.clicked.connect(self.playMacro)
     self.setListWidget.itemChanged.connect(self.renameMacroSetFile)
     self.setListWidget.itemSelectionChanged.connect(self.updateTable)
     self.setListWidget.itemSelectionChanged.connect(self._ensureSetListSelection)
@@ -294,6 +297,8 @@ class μMacros(μToggler):
     self.table.itemSelectionChanged.connect(self._onSelectionChanged)
     self.actionEditor.textChanged.connect(self._saveAction)
     QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._saveAction)
+    QShortcut(QKeySequence("Ctrl+Return"), self).activated.connect(self.playMacro)
+    QShortcut(QKeySequence("Ctrl+Enter"), self).activated.connect(self.playMacro)
     self.aliasTable.cellChanged.connect(self._onAliasCellChanged)
 
     self.btnAddAlias.clicked.connect(self.addAlias)
@@ -305,7 +310,7 @@ class μMacros(μToggler):
     self.btnEditIcon.clicked.connect(self.editMacroIcon)
 
     self.reloadAlias()
-
+  
   #----------------------------------------------------------------------------------------------------------
   def _saveWhenDropped(self, event):
     QTableWidget.dropEvent(self.table, event)
@@ -364,7 +369,7 @@ class μMacros(μToggler):
     self.table.insertRow(pos)
     icon = cTableRow()
     icon.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-    icon.setIcon(QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png'))
+    icon.setIcon(getIcon(P_ICON_PLACEHOLDER))
     self.table.setItem(pos, 0, icon)
     self.table.setItem(pos, 1, cTableRow(""))
     self.table.setItem(pos, 2, cTableRow(""))
@@ -481,6 +486,30 @@ class μMacros(μToggler):
         sset.setActive(False)
 
   #----------------------------------------------------------------------------------------------------------
+  def playMacro(self):
+    action = self.actionEditor.toPlainText().strip()
+    if not action: return
+    bridges = self.daemon.getBridges(returnMeta=True)
+    if not bridges: return
+
+    for script in action.split(';'):
+      script = script.strip()
+      if not script or ':' not in script: continue
+      actors_str, _, actions_str = script.partition(':')
+      actions = splitGroups(actions_str.strip())
+      if not actions: continue
+      actors = [a.strip().lower() for a in actors_str.split(',') if a.strip()]
+      real_keys = [k for k in bridges.keys() if k != 'self']
+      if 'all' in actors:
+        targets = real_keys
+      elif 'any' in actors:
+        targets = [random.choice(real_keys)] if real_keys else []
+      else:
+        targets = [a for a in actors if a in bridges]
+      for t in targets:
+        bridges[t].execute(actions)
+
+  #----------------------------------------------------------------------------------------------------------
   def showHelpWindow(self):
     dlg = QDialog(self)
     dlg.setWindowTitle("Shortcuts Help")
@@ -585,7 +614,7 @@ class μMacros(μToggler):
           icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
           self.table.setItem(crow, 0, icon_item)
         icon_item.setData(Qt.ItemDataRole.UserRole, path)
-        icon_item.setIcon(QIcon(path))
+        icon_item.setIcon(getIcon(path))
         sset[0].sync(crow, 0)
         sset[0].save()
 

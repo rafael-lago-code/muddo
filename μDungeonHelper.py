@@ -20,7 +20,7 @@
 from __future__ import annotations
 from μProcess import aProcessItem
 from μSettings import μSettings
-from helpers.χHelper import XHelper
+from helpers.χHelper import χHelper
 from helpers.μTop import μTop
 import subprocess
 import os, time, threading
@@ -142,7 +142,7 @@ class μDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def watchWinID(self):
     def _watchWinIDThread(self):
-      xh = XHelper()
+      xh = χHelper()
       startTime = time.time()
       while True:
         candidates = xh.getWinID(self.pid.text())

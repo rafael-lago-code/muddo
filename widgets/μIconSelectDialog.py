@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (QDialog, QFileDialog, QInputDialog,
                               QLabel, QLineEdit, QListWidget, QListWidgetItem,
                               QMessageBox, QPushButton, QSizePolicy, QTabWidget,
                               QWidget, QHBoxLayout, QVBoxLayout, QApplication)
-from PyQt6.QtGui import QIcon, QPixmap, QImage, QKeySequence, QShortcut
+from PyQt6.QtGui import QIcon, QPixmap, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, QSize
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
@@ -69,14 +69,14 @@ def saveRecent(path: str):
 
 #----------------------------------------------------------------------------------------------------------
 def makeItem(path: str) -> QListWidgetItem:
-  px = QPixmap(path)
+  px = getPixmap(path)
   if px.isNull():
     px = QPixmap(P_THUMB_SIZE)
     px.fill(Qt.GlobalColor.gray)
   else:
     px = px.scaled(P_THUMB_SIZE, Qt.AspectRatioMode.KeepAspectRatio,
                    Qt.TransformationMode.SmoothTransformation)
-  item = QListWidgetItem(QIcon(px), os.path.basename(path))
+  item = QListWidgetItem(getIcon(px), os.path.basename(path))
   item.setData(Qt.ItemDataRole.UserRole, path)
   item.setToolTip(path)
   return item
@@ -206,7 +206,7 @@ class μIconSelectDialog(QDialog):
 
   #----------------------------------------------------------------------------------------------------------
   def setPreview(self, path: str):
-    px = QPixmap(path)
+    px = getPixmap(path)
     if not px.isNull():
       self.preview.setPixmap(px.scaled(P_PREVIEW_SIZE,
                                         Qt.AspectRatioMode.KeepAspectRatio,

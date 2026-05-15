@@ -21,16 +21,16 @@
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QGridLayout, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QGridLayout, QLineEdit, QTextEdit, QVBoxLayout, QWidget
 from PyQt6.QtGui import QPainter, QPixmap, QColor
 from PyQt6.QtCore import Qt, QPoint
 from μSettings import μSettings
-from helpers.μImageFactory import getPixmap
+from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from helpers.util import *
 from helpers import μEffects
 from widgets.μFloating import μFloating
-from widgets.μOrb import μOrb, μTheme_Toolbar
+from widgets.μOrb import μOrb, μOrbSmall, μTheme_Toolbar
 from widgets.μGrid import μGrid
 
 #----------------------------------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ class cToolbarItem(μOrb):
   def __init__(self, toolbar, script, enabled=True, icon=None, names=frozenset(), commands=[]):
     self.trigger = toolbar
     title = toolbar.replace("_","").replace("toolbar", "")
-    resolved_icon = QIcon(icon) if icon else QIcon('/home/soul/share/μddo/images/ddo_themes/skill_icons/placeholder.png')
+    resolved_icon = getIcon(icon) if icon else getIcon(P_ICON_PLACEHOLDER)
     tooltip = ", ".join(sorted(names)) if names else "<i><no description></i>"
     super().__init__(title, resolved_icon, enabled, tooltip=tooltip)
     self.names    = names
@@ -186,7 +186,7 @@ class μToolbar(QWidget):
 
     if macroFillMissing and cls.items:
       indexed = {item.index(): item for item in cls.items}
-      slots = [indexed.get(i) or cToolbarItem(str(i), {}, icon=QIcon(), enabled=False)
+      slots = [indexed.get(i) or cToolbarItem(f"toolbar_{i}", {}, icon=QIcon(), enabled=False)
                for i in range(1, max(indexed) + 1)]
     else:
       slots = cls.items
