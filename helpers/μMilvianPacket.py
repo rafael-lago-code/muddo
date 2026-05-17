@@ -23,10 +23,10 @@ import struct, secrets
 from enum import Enum
 from typing import TYPE_CHECKING
 from PyQt6.QtCore import pyqtSignal
-from helpers.μDispatcher import cDispatcher
+from helpers.χDispatcher import χDispatcher, χSignal
 from helpers.μPrint import μPrint
 if TYPE_CHECKING:
-   from helpers.μMilvianPacket import cMilvianPacket
+   from helpers.μMilvianPacket import μMilvianPacket
    from μMilvian import μMilvian
 
 P_MILVIAN_DEBUG=True
@@ -35,6 +35,10 @@ P_SHMO_CBUFFER_BEGIN = 64
 P_SHMO_WRITER_POS    = 0  
 P_SHMO_READER_POS    = P_SHMO_WRITER_POS + 4
 
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  E N U M   P A C K E T   C O M M A N D 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class packetCommand(Enum):
   list           = struct.pack('<I', 1)
   sleep          = struct.pack('<I', 2)
@@ -58,9 +62,13 @@ class packetCommand(Enum):
   closeExplorerJournal = struct.pack('<I', 45)
   toggleFlag           = struct.pack('<I', 46)
   selectEntity         = struct.pack('<I', 47)
+  overrideStrategy     = struct.pack('<I', 48)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  E N U M   P A C K E T   S T A T U S 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class packetStatus(Enum):
   unknown = struct.pack('<I', 0)
   running = struct.pack('<I', 1)
@@ -70,6 +78,9 @@ class packetStatus(Enum):
   waiting = struct.pack('<I', 40)
   error   = struct.pack('<I', 255)
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  E N U M   P A C K E T    S I G N A L 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class packetSignal(Enum):
   gotData      = struct.pack('<I', 0)
   gotResponse  = struct.pack('<I', 1)
@@ -77,14 +88,14 @@ class packetSignal(Enum):
   statusUpdate = struct.pack('<I', 3)
 
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  PACKER
 #
-#                                                    P A C K E R 
-#
-#---------------------------------------------------------------------------------------------------------------
+#   This is a static class. Don't instantiate it.
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cPacker():
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def packString(a0 : str) -> bytes:
     e = a0.encode('utf-8')
@@ -92,7 +103,7 @@ class cPacker():
     out += struct.pack(f'<{len(e)}s',e)
     return out
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def packList(a0 : list) -> bytes:
     out  = struct.pack('<I',len(a0))
@@ -100,7 +111,7 @@ class cPacker():
       out += cPacker.pack(i)
     return out
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def pack(a0) -> bytes:
     if isinstance(a0,str):
@@ -117,19 +128,17 @@ class cPacker():
       return a0
     elif isinstance(a0,(packetSignal,packetStatus,packetCommand)):
       return a0.value
-    elif isinstance(a0,cMilvianPacket):
+    elif isinstance(a0,μMilvianPacket):
       return a0.pack()
     else:
       print(f"[cPacker] no idea what you passed me, what is this?\n  ->{a0} | {type(a0)}")
       μPrint.error(f"[cPacker] no idea what you passed me, what is this?\n  ->{a0} | {type(a0)}")
 
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#                                       M I L V I A N   P A C K E T
-#
-#---------------------------------------------------------------------------------------------------------------
-class cMilvianPacket():
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  M I L V I A N   P A C K E T 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μMilvianPacket():
   command : packetCommand = packetCommand.none
   status  : packetStatus  = packetStatus.unknown
   id      = b''
@@ -138,22 +147,23 @@ class cMilvianPacket():
   outData = None
   bridge = None
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, command : packetCommand, bridge : μMilvian, inData = None):
-    self.command = command
-    self.id      = struct.pack('<I', secrets.randbits(32))
-    self.inData  = inData
-    self.status  = packetStatus.unknown
-    self.bridge : μMilvian = bridge
+    self.command     = command
+    self.id          = struct.pack('<I', secrets.randbits(32))
+    self.inData      = inData
+    self.status      = packetStatus.unknown
+    self.bridge      : μMilvian = bridge
+    self.χigResponse = χSignal()
   
-  # #---------------------------------------------------------------------------------------------------------------
+  # # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   # def getLength(self) -> int:
   #   if isinstance(self.inData, bytes):
   #     return len(self.inData)+8
   #   else:
   #     return len(self.inData.encode('utf-8'))+8
   
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def pack(self) -> bytes:
     message  = self.id+self.command.value
     if self.inData:
@@ -163,7 +173,7 @@ class cMilvianPacket():
         message += self.inData.encode('utf-8')
     return message
   
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseRawData(self, rawData: bytes):
     self.status = packetStatus(rawData[4:8])
     if len(rawData) > 12:
@@ -177,12 +187,12 @@ class cMilvianPacket():
       μPrint.error(f"[cMilvianPacket.parseData] unknown packet received = {self})")
       return
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def checkResponse(self) -> bool:
     if self.outData: return True
     else: return False
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def wait(self, timeout=None) -> bool:
     timer = 0.0
     self.status = packetStatus.waiting
@@ -197,16 +207,14 @@ class cMilvianPacket():
         timer += 0.1
     return True
   
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __str__(self) -> str:
     return f"     ~ milvianPacket[id:{struct.unpack('<I',self.id)[0]}, command:{self.command}, status:{self.status}]{f"\n     ~ Payload: {self.outData}" if self.outData else ""}{f"\n     ~ OutMessage: {self.outMessage}" if self.outMessage else ""}"
   
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#                                       P H O N Y P A C K E T
-#
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  P H O N Y  P A C K E T 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cPhonyPacket:
   command : packetCommand = packetCommand.none
   status  : packetStatus  = packetStatus.unknown

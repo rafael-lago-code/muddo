@@ -26,7 +26,7 @@ import cProfile
 from PyQt6.QtWidgets import QLabel, QTextBrowser, QTextEdit, QComboBox
 from PyQt6.QtCore import QRunnable, pyqtSignal, QThreadPool
 from μSettings import μSettings
-from widgets.μToggler import μToggler
+from widgets.μFloating import μToggler
 from widgets.μOrb import μOrb, μOrbSmall
 import subprocess, re
 from typing import TYPE_CHECKING
@@ -39,11 +39,15 @@ if TYPE_CHECKING:
 
 P_TIMESTAMP_FILE=".muddo_patch_timestamp"
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  P A T C H 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μPatch(μToggler):
   widgetID = "Patcher"
   sigPatchInfo = pyqtSignal(str)
   sigPatchDone = pyqtSignal(bool)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, main : μMainWindow):
     super().__init__("Patch\n🙵 News", P_ICON_SCROLL)
     self.toggler.setToolTip("Patch client and/or browse news<br><b><i>Last update: NA</i></b>")
@@ -76,7 +80,7 @@ class μPatch(μToggler):
                                newHLayout([self.btnPatch, self.btnNews,"__stretch__", "Auto patch:", self.comboPatchWhen, "__stretch__", self.timestamp]),
                                self.news]))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def initialize(self):
     super().initialize()
     self.btnPatch.clicked.connect(self.patch)
@@ -85,7 +89,7 @@ class μPatch(μToggler):
     self.sigPatchInfo.connect(self.log.append)
     self.sigPatchDone.connect(self.updateTimestamp)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def fetchNews(self):
     import xml.etree.ElementTree as ET
     import urllib.request
@@ -129,7 +133,7 @@ class μPatch(μToggler):
       htmlParts.append("<hr>")
     self.news.setHtml("".join(htmlParts))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateTimestamp(self):
     timestampFilename = μSettings.launcher.gamePath()+os.sep+P_TIMESTAMP_FILE
     if os.path.exists(timestampFilename):
@@ -144,25 +148,25 @@ class μPatch(μToggler):
     self.timestamp.setText(f"Last update: {tstamp}")
     self.toggler.setToolTip(f"Patch client and/or browse news<br><b><i>Last update: {tstamp}</i></b>")
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getLogFilename(self):
     return f"{P_DEFAULT_LOGSDIR}/fullpatcher.txt"
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def patch(self):
     self.log.clear()
     self.log.setVisible(True)
     proc = tPatcher(self, self.main)
     QThreadPool.globalInstance().start(proc)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def fullPatch(self):
     # if self.status == aProcessItem.P_STATUS_RUNNING: return
     t = threading.Thread(target=self.fullLauncherThread, daemon=True)
     t.start()
     μPrint.info(f"Starting {C_SILVER}full launcher</font> for patching...")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   # TODO - add this to process manager 
   def fullLauncherThread(self):
     # self.sigChangeRequest.emit(self.P_STATUS_AUTHENTICATING)
@@ -187,16 +191,18 @@ class μPatch(μToggler):
       exitCode = 1
 
 
-#----------------------------------------------------------------------------------------------------------
-# TODO reimplement this using threading
-#----------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  P A T C H E R
+#
+#    TODO reimplement this using threading
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class tPatcher(QRunnable):
   def __init__(self, patchWidget : μPatch, main : μMainWindow):
     super().__init__()
     self.main = main
     self.patchWidget = patchWidget
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def run(self):
     self.patchWidget.sigPatchInfo.emit(f"{C_SILVER}<b>------------------------------------------<br>\
                                        [*] Launching files patcher...<br>------------------------------------------</b></font>")
@@ -215,9 +221,8 @@ class tPatcher(QRunnable):
       self.main.console.error(f"Error creating file {timestampFilename} for saving timestamp!", e)
     
     self.patchWidget.sigPatchDone.emit(True)
-    
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def runTarget(self, target : str):
     # if usingProton:
     if True:

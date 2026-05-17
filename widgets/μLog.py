@@ -22,10 +22,12 @@ from PyQt6.QtCore import QFileSystemWatcher
 from helpers.util import *
 from helpers.μPrint import μPrint
 
-# -------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  L O G 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μLog(QTextEdit):
 
-  # -------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, filePath: str, name : str):
     super().__init__()
     if not os.path.exists(filePath):
@@ -50,7 +52,7 @@ class μLog(QTextEdit):
     if self.onFileUpdated():
       μPrint.info(f"Following log for {C_SILVER}{self.name}</font>...")
     
-  #------------------------------------------------------------------------------------ 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onFileUpdated(self) -> bool:
     try:
       with open(self.filePath, 'r', encoding='utf-8', errors='replace') as f:
@@ -64,7 +66,7 @@ class μLog(QTextEdit):
     except Exception as e:
       μPrint.error(f"Error reading updated file {self.filePath}", e)
 
-  #------------------------------------------------------------------------------------ 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def deleteLater(self):
     if self.name is None: return
     μPrint.info(f"Stopped following log for {C_SILVER}{self.name}</font>...")

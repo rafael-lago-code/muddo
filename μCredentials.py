@@ -29,7 +29,7 @@ from μSettings import μSettings
 from μWorlds import cWorldList
 from μServerInfo import μServerInfo
 from helpers.μPrint import μPrint
-from widgets.μToggler import μToggler
+from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
 import json

@@ -24,21 +24,19 @@ from μSettingsProfile import μSettingsProfile
 from helpers.μPrint import μPrint
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
-from widgets.μToggler import μToggler
+from widgets.μFloating import μToggler
 import os, json, glob, shutil
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            S E T T I N G S
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  S E T T I N G S 
 #                                  
 #   This is a hybrid class.
 #   One instance lives in cMainWindow. __init__ calls cSettings.setup. Most of the time just use it as a
 #   static class, use cSettings.widget for the instance.
-#---------------------------------------------------------------------------------------------------------------
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μSettings(μToggler):
   widget : μSettings = None
   sigProfileChanged = pyqtSignal(μSettingsProfile, str)
@@ -52,7 +50,7 @@ class μSettings(μToggler):
   profile = None
 
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setup(cls, widget : μSettings):
     cls.widget = widget
@@ -63,7 +61,7 @@ class μSettings(μToggler):
     cls.profileList.setEditable(True)
     cls.profileList.setMinimumWidth(200)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def addProfile(cls, name):
     if cls.profiles.get(name): return
@@ -77,12 +75,12 @@ class μSettings(μToggler):
     except Exception as e:
       μPrint.error(f"[cSettings] failed to load profile \"{name}\". Skipping it...", e)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWidget(cls) -> μSettings:
     return cls.widget
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def syncProfileLists(cls, source="settings"):
     try:
@@ -108,7 +106,7 @@ class μSettings(μToggler):
     else:
       μPrint.warning(f"Trying to change to profile \"{name}\", but it was not found! Doing nothing instead...")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def switchProfile(cls, name):
     cls.profile   = cls.profiles[name]
@@ -125,7 +123,7 @@ class μSettings(μToggler):
     cls.widget.sigProfileChanged.emit(cls.profiles[name], cls.lastProfile)
     cls.lastProfile = name
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, main : μMainWindow):
     super().__init__("&Settings", P_ICON_GEARSTACK, main)
     self.toggler.setToolTip("Toggle Settings UI")
@@ -141,12 +139,12 @@ class μSettings(μToggler):
     self.setLayout(newVLayout([self.hiddenLayer, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnNew,
                                self.btnRemoveProfile, "__stretch__"]), "__stretch__"]))
     
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def _confPath(name):
     return P_DEFAULT_CONFIGDIR + os.sep + f"profile_{name}.conf"
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def initialize(self):
     self.load()
     super().initialize()
@@ -156,7 +154,7 @@ class μSettings(μToggler):
     self.profileMain.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("main"))
     self.profileList.lineEdit().editingFinished.connect(self.renameProfile)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _selectProfile(self, name):
     try:
       self.profileList.currentIndexChanged.disconnect()
@@ -171,7 +169,7 @@ class μSettings(μToggler):
     self.profileMain.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("main"))
     μSettings.switchProfile(name)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeProfile(self):
     name = μSettings.lastProfile
     if not name: return
@@ -187,7 +185,7 @@ class μSettings(μToggler):
     if self.profileList.count() > 0:
       self._selectProfile(self.profileList.itemText(0))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def duplicateProfile(self):
     src = μSettings.lastProfile
     if not src: return
@@ -200,7 +198,7 @@ class μSettings(μToggler):
     except Exception as e:
       μPrint.error(f"[cSettings] failed to duplicate profile \"{src}\"", e)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def renameProfile(self):
     newName = self.profileList.lineEdit().text().strip()
     oldName = μSettings.lastProfile
@@ -220,7 +218,7 @@ class μSettings(μToggler):
       μPrint.error(f"[cSettings] failed to rename profile \"{oldName}\"", e)
       self.profileList.lineEdit().setText(oldName)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self):
     self.lastProfile  = self._state.value("lastProfile", "")         # goes in the "General" section of the settings file
     self.multiAccount = self._state.value("multiAccount") == "true"  # goes in the "General" section of the settings file
@@ -259,7 +257,7 @@ class μSettings(μToggler):
     else:
       μPrint.info(f"[cSettings] loaded from \"{C_SILVER}{self._state.fileName()}</font>\"")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def save(self):
     try:
       self._state.setValue("multiAccount", self.main.credentials.multiAccount.isChecked()) # goes in the "General" section of the settings file

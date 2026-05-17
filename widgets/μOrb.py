@@ -41,8 +41,10 @@ P_COLOUR_RED=(200,10,10)
 P_COLOUR_HIGHLIGHT=P_COLOUR_GOLD
 P_COLOUR_ORB_GLOW=P_COLOUR_RED
 
-#-------------------------------------------------------------------------------------------------------------
-class μOrbTheme_RedMedium():
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  T H E M E   -   O R B   R E D   M E D I U M
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μTheme_OrbRedMedium():
   _instance = None
   orbSize = QtCore.QSize(80,80)
   iconSize = QtCore.QSize(40,40)
@@ -65,10 +67,9 @@ class μOrbTheme_RedMedium():
       self._instance.setFg(FG_RED_PIX, μEffects.opacity(FG_RED_PIX,0.6))
       self._instance.setIconEffect(ICON_EFFECT)
       self._instance.setTextEffect(TEXT_EFFECT)
-
     return self._instance
 
-  #---------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setBg(self, bg, pressed):
     self.bg = {}
     self.bg[P_STATUS_NORMAL] = bg
@@ -82,7 +83,7 @@ class μOrbTheme_RedMedium():
     self.bg[P_STATUS_CHECKD] = pressed
     self.bg[P_STATUS_CHECKD_HOVERD] = pressed
   
-  #---------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setIconEffect(self, iconEffect):
     self.iconEffect = {}
     self.iconEffect[P_STATUS_NORMAL] = μEffects.cNone()
@@ -96,7 +97,7 @@ class μOrbTheme_RedMedium():
     self.iconEffect[P_STATUS_CHECKD] = iconEffect
     self.iconEffect[P_STATUS_CHECKD_HOVERD] = iconEffect
 
-  #---------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setTextEffect(self, textEffect):
     self.textEffect = {}
     self.textEffect[P_STATUS_NORMAL] = μEffects.cNone()
@@ -110,7 +111,7 @@ class μOrbTheme_RedMedium():
     self.textEffect[P_STATUS_CHECKD] = textEffect
     self.textEffect[P_STATUS_CHECKD_HOVERD] = textEffect
   
-  #---------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setFg(self, fg, pressed):
     self.fg = {}
     self.fg[P_STATUS_NORMAL] = fg
@@ -124,24 +125,31 @@ class μOrbTheme_RedMedium():
     self.fg[P_STATUS_CHECKD] = pressed
     self.fg[P_STATUS_CHECKD_HOVERD] = μEffects.tint(fg,P_COLOUR_HIGHLIGHT,0.3)
 
-#-------------------------------------------------------------------------------------------------------------
-class μOrbTheme_RedSmall(μOrbTheme_RedMedium):
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  T H E M E   -   O R B   R E D   S M A L L
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μTheme_OrbRedSmall(μTheme_OrbRedMedium):
   _instance = None
   orbSize = QtCore.QSize(32,32)
   iconSize = QtCore.QSize(20,20)
 
-#-------------------------------------------------------------------------------------------------------------
-class μTheme_DialogClose(μOrbTheme_RedMedium):
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  T H E M E   -   O R B   D I A L O G   C L O S E
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μTheme_DialogClose(μTheme_OrbRedMedium):
   _instance = None
   orbSize = QtCore.QSize(24,24)
   iconSize = QtCore.QSize(14,14)
 
-#-------------------------------------------------------------------------------------------------------------
-class μTheme_Checkbox(μOrbTheme_RedMedium):
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  T H E M E   -   B O X
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μTheme_Box(μTheme_OrbRedMedium):
   _instance = None
   orbSize = QtCore.QSize(21,21)
   iconSize = QtCore.QSize(18,18)
 
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __new__(self):
     if self._instance is None:
       self._instance = super().__new__(self)
@@ -162,12 +170,15 @@ class μTheme_Checkbox(μOrbTheme_RedMedium):
 
     return self._instance
   
-#-------------------------------------------------------------------------------------------------------------
-class μTheme_Toolbar(μOrbTheme_RedMedium):
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  T H E M E   -   T O O L B A R 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μTheme_Toolbar(μTheme_OrbRedMedium):
   _instance = None
   orbSize = QtCore.QSize(38,38)
   iconSize = QtCore.QSize(30,30)
 
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __new__(self):
     if self._instance is None:
       self._instance = super().__new__(self)
@@ -188,11 +199,9 @@ class μTheme_Toolbar(μOrbTheme_RedMedium):
 
     return self._instance
   
-#-------------------------------------------------------------------------------------------------------------
-#
-#                                                  O R B
-#
-#-------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  O R B
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μOrb(QPushButton):
   ctrlClicked = pyqtSignal(QMouseEvent)
   rightClicked = pyqtSignal(QMouseEvent)
@@ -202,17 +211,19 @@ class μOrb(QPushButton):
   ctrlRightReleased = pyqtSignal(QMouseEvent)
   theme = None
 
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getTheme(cls):
     if cls.theme is None:
-      cls.theme = μOrbTheme_RedMedium()
+      cls.theme = μTheme_OrbRedMedium()
     return cls.theme
   
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setIconSize(self, size):
     self.theme.iconSize = size
     return super().setIconSize(size)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(*args, **kwargs)
     if title: self.setText(title)
@@ -239,28 +250,28 @@ class μOrb(QPushButton):
     self.setMouseTracking(True)
     self.rightReleased.connect(self.showMenu)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setIcon(self, a0):
     self.iconRendered = None
     super().setIcon(a0)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setText(self, a0):
     self.textRendered = None
     super().setText(a0)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setMenu(self, menu : QMenu):
     self.menu = menu
     menu.aboutToHide.connect(self.normalizeState)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def showMenu(self, e : QEvent):
     if len(self.menu.actions())>0:
       self.menu.exec(self.mapToGlobal(e.pos()))
       self.setState(P_STATUS_RCLICK)      
  
-  #----------------------------------------------------------------------------------------------------------
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setEnabled(self, a0):
     if a0:
       self.normalizeState()
@@ -268,16 +279,16 @@ class μOrb(QPushButton):
       self.setState(P_STATUS_DISBLD)
     return super().setEnabled(a0)
   
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _setCtrlPressed(self, b):
     self._ctrlPressed = b
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setChecked(self, a0):
     super().setChecked(a0)
     self.normalizeState()
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def paintEvent(self, event):
     painter = QPainter(self)
     painter.setRenderHint(QPainter.RenderHint.Antialiasing)
@@ -295,7 +306,7 @@ class μOrb(QPushButton):
 
     painter.end()
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def paintIcon(self, painter : QPainter):
     if self.icon().isNull(): return
     if not self.iconRendered:
@@ -311,7 +322,7 @@ class μOrb(QPushButton):
     painter.drawPixmap(r, iconEffect.apply(self.iconRendered))
     
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def paintText(self, painter : QPainter):
     if not self.text(): return
     if not self.textRendered:
@@ -343,7 +354,7 @@ class μOrb(QPushButton):
     textEffect = self.theme.textEffect.get(self._current_state, μEffects.cNone())
     painter.drawPixmap(self.rect(), textEffect.apply(self.textRendered))
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def enterEvent(self, event):
     if not self.isEnabled(): return
     self._isHovered = True
@@ -358,7 +369,7 @@ class μOrb(QPushButton):
                         self.toolTip(), self)
     super().enterEvent(event)
   
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def mouseMoveEvent(self, a0):
     if self.underMouse():
       if QApplication.keyboardModifiers() & Qt.KeyboardModifier.ControlModifier:
@@ -369,14 +380,14 @@ class μOrb(QPushButton):
         self.setState(P_STATUS_HOVERD)
     return super().mouseMoveEvent(a0)
   
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def leaveEvent(self, event):
     if not self.isEnabled(): return
     self._isHovered = False
     self.normalizeState()
     super().leaveEvent(event)
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def mousePressEvent(self, event):
     if not self.isEnabled(): return
     if event.button() == Qt.MouseButton.LeftButton:
@@ -394,7 +405,7 @@ class μOrb(QPushButton):
         self.setState(P_STATUS_RCLICK)
         self.rightClicked.emit(event)
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def mouseReleaseEvent(self, event):
     if not self.isEnabled(): return
     if event.button() == Qt.MouseButton.LeftButton:
@@ -409,7 +420,7 @@ class μOrb(QPushButton):
         self.rightReleased.emit(event)
     self.normalizeState()
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def normalizeState(self):
     # Sets state to hover or normal or checked
     if self.isChecked():
@@ -422,79 +433,79 @@ class μOrb(QPushButton):
     else:
       self.setState(P_STATUS_NORMAL)
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setState(self, state):
     self._current_state = state
     self.update()  # Trigger repaint
 
-#-------------------------------------------------------------------------------------------------------------
-#
-#                                              O R B S M A L L
-#
-#-------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  O R B   S M A L L
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μOrbSmall(μOrb):
   theme = None
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getTheme(cls):
     if cls.theme is None:
-      cls.theme = μOrbTheme_RedSmall()
+      cls.theme = μTheme_OrbRedSmall()
     return cls.theme
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
 
 
-#-------------------------------------------------------------------------------------------------------------
-#
-#                                              O R B T I N Y
-#
-#-------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  O R B   T I N Y
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cOrbTiny(μOrb):
   theme = None
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getTheme(cls):
     if cls.theme is None:
       cls.theme = μTheme_DialogClose()
     return cls.theme
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
 
-#-------------------------------------------------------------------------------------------------------------
-#
-#                                              B O X S M A L L
-#
-#-------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  B O X
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μBox(μOrb):
   theme = None
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getTheme(cls):
     if cls.theme is None:
-      cls.theme = μTheme_Checkbox()
+      cls.theme = μTheme_Box()
     return cls.theme
-  
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────  
   def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
 
 
-#-------------------------------------------------------------------------------------------------------------
-#
-#                                              O R B C H E C K
-#
-#-------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  O R B   C H E C K
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μOrbCheck(QWidget):
   orb : μOrbSmall = None
   label : QLabel  = None
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getTheme(cls):
     if cls.orb.theme is None:
-      cls.orb.theme = μOrbTheme_RedSmall()
+      cls.orb.theme = μTheme_OrbRedSmall()
     return cls.orb.theme
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, title = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.orb = μOrbSmall("")
@@ -513,17 +524,20 @@ class μOrbCheck(QWidget):
     self.updateStatus()
     self.stateChanged.connect(self.updateStatus)
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateStatus(self):
     if self.orb.isChecked():
       self.orb.setIcon(getIcon(P_ICON_CHECKMARK))
     else:
       self.orb.setIcon(QIcon())
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setEnabled(self, a0):
     self.orb.setEnabled(a0)
     self.label.setEnabled(a0)
     super().setEnabled(a0)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setChecked(self, a0 : bool):
     if a0:
       self.orb.setIcon(getIcon(P_ICON_CHECKMARK))
@@ -534,22 +548,22 @@ class μOrbCheck(QWidget):
   # def __init__(self, title = None, icon = None, enabled = True, tooltip = "", *args, **kwargs):
     # super().__init__(title, icon, enabled, tooltip, *args, **kwargs)
 
-#-------------------------------------------------------------------------------------------------------------
-#
-#                                              C H E C K B O X
-#
-#-------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  B O X   C H E C K
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μBoxCheck(QWidget):
   box : μBox = None
   label : QLabel  = None
   toggled = pyqtSignal(bool)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getTheme(cls):
     if cls.box.theme is None:
-      cls.box.theme = μTheme_Checkbox()
+      cls.box.theme = μTheme_Box()
     return cls.box.theme
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, title = None, enabled = True, tooltip = "", *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.box = μBox("")
@@ -571,17 +585,20 @@ class μBoxCheck(QWidget):
     self.stateChanged.connect(self.updateStatus)
     self.toggled = self.stateChanged
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateStatus(self):
     if self.box.isChecked():
       self.box.setIcon(getIcon(P_ICON_SMPLCHECK))
     else:
       self.box.setIcon(QIcon())
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setEnabled(self, a0):
     self.label.setEnabled(a0)
     super().setEnabled(a0)
     self.box.setEnabled(a0)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setChecked(self, a0 : bool):
     if a0:
       self.box.setIcon(getIcon(P_ICON_SMPLCHECK))

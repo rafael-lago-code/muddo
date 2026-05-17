@@ -32,6 +32,9 @@ P_EFFECT_INVT = 6
 P_EFFECT_OPAC = 7
 P_EFFECT_BCON = 8
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   N O N E
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cNone():
   def __init__(self, pre=None):
     self.pre = pre
@@ -40,6 +43,9 @@ class cNone():
     if isinstance(target,QPixmap): return target
     if isinstance(target,QImage):  return target
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   G R E Y S C A L E
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cGreyscale(cNone):
   def __init__(self, pre=cNone()):
     self.pre = pre
@@ -47,6 +53,9 @@ class cGreyscale(cNone):
   def apply(self, target):
     return greyscale(self.pre.apply(target))
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   D E S A T U R A T E 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cDesaturate(cNone):
   def __init__(self, amount, pre=cNone()):
     self.pre = pre
@@ -55,6 +64,9 @@ class cDesaturate(cNone):
   def apply(self, target):
     return desaturate(self.pre.apply(target), self.amount)
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   T I N T
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cTint(cNone):
   def __init__(self, tintColour: QColor, strength: float, pre=cNone()):
     self.pre = pre
@@ -64,6 +76,9 @@ class cTint(cNone):
   def apply(self, target):
     return tint(self.pre.apply(target), self.tintColour, self.strength)
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   I N V E R T
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cInvert(cNone):
   def __init__(self, pre=cNone()):
     self.pre = pre
@@ -71,6 +86,9 @@ class cInvert(cNone):
   def apply(self, target):
     return invert(self.pre.apply(target))
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   B L U R
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cBlur(cNone):
   def __init__(self, radius: float, pre=cNone()):
     self.pre = pre
@@ -79,6 +97,9 @@ class cBlur(cNone):
   def apply(self, target):
     return blur(self.pre.apply(target), self.radius)
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   O P A C I T Y
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cOpacity(cNone):
   def __init__(self, amount, pre=cNone()):
     self.amount = amount
@@ -87,6 +108,9 @@ class cOpacity(cNone):
   def apply(self, target):
     return opacity(self.pre.apply(target), self.amount)
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  E F F E C T   -   B R I G H T N E S S   C O N T R A S T 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cBrightContrast(cNone):
   def __init__(self, brightness: float = 0.0, contrast: float = 1.0, pre=cNone()):
     self.pre = pre
@@ -96,11 +120,14 @@ class cBrightContrast(cNone):
   def apply(self, target):
     return brightContrast(self.pre.apply(target), self.brightness, self.contrast)
 
-# -----------------------------------------------------------------------------
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def greyscale(target):
   return desaturate(target, 1.0)
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def desaturate(target, amount: float):
   if isinstance(target, QPixmap):
     return QPixmap.fromImage(desaturate(target.toImage(), amount))
@@ -114,6 +141,7 @@ def desaturate(target, amount: float):
       target.setPixelColor(x, y, QColor(r, g, b, color.alpha()))
   return target
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def tint(target, tintColour, strength: float):
   if isinstance(target, QPixmap):
     return QPixmap.fromImage(tint(target.toImage(), tintColour, strength))
@@ -128,12 +156,14 @@ def tint(target, tintColour, strength: float):
       target.setPixelColor(x, y, QColor(r, g, b, color.alpha()))
   return target
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def invert(target):
   if isinstance(target, QPixmap):
     return QPixmap.fromImage(invert(target.toImage()))
   target.invertPixels(QImage.InvertMode.InvertRgb)
   return target
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def opacity(target, amount: float):
   if isinstance(target, QPixmap):
     return QPixmap.fromImage(opacity(target.toImage(), amount))
@@ -144,6 +174,7 @@ def opacity(target, amount: float):
       target.setPixelColor(x, y, color)
   return target
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def blur(target, radius: float):
   if isinstance(target, QPixmap):
     return QPixmap.fromImage(blur(target.toImage(), radius))
@@ -182,9 +213,9 @@ def blur(target, radius: float):
         bv += c.blue()  * kv
         av += c.alpha() * kv
       result.setPixelColor(x, y, QColor(int(rv), int(gv), int(bv), int(av)))
-
   return result
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def brightContrast(target, brightness: float, contrast: float):
   if isinstance(target, QPixmap):
     return QPixmap.fromImage(brightContrast(target.toImage(), brightness, contrast))

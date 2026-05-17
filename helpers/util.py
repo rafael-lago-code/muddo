@@ -28,6 +28,9 @@ from http.client import HTTPConnection, HTTPSConnection
 import ssl
 import json
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  D E F A U L T S
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 C_SILVER = "<font style=\"color:#828282\">"
 C_RED = "<font style=\"color:#ff6969\">"
 C_ORANGE = "<font style=\"color:#ffa744\">"
@@ -55,7 +58,13 @@ P_CERTCTX = None
 
 P_DEFAULT_BG = QColor(27, 30, 32, 240)
 
-#----------------------------------------------------------------------------------------------------------
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  C E R T I F I C A T E   D E T E C T I O N
+#
+#    Probably outdated strategy, called at the first "import"...
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 P_CERTFILE = os.path.dirname(__file__)+"/../certificates/ca_cert2025.pem"
 P_CERTCTX = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
 if not os.access(P_CERTFILE, os.R_OK):
@@ -64,53 +73,56 @@ else:
   P_CERTCTX.verify_mode = ssl.CERT_REQUIRED
   P_CERTCTX.load_verify_locations(P_CERTFILE)
   P_CERTCTX.set_ciphers('DEFAULT@SECLEVEL=1')
-        
-#----------------------------------------------------------------------------------------------------------  
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def newRQLabel(text :  str):
   lbl = QLabel(text)
   lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
   return lbl
 
-#----------------------------------------------------------------------------------------------------------  
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newHLine():
   hline = QFrame()
   hline.setFrameStyle(QFrame.Shadow.Raised)
   hline.setFrameShape(QFrame.Shape.HLine)
   return hline
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newHLayout(objects : list) -> QHBoxLayout:
   return stackToLayout(QHBoxLayout(),objects)
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newVLayout(objects : list) -> QVBoxLayout:
   return stackToLayout(QVBoxLayout(),objects)
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newHFrame(objects : list) -> QHBoxLayout:
   f = QFrame()
   f.setLayout(stackToLayout(QHBoxLayout(),objects))
   return f
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newVFrame(objects : list) -> QHBoxLayout:
   f = QFrame()
   f.setLayout(stackToLayout(QVBoxLayout(),objects))
   return f
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newVSplitter(objects : list) -> QSplitter:
   f = QSplitter(Qt.Orientation.Vertical)
   appendWidget(f, objects)
   return f
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newHSplitter(objects : list) -> QSplitter:
   f = QSplitter(Qt.Orientation.Horizontal)
   appendWidget(f, objects)
   return f
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def appendWidget(container, objects : list) -> QLayout:
   for v in objects:
     if isinstance(v,str):
@@ -119,7 +131,7 @@ def appendWidget(container, objects : list) -> QLayout:
       container.addWidget(v)
   return container
 
-#------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def stackToLayout(layout : QLayout, objects : list) -> QLayout:
   for v in objects:
     if isinstance(v,str):
@@ -142,12 +154,12 @@ def stackToLayout(layout : QLayout, objects : list) -> QLayout:
       layout.addWidget(v)
   return layout
 
-#----------------------------------------------------------------------------------------------------------  
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def getArrow():
   fs = QLabel().font().pointSize()
   return f"&nbsp;&nbsp;&nbsp;<span style='font-size:{fs+4}pt'>▾</span>"
 
-#----------------------------------------------------------------------------------------------------------  
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def getConnection(urlIn):
   if urlIn.upper().find("HTTP://") >= 0:
     url = urlIn[7:].split("/")[0]
@@ -158,7 +170,7 @@ def getConnection(urlIn):
     post = urlIn[8:].replace(url, "")
     return HTTPSConnection(url, context=P_CERTCTX), post
     
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 def getNodeText(nodelist):
 	rc = ""
 	for node in nodelist:
@@ -166,7 +178,7 @@ def getNodeText(nodelist):
 			rc = rc + node.data
 	return rc
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 def newHeaderLabel(title, width=80):
   hlbl = QLabel(title)
   hlbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -174,7 +186,7 @@ def newHeaderLabel(title, width=80):
   hlbl.setFixedWidth(width)
   return hlbl
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 def newProcessField(title, width=80):
   flbl = QLabel(title)
   flbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignVCenter)
@@ -183,7 +195,7 @@ def newProcessField(title, width=80):
   flbl.setFixedWidth(width)
   return flbl
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 def newCell(text, data=None):
   from PyQt6.QtCore import Qt
   from PyQt6.QtWidgets import QTableWidgetItem
@@ -191,18 +203,18 @@ def newCell(text, data=None):
   cell.setData(Qt.ItemDataRole.UserRole, data if data else text)
   return cell
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 def pathLinux2Windows(linuxPath : str):
   tmp = linuxPath.split('/')
   tmp = tmp[tmp.index('drive_c')+1:]
   return "C:\\" + "\\".join(tmp)
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 def getPrefix(linuxPath : str):
   tmp = linuxPath.split('/')
   return "/".join(tmp[0:tmp.index('drive_c')])
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 class setBGColour(QObject):
   def __init__(self, viewport, color: QColor):
     super().__init__(viewport)
@@ -217,7 +229,7 @@ class setBGColour(QObject):
       p.end()
     return False
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 # This encoder is originally taken from
 #   https://gist.github.com/jannismain/e96666ca4f059c3e5bc28abb711b5c92
 # with some minor modifications

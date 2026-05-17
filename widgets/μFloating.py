@@ -21,10 +21,14 @@ from PyQt6.QtWidgets import QDockWidget, QWidget, QHBoxLayout, QSizePolicy
 from PyQt6.QtGui import QPainter, QFont, QColor, QPixmap
 from PyQt6.QtCore import QSettings, QRect, QSize, Qt
 from helpers.μImageFactory import *
+from widgets.μOrb import μOrb
 
-# -----------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  C A N V A S
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μCanvas(QWidget):
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, parent=None):
     super().__init__(parent)
     self.setObjectName("floatingCanvas")
@@ -32,6 +36,7 @@ class μCanvas(QWidget):
     self._bg_colour = QColor(27, 30, 32, 240)
     self._bg_images = {}
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setBackground(self, images: dict):
     self._bg_colour = None
     self._bg_images = {}
@@ -42,6 +47,7 @@ class μCanvas(QWidget):
         self._bg_images[key] = val if isinstance(val, QPixmap) else getPixmap(val)
     self.update()
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def paintEvent(self, event):
     painter = QPainter(self)
     W, H = self.width(), self.height()
@@ -76,11 +82,13 @@ class μCanvas(QWidget):
 
     painter.end()
 
-# -----------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  B A R
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μBar(QWidget):
-
   _BAR_H = 24
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, title: str, parent=None):
     super().__init__(parent)
     from widgets.μOrb import cOrbTiny
@@ -112,10 +120,12 @@ class μBar(QWidget):
     self.setFixedHeight(h)
     self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setTitle(self, title: str):
     self._title = title.replace("&", "").replace("\n", " ").replace("\r", "").lower()
     self.update()
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def paintEvent(self, event):
     painter = QPainter(self)
     w, h = self.width(), self.height()
@@ -146,11 +156,14 @@ class μBar(QWidget):
     painter.end()
 
 
-# -----------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  F L O A T I N G 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μFloating(QDockWidget):
   widgetID = "floatingWidget"
   _state = QSettings(P_DEFAULT_CONF)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, title="", parent=None):
     super().__init__(title, parent)
     self.setObjectName(self.widgetID)
@@ -162,15 +175,18 @@ class μFloating(QDockWidget):
     self._titleBar.btnClose.clicked.connect(self.hide)
     self.setTitleBarWidget(self._titleBar)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setWindowTitle(self, title: str):
     super().setWindowTitle(title)
     self._titleBar.setTitle(title)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setBackground(self, images: dict):
     self._pending_bg = images
     if isinstance(self.widget(), μCanvas):
       self.widget().setBackground(images)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setLayout(self, layout):
     content = μCanvas()
     content.setStyleSheet("QWidget#floatingCanvas { border: none; }")
@@ -179,5 +195,32 @@ class μFloating(QDockWidget):
     if self._pending_bg is not None:
       content.setBackground(self._pending_bg)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def initialize(self):
     pass
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  F L O A T I N G 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μToggler(μFloating):
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def __init__(self, title : str, icon, parent = None):
+    self.toggler = μOrb(title, icon)
+    self.toggler.setCheckable(True)
+    super().__init__(title, parent)
+    self.toggler.clicked.connect(self.toggle)
+    self.visibilityChanged.connect(self.toggler.setChecked)
+    self.setVisible(False)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def toggle(self):
+    if self.isVisible():
+      self.hide()
+    else:
+      self.show()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setVisible(self, value : bool):
+    self.toggler.setChecked(value)
+    super().setVisible(value)

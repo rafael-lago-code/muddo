@@ -31,88 +31,34 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from widgets.μOrb import μOrb, μOrbSmall
 from widgets.μOrb import μBoxCheck
 from helpers.μImageFactory import *
-from widgets.μToggler import μToggler
+from widgets.μFloating import μToggler
 from widgets.μCheckCombo import μCheckCombo
 from widgets.μItemsTable import *
-from helpers.μMilvianPacket import cMilvianPacket, packetCommand, packetStatus, packetSignal
-from helpers.μDispatcher import cDispatcher
+from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus, packetSignal
 from helpers.μPrint import μPrint
 from helpers.μStrings import *
 import time, struct, mmap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-   from μMacrosDaemon import cMacrosDaemon
+   from μMacrosDaemon import μMacrosDaemon
    from μMilvian import μMilvian
 
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #
+#   ❖  S T O R A G E   M A N A G E R
 #
-#                                         F I L T E R   I T E M 
-#
-#                                  
-#---------------------------------------------------------------------------------------------------------------
-class cFilterItem(QListWidgetItem):
-  def __init__(self, name : str, content : str):
-    super().__init__()
-    self.name = name
-    self.setText(name)
-    self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
-    self.content = content
-
-  #----------------------------------------------------------------------------------------------------------
-  def setActive(self, val : bool ):
-    pass
-
-  #----------------------------------------------------------------------------------------------------------
-  def rename(self):
-    oldFilename = P_DEFAULT_FILTERSDIR + os.sep + self.name + P_DEFAULT_FILTEREXT
-    newFilename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
-    os.rename(oldFilename, newFilename)
-    self.name = self.text()
-    
-  #----------------------------------------------------------------------------------------------------------
-  def sync(self, content):
-    self.content = content
-
-  #----------------------------------------------------------------------------------------------------------
-  def display(self):
-    pass
-
-  #----------------------------------------------------------------------------------------------------------
-  def save(self):
-    filename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
-    os.makedirs(P_DEFAULT_FILTERSDIR, exist_ok=True)
-    with open(filename, 'w') as f:
-      f.write(self.content)
-
-  #----------------------------------------------------------------------------------------------------------
-  def load(self):
-    filename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
-    try:
-      with open(filename,"r") as f:
-        self.content = f.read()
-    except Exception as e:
-      μPrint.error(f"{C_RED}WARNING:</font> error loading filter from \"{filename}\"",e)
-      self.content = ""
-
-
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            S T O R A G E   M A N A G E R 
-#
-#                                  
-#---------------------------------------------------------------------------------------------------------------
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μStorage(μToggler):
   sigAppendItem  = pyqtSignal(μItemData)
   sigPurgeStale  = pyqtSignal(str)
   sigSetStatus = pyqtSignal(object,int)
   widgetID = "StorageManager"
-  daemon : cMacrosDaemon = None
+  daemon : μMacrosDaemon = None
   status : dict = {}
   allFilterScripts : dict = {}
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, main):
     self.main = main
     super().__init__("Storage\nManager", P_ICON_CHEST)
@@ -257,7 +203,7 @@ class μStorage(μToggler):
    
     self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnStore, self.btnTrade, self.btnSell, self.btnDissolve, self.btnFeedJewel, self.btnSort])]))
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setStatus(self, bridge, newStatus):
     print(f"STARTING STATUS {bridge} {newStatus}")
     if newStatus != P_STATUS_IDLE:
@@ -328,13 +274,13 @@ class μStorage(μToggler):
       self.btnFeedJewel.setEnabled(False)
       self.btnSort.setEnabled(False)
 
-  #----------------------------------------------------------------------------------------------------------
-  def initialize(self, daemon : cMacrosDaemon):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def initialize(self, daemon : μMacrosDaemon):
     super().initialize()
     self.daemon = daemon
     self.table.staleData = {}
 
-    noneItem = cFilterItem("<None>", "")
+    noneItem = μFilterItem("<None>", "")
     noneItem.setFlags(noneItem.flags() & ~Qt.ItemFlag.ItemIsEditable)
     self.filterScriptList.addItem(noneItem)
 
@@ -342,35 +288,35 @@ class μStorage(μToggler):
     for n in allFiles:
       name = os.path.splitext(os.path.basename(n))[0]
       if name == "<None>": continue
-      self.appendFilterScript(cFilterItem(name, ""))
+      self.appendFilterScript(μFilterItem(name, ""))
 
     self.filterScriptList.setCurrentItem(noneItem)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def newFilterScript(self):
     i = 1
     while f"NewSet{i}" in self.allFilterScripts:
       i += 1
-    newFilter = cFilterItem(f"NewSet{i}", "")
+    newFilter = μFilterItem(f"NewSet{i}", "")
     newFilter.save()
     self.appendFilterScript(newFilter)
 
-  #----------------------------------------------------------------------------------------------------------
-  def appendFilterScript(self, filter : cFilterItem):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def appendFilterScript(self, filter : μFilterItem):
     if filter.name in self.allFilterScripts: return
     filter.load()
     self.allFilterScripts[filter.name] = filter
     self.filterScriptList.addItem(filter)
 
-  #----------------------------------------------------------------------------------------------------------
-  def renameFilterScript(self, item : cFilterItem):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def renameFilterScript(self, item : μFilterItem):
     if item.name == "<None>": return
     oldName = item.name
     item.rename()
     self.allFilterScripts[item.name] = item
     del self.allFilterScripts[oldName]
     
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setActiveFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
     isEditable = bool(cfilter) and cfilter[0].name != "<None>"
@@ -380,40 +326,40 @@ class μStorage(μToggler):
     self.filterScriptEdit.setText(cfilter[0].content if isEditable else "")
     self.applyFilters()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
     if len(cfilter)>0 and cfilter[0].name != "<None>": cfilter[0].save()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveAllFilterScripts(self):
     for f in self.allFilterScripts.values():
       f.save()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def syncFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
     if len(cfilter)>0 and cfilter[0].name != "<None>":
       cfilter[0].sync(self.filterScriptEdit.toPlainText())
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def reloadFilterScript(self):
     cfilter = self.filterScriptList.selectedItems()
     if len(cfilter)>0 and cfilter[0].name != "<None>":
       cfilter[0].load()
     self.setActiveFilterScript()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def reloadAllFilterScripts(self):
     for f in self.allFilterScripts.values():
       f.load()
     self.setActiveFilterScript()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def deleteFilterScript(self):
     selected = self.filterScriptList.selectedItems()
     if not selected: return
-    filter : cFilterItem = selected[0]
+    filter : μFilterItem = selected[0]
     μPrint.info(f"Removing filter script \"{C_SILVER}{filter.name}</font>\"...")
     self.allFilterScripts.pop(filter.name, None)
     filename = P_DEFAULT_FILTERSDIR + os.sep + filter.name + P_DEFAULT_FILTEREXT
@@ -425,7 +371,7 @@ class μStorage(μToggler):
       μPrint.error(f"[cStorage] failed to remove filter file \"{filename}\":", e)
     self.filterScriptList.takeItem(self.filterScriptList.row(filter))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateDynamicFilters(self, item: μItemData):
     if item.owner():
       self.filterOwner.addCheckItem(item.owner())
@@ -434,7 +380,7 @@ class μStorage(μToggler):
     if item._qualifier:
       self.filterQualifier.addCheckItem(item._qualifier)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestRefreshStorage(self, detailed: bool = False):
     printStatus = True                        # for now always true 
     inData = struct.pack('?', detailed)       # provide detailed information
@@ -446,24 +392,24 @@ class μStorage(μToggler):
       try: os.remove(f'/dev/shm/Milvian/InventoryData{bridge.id}.bin')
       except: pass
       self.table.staleData[bridge.charName] = []
-      p = cMilvianPacket(packetCommand.queryinventory, bridge, inData)
-      cDispatcher.connect((bridge.id, p.id, packetSignal.gotResponse), lambda data, p=p: self.storageStatusUpdate(p, data))
+      p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
+      p.χigResponse.connect(lambda data, p=p: self.storageStatusUpdate(p, data))
       # cDispatcher.fate((bridge.id, p.id, packetSignal.running), self.loadStorageData)
       bridge.send(p)
       self.refreshStorage(bridge)
 
-  #----------------------------------------------------------------------------------------------------------
-  def storageStatusUpdate(self, packet : cMilvianPacket, rawData : bytes):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def storageStatusUpdate(self, packet : μMilvianPacket, rawData : bytes):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
       μPrint.info(f"[cStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
-      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      packet.χigResponse.disconnect()
     else:
       μPrint.info(f"[cStorage] {C_ORANGE}{packet.outData.decode('utf-8')}</font>")
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getSelectedIDs(self) -> list:
     selectedItems = {b : [] for b in self.daemon.getBridges().keys()}
     for item in self.table.selectedItems():
@@ -473,7 +419,7 @@ class μStorage(μToggler):
           selectedItems[item.owner().lower()].append(item)
     return selectedItems
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestDissolve(self, force=False):
     # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
     selectedItems = self.getSelectedIDs()
@@ -486,30 +432,30 @@ class μStorage(μToggler):
       inData += struct.pack('<I',len(selectedItems[c]))
       for item in list(selectedItems[c]):
         inData += struct.pack('<Q',item._id)
-      p = cMilvianPacket(packetCommand.dissolveItems, bridges[c], inData)
+      p = μMilvianPacket(packetCommand.dissolveItems, bridges[c], inData)
       packets[c] = p
       self.setStatus(bridges[c], P_STATUS_BUSY_DISSOLVE)
       bridges[c].send(packets[c])
-      cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageDissolveUpdate(p, data))
+      p.χigResponse.connect(lambda data, p=p: self.storageDissolveUpdate(p, data))
   
-  #----------------------------------------------------------------------------------------------------------
-  def storageDissolveUpdate(self, packet : cMilvianPacket, rawData : bytes):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def storageDissolveUpdate(self, packet : μMilvianPacket, rawData : bytes):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
       μPrint.info(f"[cStorage] Finished dissolving requested items for {C_SILVER}{packet.bridge.charName}</font>")
-      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
       μPrint.error(f"[cStorage] Error dissolving items for {C_SILVER}{packet.bridge.charName}</font>")
-      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       dissolved = packet.outData[0]
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
       μPrint.info(f"[cStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestStore(self, destUI : int = 0, force=False):
     # TO IMPLEMENT: force ignores checks if item is no bankeable
     selectedItems = self.getSelectedIDs()
@@ -523,35 +469,35 @@ class μStorage(μToggler):
       inData += struct.pack('<I',len(selectedItems[c]))
       for item in list(selectedItems[c]):
         inData += struct.pack('<Q',item._id)
-      p = cMilvianPacket(packetCommand.storeItems, bridges[c], inData)
+      p = μMilvianPacket(packetCommand.storeItems, bridges[c], inData)
       packets[c] = p
       self.setStatus(bridges[c], P_STATUS_BUSY_STORE)
       bridges[c].send(packets[c])
-      cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageStoreUpdate(p, data))
+      p.χigResponse.connect(lambda data, p=p: self.storageStoreUpdate(p, data))
  
-   #----------------------------------------------------------------------------------------------------------
-  def storageStoreUpdate(self, packet : cMilvianPacket, rawData : bytes):
+   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def storageStoreUpdate(self, packet : μMilvianPacket, rawData : bytes):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
       μPrint.info(f"[cStorage] Finished storing requested items for {C_SILVER}{packet.bridge.charName}</font>")
-      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
       μPrint.error(f"[cStorage] Error storing items for {C_SILVER}{packet.bridge.charName}</font>")
-      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       stored = packet.outData[0]
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
       μPrint.info(f"[cStorage] {"stored" if stored else "failed to store"} {C_ORANGE}{iID}</font>")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestTrade(self, force=False):
     # force ignores checks if item is tradeable e.g. bound items
     pass
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestSell(self, sellGems : bool = True, repair : bool = False):
     # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
     selectedItems = self.getSelectedIDs()
@@ -565,34 +511,34 @@ class μStorage(μToggler):
       inData += struct.pack('<I',len(selectedItems[c]))
       for item in list(selectedItems[c]):
         inData += struct.pack('<Q',item._id)
-      p = cMilvianPacket(packetCommand.sellItems, bridges[c], inData)
+      p = μMilvianPacket(packetCommand.sellItems, bridges[c], inData)
       packets[c] = p
       self.setStatus(bridges[c], P_STATUS_BUSY_SELL)
       bridges[c].send(packets[c])
-      cDispatcher.connect((bridges[c].id, packets[c].id, packetSignal.gotResponse), lambda data, p=p: self.storageSellUpdate(p, data))
+      p.χigResponse.connect(lambda data, p=p: self.storageSellUpdate(p, data))
   
-  #----------------------------------------------------------------------------------------------------------
-  def storageSellUpdate(self, packet : cMilvianPacket, rawData : bytes):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def storageSellUpdate(self, packet : μMilvianPacket, rawData : bytes):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
       μPrint.info(f"[cStorage] Finished selling requested items for {C_SILVER}{packet.bridge.charName}</font>")
-      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
       μPrint.error(f"[cStorage] Error selling items for {C_SILVER}{packet.bridge.charName}</font>")
-      cDispatcher.disconnect((packet.bridge.id, packet.id, packetSignal.gotResponse))
+      packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       iID = struct.unpack('<Q',packet.outData[0:8])[0]
       μPrint.info(f"[cStorage] sold {C_ORANGE}{iID}</font>")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestFeedJewel(self, force=False):
     # force ignores checks if item is feedable e.g. random loot
     pass
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def applyFilters(self, item : μItemData = None):
     scriptText = self.filterScriptEdit.toPlainText().lower()
     scriptText = " ".join(scriptText.strip().split())
@@ -606,7 +552,7 @@ class μStorage(μToggler):
       "all": all,
       "true": True,
       "false": False,
-      "str": cString,
+      "str": μString,
       "int": int,
       "float": float,
 
@@ -624,7 +570,7 @@ class μStorage(μToggler):
       # --- script filter (runs first)
       if len(scriptText) > 0:
         try:
-          S = cString
+          S = μString
           itemContext = {
             "id"              : item._id               ,
             "name"            : S(item._name.lower())  ,
@@ -712,7 +658,7 @@ class μStorage(μToggler):
         _filterItem(self.table.item(row, 0))
         
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refreshStorage(self, bridge : μMilvian):
     self.table.staleData[bridge.charName] = []
     for i in range(self.table.rowCount()):
@@ -753,7 +699,7 @@ class μStorage(μToggler):
     t = threading.Thread(target=_refreshStorageThread, args=(self, bridge), daemon=True)
     t.start()
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def showRefreshMenu(self):
     menu = QMenu(self)
     actRefresh  = QAction("Refresh",           self)
@@ -772,7 +718,7 @@ class μStorage(μToggler):
     menu.addAction(actCancel)
     menu.exec(QCursor.pos())
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def showHelpWindow(self):
     dlg = QDialog(self)
     dlg.setWindowTitle("Shortcuts Help")
@@ -851,3 +797,50 @@ class μStorage(μToggler):
     dlg.setLayout(layout)
     dlg.resize(400, 300)
     dlg.exec()
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  F I L T E R   I T E M
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μFilterItem(QListWidgetItem):
+  def __init__(self, name : str, content : str):
+    super().__init__()
+    self.name = name
+    self.setText(name)
+    self.setFlags(self.flags() | Qt.ItemFlag.ItemIsEditable)
+    self.content = content
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setActive(self, val : bool ):
+    pass
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def rename(self):
+    oldFilename = P_DEFAULT_FILTERSDIR + os.sep + self.name + P_DEFAULT_FILTEREXT
+    newFilename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
+    os.rename(oldFilename, newFilename)
+    self.name = self.text()
+    
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def sync(self, content):
+    self.content = content
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def display(self):
+    pass
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def save(self):
+    filename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
+    os.makedirs(P_DEFAULT_FILTERSDIR, exist_ok=True)
+    with open(filename, 'w') as f:
+      f.write(self.content)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def load(self):
+    filename = P_DEFAULT_FILTERSDIR + os.sep + self.text() + P_DEFAULT_FILTEREXT
+    try:
+      with open(filename,"r") as f:
+        self.content = f.read()
+    except Exception as e:
+      μPrint.error(f"{C_RED}WARNING:</font> error loading filter from \"{filename}\"",e)
+      self.content = ""

@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QAction
 from μProcess import aProcessItem
-from μToolbar import μToolbar, cToolbarItem
+from μToolbar import μToolbar, μToolbarItem
 from widgets.μOrb import μOrb
 from helpers.χHelper import χHelper
 from helpers.μImageFactory import *
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 from μMilvian import μMilvian
 
 #----------------------------------------------------------------------------------------------------------
-class cMacrosDaemon(aProcessItem):
+class μMacrosDaemon(aProcessItem):
   widgetID = "Macros Daemon"
   process = None
   bridges = {}
@@ -83,16 +83,16 @@ class cMacrosDaemon(aProcessItem):
       return True
     
   #----------------------------------------------------------------------------------------------------------
-  _META_KEYS = {'self', 'any'}
-
   def getBridges(self, returnMeta=False) -> dict:
+    from μMilvian import μMilvianMeta
     if not self.isInitialized():  self.initialize()
     if not self.isInitialized():
       μPrint.warning("[cMacrosDaemon] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
       return {}
     if returnMeta:
+      return self.bridges | {'self': μMilvianMeta.getFocused(), 'any': μMilvianMeta.getAny()}
+    else:
       return self.bridges
-    return {k: v for k, v in self.bridges.items() if k not in self._META_KEYS}
 
   #----------------------------------------------------------------------------------------------------------
   def convert(self, consolidated : dict) -> dict:
@@ -171,10 +171,9 @@ class cMacrosDaemon(aProcessItem):
       else:
         toolbarMacros = {k: parsed.pop(k) for k in list(parsed) if k.startswith('toolbar')}
 
-        xh = χHelper()
         for hk, script in parsed.items():
-          parsed[hk] = lambda x=script : xh.execute(x)
-        self.process = xh.getShortcutsDaemon(parsed)
+          parsed[hk] = lambda x=script: χHelper.execute(x)
+        self.process = χHelper.getShortcutsDaemon(parsed)
 
         if toolbarMacros:
           μPrint.info(f"[cMacrosDaemon] found {len(toolbarMacros.keys())} toolbar macros")
@@ -182,7 +181,7 @@ class cMacrosDaemon(aProcessItem):
           for tb, script in toolbarMacros.items():
             m = meta.get(tb, {})
             commands = [cmd for item in script if callable(item) for cmd in item.cmd]
-            μToolbar.addItems(cToolbarItem(tb, script,
+            μToolbar.addItems(μToolbarItem(tb, script,
                                            icon=m.get('icon'),
                                            names=m.get('names', set()),
                                            commands=commands))
@@ -230,6 +229,6 @@ class cMacrosDaemon(aProcessItem):
   def cleanup(self):
     μPrint.info("Purging all possible shortcuts combinations...")
     μToolbar.clearItems()
-    χHelper().forceCleanup()
+    χHelper.forceCleanup()
 
   

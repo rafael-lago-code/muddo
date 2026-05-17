@@ -20,7 +20,10 @@
 
 import re
 
-#----------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #   alphaRange
 #   Generates a range of strings from start to stop, where start and stop are alphanumerics
 def alphaRange(start, stop : str) -> list[str]:
@@ -33,7 +36,7 @@ def alphaRange(start, stop : str) -> list[str]:
     μstop = ord(stop)
     return [chr(i) for i in range(μstart, μstop + 1)]
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    expandRange
 #    Turns ranges like "1:4" or "a-b" or "a-b,k,f" into a list of STRINGS corresponding to all values in
 #    the range.
@@ -51,7 +54,7 @@ def expandRange(text : str) -> list[str]:
     else: return [text]
     return alphaRange(text[:splitIdx], text[splitIdx+1:])
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    expandRepeaters
 #    Turns strings such as "prefix{1-3}suffix" into a list of "prefix1suffix, prefix2suffix, prefix3suffix".
 #    Accepted ranges are the same as expandRange
@@ -70,7 +73,7 @@ def expandRepeaters(text : str) -> list:
     return [text]
 
 P_GROUPING={"\"":"\"", "(":")", "{":"}", "[":"]", "<":">"}
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    splitGroups
 #    Splits a string by a delimiter while respecting groups such as "<a,b,c>, {d,e,f}, [g,h,i]"
 def splitGroups(text: str, delim : str = ",", strip: str = " ") -> list[str]:
@@ -90,7 +93,7 @@ def splitGroups(text: str, delim : str = ",", strip: str = " ") -> list[str]:
   if strip: return [p.strip(strip) for p in parts if p.strip(strip)]
   else:     return parts
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    dictionary
 #    Turns a string into a dictionary by splitting it by a delimiter and then automagically figuring out
 #    key-value pairs. For example, "a=1,b=2,c=3" with delim "," would return {"a":"1", "b":"2", "c":"3"}
@@ -107,7 +110,7 @@ def dictionary(text: str, delim : str = ",", strip: str = " ") -> dict:
       out[p.strip(strip)] = None
   return out
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    guess
 #    Tries to guess the type of a string by trying to convert it to int, then float, and if all fails, string
 def guess(text: str):
@@ -118,6 +121,8 @@ def guess(text: str):
     return float(text)
   except: pass
   text = text.strip()
+  if text.lower() == 'true':  return True
+  if text.lower() == 'false': return False
   if text.startswith(tuple(P_GROUPING.keys())) and text.endswith(tuple(P_GROUPING.values())):
     if text.startswith("\"") and text.endswith("\""):
       return text[1:-1]
@@ -125,7 +130,7 @@ def guess(text: str):
       return splitGroups(text[1:-1])
   return text
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    replaceAlias
 #    Expands one alias and replaces eventual tokens:
 #
@@ -142,38 +147,43 @@ def replaceAlias(text: str, key: str, translation: str) -> str:
     return s
   return re.sub(left + body + right, repl, text)
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    globmatch
 #    Match s against a glob pattern or tuple of patterns. * matches any substring.
 def globmatch(s: str, pattern, case: bool = False) -> bool:
   if isinstance(pattern, (list, tuple)): return any(globmatch(s, p, case) for p in pattern)
   regex = re.escape(str(pattern)).replace(r'\*', '.*')
-  flags = 0 if case else re.IGNORECASE
+  flags = re.DOTALL | (0 if case else re.IGNORECASE)
   return bool(re.fullmatch(regex, str(s), flags=flags))
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    contains
 #    Check if s contains sub (or any element if sub is a tuple).
 def contains(s: str, sub) -> bool:
   if isinstance(sub, (list, tuple)): return any(str(x) in str(s) for x in sub)
   return str(sub) in str(s)
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    fileContents
 #    returns a tuple containing each line in a file
 def fileContents(path) -> tuple[str]:
   with open(path, 'r') as f:
     return tuple(line.rstrip('\n') for line in f if line.strip())
+  
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+#    hasKeywords
+#    returns a tuple containing each line in a file
+def hasKeyword(text, keyword : str):
+  text = ' '.join(text) if isinstance(text, (list, tuple)) else text
+  return bool(re.search(rf'\b{keyword}\b', text))
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            S T R I N G
-#
-#     Not hasheable; helpful for string manipulation, but don't use it for dict keys or sets.
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S T R I N G 
 #                                  
-#---------------------------------------------------------------------------------------------------------------
-class cString(str):
+#   Not hasheable; helpful for string manipulation, but don't use it for dict keys or sets.
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μString(str):
   def __new__(cls, value):
     return super().__new__(cls, value)
     
@@ -186,4 +196,6 @@ class cString(str):
   def replace(self, key: str, translation: str): return replaceAlias(self, key, translation)
   def guess(self): return guess(self)
   def dictionary(self, delim : str = ",", strip: str = " "): return dictionary(self, delim, strip)
+  def keywordIn(self, text : str): return hasKeyword(text, self)
+  def hasKeyword(self, keyword : str): return hasKeyword(self, keyword)
   

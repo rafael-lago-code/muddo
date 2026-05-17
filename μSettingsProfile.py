@@ -24,16 +24,18 @@ from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from widgets.μOrb import μOrbSmall
 from widgets.μOrb import μBoxCheck
-from widgets.μGridLayout import μGridLayout
+from widgets.μGrid import μGridLayout
 import json
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
-
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 P_SERIALIZABLE = (QLineEdit, μBoxCheck, QComboBox, QSpinBox)
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def _getValue(w):
   if isinstance(w, QLineEdit): return w.text()
   if isinstance(w, μBoxCheck): return w.isChecked()
@@ -41,7 +43,7 @@ def _getValue(w):
   if isinstance(w, QSpinBox):  return w.value()
   return None
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def _setValue(w, v):
   if isinstance(w, QLineEdit):   w.setText(str(v) if v is not None else "")
   elif isinstance(w, μBoxCheck):
@@ -54,7 +56,9 @@ def _setValue(w, v):
     try: w.setValue(int(v))
     except (TypeError, ValueError): pass
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E C T I O N
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dSection():
   name = ""
   def __init__(self, state):
@@ -76,12 +80,14 @@ class dSection():
       if isinstance(att, QComboBox): att.currentTextChanged.connect(lambda a="", w=wname: self.saveWidget(w, a))
       if isinstance(att, QSpinBox):  att.valueChanged.connect(lambda a=0, w=wname: self.saveWidget(w, a))
 
-  #-------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---
   def saveWidget(self, key, value):
     self._state.setValue(f"{self.name}/{key}", value)
     self._state.sync()
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E C T I O N   -   L A U N C H E R
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dLauncher(dSection):
   name = "launcher"
   def __init__(self, state):
@@ -114,19 +120,19 @@ class dLauncher(dSection):
     self.toggleBackend()
     super().__init__(state)
 
-  #-------------------------------------------------------------------------------------------------------------  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---  
   def gamePath(self):
     fullPath = self._gameFullExec.text()
     idx = fullPath.find("Dungeons & Dragons Online")
     return fullPath[:idx+len("Dungeons & Dragons Online")]
   
-  #-------------------------------------------------------------------------------------------------------------  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---  
   def gameExec(self):
     fullPath = self._gameFullExec.text()
     idx = fullPath.find("Dungeons & Dragons Online")
     return fullPath[idx+len("Dungeons & Dragons Online")+1:]
   
-  #-------------------------------------------------------------------------------------------------------------  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---  
   def command(self) -> str:
     #TODO implement Wine
     cmd  = f'STEAM_ROOT="{self.steamRoot()}" PROTON_LOG=1 '
@@ -135,7 +141,7 @@ class dLauncher(dSection):
     cmd += f'"{self.protonExec()}" run '
     return cmd
   
-  #-------------------------------------------------------------------------------------------------------------  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---  
   def toggleBackend(self):
     if self._backend.currentText() == "Steam Proton":
       self.lblBackendExec.setText("Proton executable:")
@@ -154,7 +160,9 @@ class dLauncher(dSection):
       w.setVisible(not protonOn)
 
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E C T I O N   -   X S E T T I N G S
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dXSettings(dSection):
   name = "xsettings"
   def __init__(self, state):
@@ -182,7 +190,9 @@ class dXSettings(dSection):
     self._MUDDOLog.setEnabled(False)
     super().__init__(state)
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E C T I O N   -   P L U G I N
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dPlugins(dSection):
   name = "plugins"
   def __init__(self, state):
@@ -202,7 +212,9 @@ class dPlugins(dSection):
     self._useDH.stateChanged.connect(self.btnDHExec.setEnabled)
     super().__init__(state)
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E C T I O N   -   T O O L B A R
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dToolbar(dSection):
   name      = "toolbar"
   _raw_keys = {'x', 'y', 'w', 'h', 'geometry'}
@@ -237,7 +249,9 @@ class dToolbar(dSection):
       widget.resize(int(w), int(h))
     except (TypeError, ValueError): pass
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E C T I O N   -   S E S S I O N
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dSession(dSection):
   name = "session"
   def __init__(self, state):
@@ -247,38 +261,35 @@ class dSession(dSection):
     self.windowsPreferences = {}
     super().__init__(state)
   
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
   def setAccounts(self, selectedAccounts : list):
     self.accounts = selectedAccounts
     self._state.setValue("session/accounts", ", ".join(selectedAccounts))
     self._state.sync()
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
   def setWorld(self, world : str):
     self.world = world
     self._state.setValue("session/world", world)
     self._state.sync()
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
   def setMacroSets(self, macroSets : list):
     self.macroSets = macroSets
     self._state.setValue("session/macroSets", ", ".join(macroSets))
     self._state.sync()
 
-  #---------------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
   def setWindowsPreference(self, windowsPreferences : dict):
     self.windowsPreferences = windowsPreferences
     lines = [f'  {json.dumps(k)}: {json.dumps(list(v))}' for k, v in windowsPreferences.items()]
     self._state.setValue("session/windowsPreferences", "{\n" + ",\n".join(lines) + "\n}")
     self._state.sync()
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            S E T T I N G S P R O F I L E
-#
-#
-#---------------------------------------------------------------------------------------------------------------
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E T T I N G S   P R O F I L E
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μSettingsProfile(QWidget):
   widgetID = "profile"
   
@@ -298,7 +309,7 @@ class μSettingsProfile(QWidget):
     self.load()
     self.wireInternal()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def initializeLayout(self):
     # self.setFixedSize(800,800)
     glauncher = μGridLayout()
@@ -355,7 +366,7 @@ class μSettingsProfile(QWidget):
     # setBGColour(self.table.viewport(), QColor(0, 0, 0, 210))
     self.setLayout(newVLayout([self.tab]))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def wireInternal(self):
     self.launcher.btnProtonExec.clicked.connect(   lambda x : self.selectDialog(self.launcher._protonExec,    "Steam Proton executable", False))
     self.launcher.btnCompatData.clicked.connect(   lambda x : self.selectDialog(self.launcher._compatData,    "Steam Proton COMPAT_DATA path", True))
@@ -375,7 +386,7 @@ class μSettingsProfile(QWidget):
     self.plugins.btnDHExec.ctrlClicked.connect(        lambda x : self.autoDialog(self.plugins._dhExec,         "Dungeon Helper executable", False))
     self.plugins.btnMilvianSHMPath.ctrlClicked.connect(lambda x : self.autoDialog(self.plugins._milvianSHMPath, "Milvians SHM path", True))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self):
     if not self._state.allKeys():
       μPrint.info(f"[cSettingsProfile] no settings found in {self.confFile}. Creating with defaults...")
@@ -413,14 +424,14 @@ class μSettingsProfile(QWidget):
     else:
       μPrint.info(f"Profile loaded from {self.confFile}")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def loadFromDefaults(self):
     # do stuff
     self.launcher._useHighRes.setChecked(True)
     self.launcher._useDebug.setChecked(True)
     μPrint.info(f"{C_RED}Load from defaults not yet implemented!!!</font>")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def selectDialog(self, target : QLineEdit, title, dir = True):
     if dir: filename = QFileDialog.getExistingDirectory(self, f"Select {title}...", directory=target.text())
     else: filename = QFileDialog.getOpenFileName(self, f"Select {title}...", directory=target.text())
@@ -431,7 +442,7 @@ class μSettingsProfile(QWidget):
     else:
       μPrint.warning(f"[cSettingsProfile] invalid {title} selected, doing nothing...")
     
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def autoDialog(self, target : QLineEdit, title, dir = True):
     μPrint.warning(f"[cSettingsProfile] auto finding {title} is not yet implemented. Enter it manually for now.")
 

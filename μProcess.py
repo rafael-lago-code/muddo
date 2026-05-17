@@ -22,11 +22,11 @@ from PyQt6.QtWidgets import QWidget, QLabel
 from PyQt6.QtGui import QPalette
 from PyQt6.QtCore import pyqtSignal
 from widgets.μOrb import μBoxCheck
-from widgets.μToggler import μToggler
+from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbCheck, μOrbSmall
 from helpers.μImageFactory import *
 from widgets.μLog import μLog
-from helpers.μTop import μTop
+from helpers.χTop import χTop
 from helpers.μPrint import μPrint
 from collections import OrderedDict
 import re
@@ -171,11 +171,10 @@ class μProcessManager(μToggler):
   #----------------------------------------------------------------------------------------------------------
   def fixBlackScreenAll(self):
     from helpers.χHelper import χHelper
-    xh = χHelper()
     for p in self.selectedItems():
       winID = p.winID.text()
       if winID.isdigit():
-        xh.remapWindow(int(winID))
+        χHelper.remapWindow(int(winID))
 
   #----------------------------------------------------------------------------------------------------------
   def itemExists(self, p : aProcessItem):
@@ -229,9 +228,9 @@ class μProcessManager(μToggler):
     # output = subprocess.check_output("ps -eo pid,command", shell=True, text=True)
     # output = output.split("\n")
     found = 0
-    orphanCandidates = μTop.getByCommand(μDDO.gameExec)
+    orphanCandidates = χTop.getByCommand(μDDO.gameExec)
     for c in orphanCandidates:
-      cmdline = μTop.getCommand(c)
+      cmdline = χTop.getCommand(c)
       cmdline = cmdline.replace("\x00", " ")
       if μDDO.isCMD(cmdline) and not self.isPIDManaged(c):
         orphan : μDDO = μDDO.createFromOrphan(self.main, c, cmdline)
@@ -243,9 +242,9 @@ class μProcessManager(μToggler):
     if found == 0:
       μPrint.info(f"[cProcessManager] no orphan DDO processes were found")
     
-    orphanCandidates = μTop.getByCommand(μDungeonHelper.dhExec)
+    orphanCandidates = χTop.getByCommand(μDungeonHelper.dhExec)
     for c in orphanCandidates:
-      cmdline = μTop.getCommand(c)
+      cmdline = χTop.getCommand(c)
       cmdline = cmdline.replace("\x00", " ").strip()
       if μDungeonHelper.isCMD(cmdline) and not self.isPIDManaged(c):
         self.main.dh.createFromOrphan(c)
@@ -452,10 +451,10 @@ class aProcessItem(QWidget):
 
     try:
       if sig == signal.SIGKILL:
-        μTop.kill(int(self.pid.text()))
+        χTop.kill(int(self.pid.text()))
         self.setStatus(self.P_STATUS_KILLED)
       else:
-        μTop.terminate(int(self.pid.text()))
+        χTop.terminate(int(self.pid.text()))
         self.setStatus(self.P_STATUS_TERMINATED)
     except Exception as e:
       μPrint.error(f"[aProcessItem] unknown error terminating (signal: {sig}) process with PID {self.pid.text()}", e)

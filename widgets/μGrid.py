@@ -21,19 +21,17 @@
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QWidget, QGridLayout, QSizePolicy, QVBoxLayout
+from PyQt6.QtWidgets import QApplication, QFrame, QLabel, QLayout, QWidget, QGridLayout, QSizePolicy, QVBoxLayout
 from PyQt6.QtCore import Qt, QMimeData, pyqtSignal, QEvent, QObject, QByteArray
 from PyQt6.QtGui import QDrag
 import time
 import helpers.μEffects as μEffects
 
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  G R I D
 #
-#
-#                                                 G R I D 
-#                                  
 #   A grid widget that allows drag-and-drop reordering
-#---------------------------------------------------------------------------------------------------------------
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μGrid(QWidget):
   orderChanged = pyqtSignal()
   itemsSwapped = pyqtSignal(object, object)
@@ -43,6 +41,7 @@ class μGrid(QWidget):
   lastRefreshTime = -1
   refreshSentinel = False
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, parent=None):
     super().__init__(parent)
     self.contents: list[QWidget] = []
@@ -54,10 +53,12 @@ class μGrid(QWidget):
     self.lastTargetIndex = -1
     self.lastRefreshTime = time.time_ns()
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setColumns(self, columns : int = 0) : self.columns = columns
   def setRows(self, rows : int = 0) : self.rows = rows
   def setFillRowsFirst(self, fillRowsFirst : bool = True) : self.fillRowsFirst = fillRowsFirst
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addWidget(self, widget: QWidget):
     widget.setParent(self)
     self.contents.append(widget)
@@ -72,6 +73,7 @@ class μGrid(QWidget):
   #     return True
   #   return super().eventFilter(watched, event)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def eventFilter(self, watched: QObject, event: QEvent) -> bool:
     if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
       self.dragStartPos = event.position().toPoint()
@@ -89,6 +91,7 @@ class μGrid(QWidget):
         return True  # consume event
     return False     # does not consume event - it is a click
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _startDrag(self, widget: QWidget, event):
     self.refreshSentinel = True
     self.draggedWidget = widget
@@ -111,6 +114,7 @@ class μGrid(QWidget):
     self.draggedWidget = None
     self.originalIndex = -1
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _refreshGrid(self):
     # prevents _refreshGrid spam during drag-and-drop
     if self.refreshSentinel and time.time_ns() - self.lastRefreshTime < 100*1e6: return
@@ -127,10 +131,12 @@ class μGrid(QWidget):
       self.grid.addWidget(widget, row, col)
       widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def dragEnterEvent(self, event):
     if event.mimeData().hasFormat("application/x-draggablegrid"):
       event.acceptProposedAction()
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def dragMoveEvent(self, event):
     if not self.draggedWidget or not event.mimeData().hasFormat("application/x-draggablegrid"):
       return
@@ -145,6 +151,7 @@ class μGrid(QWidget):
 
     event.acceptProposedAction()
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def dropEvent(self, event):
     self.refreshSentinel = False
     if event.mimeData().hasFormat("application/x-draggablegrid"):
@@ -159,6 +166,7 @@ class μGrid(QWidget):
       event.acceptProposedAction()
       self.orderChanged.emit()
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeWidget(self, widget: QWidget):
     if widget in self.contents:
       self.contents.remove(widget)
@@ -175,3 +183,37 @@ class μGrid(QWidget):
 
   def getWidgets(self):
     return self.contents[:]
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  G R I D   L A Y O U T
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μGridLayout(QGridLayout):
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def __init__(self):
+    super().__init__()
+
+    self.firstRow = 0
+    self.firstColumn = 0
+    self.lastRow = 0
+    self.lastColumn = 0
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def appendRow(self, items):
+    if not isinstance(items,list): items = [items]
+    r = self.lastRow
+    c = self.firstColumn
+    ncols = 1
+    for i in items: 
+      if isinstance(i,str) and i==">":
+        ncols += 1
+        continue
+      elif isinstance(i,str):
+        self.addWidget(QLabel(i), r, c, 1, ncols)
+      elif isinstance(i,QLayout):
+        self.addLayout(i, r, c, 1, ncols)
+      elif i is not None:
+        self.addWidget(i, r, c, 1, ncols)
+      c+=ncols
+      ncols=1
+    self.lastRow += 1

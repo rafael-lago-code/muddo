@@ -24,24 +24,27 @@ from PyQt6.QtCore import Qt, pyqtSignal
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from typing import TYPE_CHECKING
-# if TYPE_CHECKING:
-#    from cMacrosDaemon import cMacrosDaemon
 
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 P_ITEM_COLUMNS = ["Name", "Owner", "Type", "Equips To", "Binding", "👤", "🔒"]
 P_ITEM_UKNOWN_ICON = None
 
-# Augments logic is based on which colors they accept
-#----------------------------------------------------------------
-#  1<<0 = 1:  colorless
-#  1<<1 = 2:  red
-#  1<<2 = 4:  yellow
-#  1<<3 = 8:  blue
-#  1<<4 = 16: orange
-#  1<<5 = 32: purple
-#  1<<6 = 64: green
-#  1<<30    : sun
-#  1<<31    : moon
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+# Augments logic is based on which colors they accept:
+#     1<<0 = 1:  colorless
+#     1<<1 = 2:  red
+#     1<<2 = 4:  yellow
+#     1<<3 = 8:  blue
+#     1<<4 = 16: orange
+#     1<<5 = 32: purple
+#     1<<6 = 64: green
+#     1<<30    : sun
+#     1<<31    : moon
 #  So an orange slot = (orange | red | yellow | colorless) = 1 + 2 + 4 + 16 = 23
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 P_ITEM_AUGMENTS_NAME = {1:     "Colorless",
                         3:     "Red",
                         5:     "Yellow",
@@ -70,7 +73,6 @@ P_ITEM_BINDING_NAME = {0: "∞",
                        5: "BtAoE",
                        6: "BtC" # kinda bugged, it is bound to character on acquire and on equip
 }
-
 
 P_ITEM_EQUIPPED_SLOT_BASE = 3*0x40000000-1 # don't ask, I don't know
 P_ITEM_EQUIPPED_SLOT = {
@@ -112,13 +114,9 @@ P_STATUS_BUSY_TRADE     = 5
 P_STATUS_BUSY_STORE     = 6
 P_STATUS_BUSY_FEEDJEWEL = 7
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            I T E M   D A T A
-#
-#                                  
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  I T E M   D A T A 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μItemData(QTableWidgetItem):
   _id = 0
   _name = ""
@@ -149,13 +147,13 @@ class μItemData(QTableWidgetItem):
   _augments = []
   _effects = {}
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def readString(f) -> str:
     count = int.from_bytes(f.read(2), byteorder='little', signed=False)
     return f.read(count).decode('utf-8')
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def readIcon(f) -> QImage:
     import numpy as np
@@ -179,13 +177,13 @@ class μItemData(QTableWidgetItem):
     qimage = QImage(result, width, height, QImage.Format.Format_RGBA8888)
     return qimage
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self):
       global P_ITEM_UKNOWN_ICON
       P_ITEM_UKNOWN_ICON = getIcon(P_ICON_PLACEHOLDER)
       super().__init__()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def digest(self):
     self.setText(f"{self._name} {" ".join(self.augments(iconsOnly=True))}")
     self.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
@@ -205,14 +203,14 @@ class μItemData(QTableWidgetItem):
     self.setToolTip(ttip)
     self.setData(Qt.ItemDataRole.UserRole, self._name)
   
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def icon(self) -> QIcon:
     if self._icon:
       return getIcon(self._icon)
     else:
       return P_ITEM_UKNOWN_ICON
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def slot(self):
     if int(self._currentSlot) >= P_ITEM_EQUIPPED_SLOT_BASE:
       return P_ITEM_EQUIPPED_SLOT.get(int(self._currentSlot)-P_ITEM_EQUIPPED_SLOT_BASE, f"?{self._currentSlot-P_ITEM_EQUIPPED_SLOT_BASE}?")
@@ -220,15 +218,15 @@ class μItemData(QTableWidgetItem):
       # Tab / Row / Col
       return (self._currentSlot//20, (self._currentSlot % 20) // 5, (self._currentSlot % 20) % 5)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def owner(self):
     return self._ownerName.split()[0]
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def binding(self):
     return P_ITEM_BINDING_NAME.get(self._binding, f"?{self._binding}?")
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def augments(self, textOnly=False, iconsOnly=False):
     copyVals = self._augments.copy()
     text=[]
@@ -244,7 +242,7 @@ class μItemData(QTableWidgetItem):
         icons += [f"?{v}?"]
     return icons if iconsOnly else text
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def readFromBin(self, file : BufferedReader):
     self._id          = int.from_bytes(file.read(8), byteorder='little', signed=False)
     self._name        = μItemData.readString(file) # f.read(count).decode('utf-8')
@@ -287,13 +285,9 @@ class μItemData(QTableWidgetItem):
       self._effects[key] = file.read(countVal).decode('utf-8')
     return self
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            I T E M   T A B L E
-#
-#                                  
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  I T E M S   T A B L E
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μItemsTable(QTableWidget):
   itemsById = {}
   staleData = {}
@@ -313,7 +307,7 @@ class μItemsTable(QTableWidget):
     self.setIconSize(QtCore.QSize(36,36))
     self.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getColumnWidget(self, item, col: str) -> QTableWidgetItem:
     if col == "Name": return item
 
@@ -341,7 +335,7 @@ class μItemsTable(QTableWidget):
     else:
       return newCell(f"Unknown Column <{col}>")
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def append(self, item : μItemData):
     self.setSortingEnabled(False)
 
@@ -360,7 +354,7 @@ class μItemsTable(QTableWidget):
 
     self.setSortingEnabled(True)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clearStale(self, charName : str):
     npurged = 0
     for item in list(self.staleData[charName]):
@@ -374,7 +368,7 @@ class μItemsTable(QTableWidget):
     self.staleData[charName] = []
     if (npurged): μPrint.info(f"[cItemsTable] cleaned {npurged} stale items from {C_ORANGE}{charName}</font>")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clearAll(self):
     self.setRowCount(0)
     self.itemsById = {}

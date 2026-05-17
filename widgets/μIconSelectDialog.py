@@ -28,6 +28,9 @@ from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from widgets.μOrb import μOrbSmall
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 P_USER_ICONS_DIR  = P_DEFAULT_CONFIGDIR + "/icons"
 P_BUILTIN_ICONS_DIR = P_MUDDO_DIR + "/images/custom-icons"
 P_RECENT_FILE     = P_DEFAULT_CONFIGDIR + "/recent_icons.json"
@@ -35,8 +38,9 @@ P_ICON_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg"}
 P_PREVIEW_SIZE    = QSize(64, 64)
 P_THUMB_SIZE      = QSize(24, 24)
 P_RECENT_MAX      = 10
+P_GRID_SIZE = QSize(P_THUMB_SIZE.width() + 16, P_THUMB_SIZE.height() + 24)
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def scanIcons(directory: str) -> list[str]:
   results = []
   for root, _, files in os.walk(directory):
@@ -45,7 +49,7 @@ def scanIcons(directory: str) -> list[str]:
         results.append(os.path.join(root, f))
   return results
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def loadRecent() -> list[str]:
   try:
     with open(P_RECENT_FILE) as f:
@@ -54,7 +58,7 @@ def loadRecent() -> list[str]:
   except Exception:
     return []
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def saveRecent(path: str):
   recent = loadRecent()
   recent = [p for p in recent if p != path]
@@ -67,7 +71,7 @@ def saveRecent(path: str):
   except Exception as e:
     μPrint.error("[cIconSelectDialog] could not save recent icons", e)
 
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def makeItem(path: str) -> QListWidgetItem:
   px = getPixmap(path)
   if px.isNull():
@@ -81,9 +85,7 @@ def makeItem(path: str) -> QListWidgetItem:
   item.setToolTip(path)
   return item
 
-P_GRID_SIZE = QSize(P_THUMB_SIZE.width() + 16, P_THUMB_SIZE.height() + 24)
-
-#----------------------------------------------------------------------------------------------------------
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def makeIconList() -> QListWidget:
   lw = QListWidget()
   lw.setViewMode(QListWidget.ViewMode.IconMode)
@@ -96,11 +98,9 @@ def makeIconList() -> QListWidget:
   return lw
 
 
-#----------------------------------------------------------------------------------------------------------
-#
-#                               I C O N   S E L E C T   D I A L O G
-#
-#----------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  I C O N   S E L E C T   D I A L O G
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μIconSelectDialog(QDialog):
   def __init__(self, current: str = None, parent=None):
     super().__init__(parent)
@@ -175,11 +175,11 @@ class μIconSelectDialog(QDialog):
 
     QShortcut(QKeySequence("Ctrl+V"), self).activated.connect(self.fromPaste)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def currentList(self) -> QListWidget:
     return self.tabs.currentWidget()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def applyFilter(self, text: str):
     lw = self.currentList()
     if not isinstance(lw, QListWidget):
@@ -189,7 +189,7 @@ class μIconSelectDialog(QDialog):
       item = lw.item(i)
       item.setHidden(needle not in item.text().lower())
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def populateList(self, lw: QListWidget, paths: list[str]):
     lw.clear()
     for p in paths:
@@ -197,14 +197,14 @@ class μIconSelectDialog(QDialog):
     if lw is self.currentList():
       self.applyFilter(self.filter.text())
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onItemChanged(self, current: QListWidgetItem, _prev):
     if current:
       path = current.data(Qt.ItemDataRole.UserRole)
       self._selected = path
       self.setPreview(path)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setPreview(self, path: str):
     px = getPixmap(path)
     if not px.isNull():
@@ -216,7 +216,7 @@ class μIconSelectDialog(QDialog):
       self.preview.setText("(no preview)")
       self.meta.setText("")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def fromFile(self):
     path, _ = QFileDialog.getOpenFileName(
       self, "Select icon", "",
@@ -226,13 +226,13 @@ class μIconSelectDialog(QDialog):
       self.setPreview(path)
       self.refreshRecent(path)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def toggleUrlBar(self):
     self.urlBar.setVisible(not self.urlBar.isVisible())
     if self.urlBar.isVisible():
       self.urlEdit.setFocus()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def fromURL(self):
     url = self.urlEdit.text().strip()
     if not url:
@@ -252,7 +252,7 @@ class μIconSelectDialog(QDialog):
     self.populateList(self.listUser, scanIcons(P_USER_ICONS_DIR))
     self.tabs.setCurrentWidget(self.listUser)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def fromPaste(self):
     img = QApplication.clipboard().image()
     if img.isNull():
@@ -271,17 +271,17 @@ class μIconSelectDialog(QDialog):
     self.populateList(self.listUser, scanIcons(P_USER_ICONS_DIR))
     self.tabs.setCurrentWidget(self.listUser)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refreshRecent(self, path: str):
     saveRecent(path)
     self.populateList(self.listRecent, loadRecent())
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onAccept(self):
     if self._selected:
       saveRecent(self._selected)
     self.accept()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def selectedPath(self) -> str | None:
     return self._selected

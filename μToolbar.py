@@ -21,7 +21,7 @@
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QGridLayout, QLineEdit, QTextEdit, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import QWidget
 from PyQt6.QtGui import QPainter, QPixmap, QColor
 from PyQt6.QtCore import Qt, QPoint
 from μSettings import μSettings
@@ -30,19 +30,142 @@ from helpers.μPrint import μPrint
 from helpers.util import *
 from helpers import μEffects
 from widgets.μFloating import μFloating
-from widgets.μOrb import μOrb, μOrbSmall, μTheme_Toolbar
+from widgets.μOrb import μOrb, μTheme_Toolbar
 from widgets.μGrid import μGrid
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from μToolbar import μToolbarItem
 
-#----------------------------------------------------------------------------------------------------------
-class cToolbarItem(μOrb):
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  T O O L B A R 
+#                                  
+#   This is a hybrid class.
+#   One instance lives in cMainWindow. __init__ calls cSettings.setup.
+#   Anyone can add items via class method "addItems"
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μToolbar(QWidget):
+  widgetID = "Toolbar"
+  items : list = []
+  grid = None
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def setup(cls):
+    μSettings.toolbar._macroNCols.valueChanged.connect(cls.grid.setColumns)
+    μSettings.toolbar._macroNRows.valueChanged.connect(cls.grid.setRows)
+    μSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.grid.setFillRowsFirst)
+    μSettings.toolbar._macroNCols.valueChanged.connect(cls.sortLayout)
+    μSettings.toolbar._macroNRows.valueChanged.connect(cls.sortLayout)
+    μSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.sortLayout)
+    cls.grid.itemsSwapped.connect(cls.onItemsSwapped)
+    cls.widget.setVisible(False)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def onItemsSwapped(cls, item_a, item_b):
+    if isinstance(item_a, μToolbarItem) and isinstance(item_b, μToolbarItem):
+      cls.main.macros.swapTriggers(item_a.trigger, item_b.trigger)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def __init__(self, main):
+    μToolbar.main = main
+    μToolbar._instantiateWidget(main)
+    super().__init__(main)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def _instantiateWidget(cls, main):
+    cls.widget = μFloating("Toolbar", main)
+    cls.grid = μGrid(cls.widget)
+
+    cls.widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
+    cls.widget.setTitleBarWidget(QWidget())
+    cls.widget.setLayout(newVLayout([cls.grid]))
+    # cls.widget.setBackground({})
+    # theme = {d: f"ornate_frame_{d}" for d in ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE']}
+    theme : dict[str, QPixmap]= {}
+    for d in ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE']:
+      pm = getPixmap(f"ornate_frame_{d}")
+      pm = pm.scaled(int(pm.width()*0.25), int(pm.height()*0.25), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
+      theme[d] = μEffects.cBrightContrast(-0.2,2.0).apply(μEffects.cOpacity(0.75).apply(pm))
+    cls.widget.setBackground(theme)
+
+    main.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, cls.widget)
+    cls.widget.setFloating(True)
+    cls.widget.setVisible(False)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def addItems(cls, newItems):
+    if isinstance(newItems, (list,tuple)):
+      for i in newItems: cls.items.append(i)
+    else:
+      cls.items.append(newItems)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def clearItems(cls):
+    cls.items.clear()
+    cls.clearLayout()
+    cls.widget.setVisible(False)
+
+  # # # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # @classmethod
+  # def TESTITEMS(cls):
+  #   for i in range(10):
+  #     cls.addItems(cToolbarItem(str(i), {}, icon=QIcon(), enabled=True))
+  #   cls.sortLayout()
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def sortLayout(cls):
+    cls.clearLayout()
+    cls.widget.setVisible(True)
+    μSettings.toolbar.loadWidgetGeometry(cls.widget)
+    nrows = μSettings.toolbar.macroNRows()
+    ncols = μSettings.toolbar.macroNCols()
+    macroFillMissing = μSettings.toolbar.macroFillMissing()
+    fillRowsFirst= μSettings.toolbar.macroFillRowFirst()
+
+    cls.grid.setColumns(ncols)
+    cls.grid.setRows(ncols)
+    cls.grid.setFillRowsFirst(fillRowsFirst)
+    cls.items.sort(key=lambda item: item.index())
+
+    if macroFillMissing and cls.items:
+      indexed = {item.index(): item for item in cls.items}
+      slots = [indexed.get(i) or μToolbarItem(f"toolbar_{i}", {}, icon=QIcon(), enabled=False)
+               for i in range(1, max(indexed) + 1)]
+    else:
+      slots = cls.items
+
+    for item in slots:
+      cls.grid.addWidget(item)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def clearLayout(cls):
+    if cls.widget.isVisible():
+      μSettings.toolbar.saveWidgetGeometry(cls.widget)
+    cls.grid.clear()
+    cls.widget.setVisible(False)
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  T O O L B A R   I T E M
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μToolbarItem(μOrb):
   theme = None
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getTheme(cls):
     if cls.theme is None:
       cls.theme = μTheme_Toolbar()
     return cls.theme
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, toolbar, script, enabled=True, icon=None, names=frozenset(), commands=[]):
     self.trigger = toolbar
     title = toolbar.replace("_","").replace("toolbar", "")
@@ -53,10 +176,12 @@ class cToolbarItem(μOrb):
     self.commands = commands
     for step in script:
       self.clicked.connect(lambda checked=False, s=step: s())
-  
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def index(self):
     return int(self.text())
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def paintText(self, painter):
     if not self.text(): return
     if not self.textRendered:
@@ -84,127 +209,3 @@ class cToolbarItem(μOrb):
 
     textEffect = self.theme.textEffect.get(self._current_state, μEffects.cNone())
     painter.drawPixmap(self.rect(), textEffect.apply(self.textRendered))
-
-
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            T O O L B A R
-#                                  
-#   This is a hybrid class.
-#   One instance lives in cMainWindow. __init__ calls cSettings.setup.
-#   Anyone can add items via class method "addItems"
-#---------------------------------------------------------------------------------------------------------------
-class μToolbar(QWidget):
-  widgetID = "Toolbar"
-  items : list[cToolbarItem] = []
-  grid = None
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def setup(cls):
-    μSettings.toolbar._macroNCols.valueChanged.connect(cls.grid.setColumns)
-    μSettings.toolbar._macroNRows.valueChanged.connect(cls.grid.setRows)
-    μSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.grid.setFillRowsFirst)
-    μSettings.toolbar._macroNCols.valueChanged.connect(cls.sortLayout)
-    μSettings.toolbar._macroNRows.valueChanged.connect(cls.sortLayout)
-    μSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.sortLayout)
-    cls.grid.itemsSwapped.connect(cls.onItemsSwapped)
-    cls.widget.setVisible(False)
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def onItemsSwapped(cls, item_a, item_b):
-    if isinstance(item_a, cToolbarItem) and isinstance(item_b, cToolbarItem):
-      cls.main.macros.swapTriggers(item_a.trigger, item_b.trigger)
-
-  #----------------------------------------------------------------------------------------------------------
-  def __init__(self, main):
-    μToolbar.main = main
-    μToolbar._instantiateWidget(main)
-    super().__init__(main)
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def _instantiateWidget(cls, main):
-    cls.widget = μFloating("Toolbar", main)
-    cls.grid = μGrid(cls.widget)
-
-    cls.widget.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-    cls.widget.setTitleBarWidget(QWidget())
-    cls.widget.setLayout(newVLayout([cls.grid]))
-    # cls.widget.setBackground({})
-    # theme = {d: f"ornate_frame_{d}" for d in ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE']}
-    theme : dict[str, QPixmap]= {}
-    for d in ['NW', 'N', 'NE', 'W', 'E', 'SW', 'S', 'SE']:
-      pm = getPixmap(f"ornate_frame_{d}")
-      pm = pm.scaled(int(pm.width()*0.25), int(pm.height()*0.25), Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
-      theme[d] = μEffects.cBrightContrast(-0.2,2.0).apply(μEffects.cOpacity(0.75).apply(pm))
-    cls.widget.setBackground(theme)
-
-    main.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, cls.widget)
-    cls.widget.setFloating(True)
-    cls.widget.setVisible(False)
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def addItems(cls, newItems):
-    if isinstance(newItems, (list,tuple)):
-      for i in newItems: cls.items.append(i)
-    else:
-      cls.items.append(newItems)
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def clearItems(cls):
-    cls.items.clear()
-    cls.clearLayout()
-    cls.widget.setVisible(False)
-
-  # # #----------------------------------------------------------------------------------------------------------
-  # @classmethod
-  # def TESTITEMS(cls):
-  #   for i in range(10):
-  #     cls.addItems(cToolbarItem(str(i), {}, icon=QIcon(), enabled=True))
-  #   cls.sortLayout()
-  
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def sortLayout(cls):
-    cls.clearLayout()
-    cls.widget.setVisible(True)
-    μSettings.toolbar.loadWidgetGeometry(cls.widget)
-    nrows = μSettings.toolbar.macroNRows()
-    ncols = μSettings.toolbar.macroNCols()
-    macroFillMissing = μSettings.toolbar.macroFillMissing()
-    fillRowsFirst= μSettings.toolbar.macroFillRowFirst()
-
-    cls.grid.setColumns(ncols)
-    cls.grid.setRows(ncols)
-    cls.grid.setFillRowsFirst(fillRowsFirst)
-    cls.items.sort(key=lambda item: item.index())
-
-    if macroFillMissing and cls.items:
-      indexed = {item.index(): item for item in cls.items}
-      slots = [indexed.get(i) or cToolbarItem(f"toolbar_{i}", {}, icon=QIcon(), enabled=False)
-               for i in range(1, max(indexed) + 1)]
-    else:
-      slots = cls.items
-
-    for item in slots:
-      cls.grid.addWidget(item)
-
-  #----------------------------------------------------------------------------------------------------------
-  @classmethod
-  def clearLayout(cls):
-    if cls.widget.isVisible():
-      μSettings.toolbar.saveWidgetGeometry(cls.widget)
-    cls.grid.clear()
-    cls.widget.setVisible(False)
-
-
-
-
-    
-
-

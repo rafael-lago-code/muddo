@@ -24,16 +24,16 @@ from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
 from helpers.μPrint import μPrint
 from helpers.μImageFactory import *
 from helpers.μStrings import *
-from helpers.μAliases import cAliases
+from helpers.μAliases import μAliases
 from μSettings import μSettings
 from μSettingsProfile import μSettingsProfile
-from widgets.μToggler import μToggler
+from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
 from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt
 import glob, re, os, random
 from typing import TYPE_CHECKING
-from μMacrosDaemon import cMacrosDaemon
+from μMacrosDaemon import μMacrosDaemon
 from widgets.μIconSelectDialog import μIconSelectDialog
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
@@ -203,7 +203,7 @@ class μMacros(μToggler):
     self.toActivate = None
     self.main = main
 
-    self.daemon = cMacrosDaemon(self.main)
+    self.daemon = μMacrosDaemon(self.main)
 
     self.btnNewSet      = μOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
     self.btnDeleteSet   = μOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
@@ -414,14 +414,14 @@ class μMacros(μToggler):
     for k in data.keys():
       self.addAlias(k, data[k])
     self._aliasLoading = False
-    cAliases.set(data)
+    μAliases.set(data)
 
   #----------------------------------------------------------------------------------------------------------
   def saveAlias(self):
     d = self.getAliases()
     filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
     json.dump(d, open(filename,'w'), cls=muJSONEncoder)
-    cAliases.set(d)
+    μAliases.set(d)
 
   #----------------------------------------------------------------------------------------------------------
   def getAliases(self):

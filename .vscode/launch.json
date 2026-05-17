@@ -8,7 +8,8 @@
       "name": "Python Debugger: Python File",
       "type": "debugpy",
       "request": "launch",
-      "program": "/home/soul/share/μddo/μDDO"
+      "python": "/home/soul/share/μddo/env/μddo/bin/python",
+      "program": "/home/soul/share/μddo/μDDO.py"
     }
   ]
 }

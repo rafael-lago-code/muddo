@@ -26,11 +26,15 @@ from PyQt6.QtCore import QRunnable, QObject, pyqtSignal
 from helpers.μImageFactory import *
 import xml.dom.minidom
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  W O R L D
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μWorld(QObject):
   DOWN  = -1
   UNKNOWN = 0
   UP = 1
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, combo, name, chatServer, statusServer, index):
     super().__init__()
     self.name = name
@@ -45,7 +49,7 @@ class μWorld(QObject):
     self.tooltip  = f"<i>Fetching...</i>"
     self.update()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def update(self, checkStatus=False):
     self.combo.setItemText(self.index, self.name)
     if checkStatus: self.checkStatus()
@@ -70,12 +74,14 @@ class μWorld(QObject):
     # self.setToolTip(tooltip)
     # super().setText(name)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def checkStatus(self):
     wc = tWorldChecker(self)
     QtCore.QThreadPool.globalInstance().start(wc)
 
-#----------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  W O R L D   L I S T 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cWorldList(QComboBox):
   sigWorldUpdated = pyqtSignal(bool)
   defaultWorlds = ["Cormyr [US]", "Moonsea [EU]", "Shadowdale [US]", "Thrane [US]"]
@@ -93,19 +99,19 @@ class cWorldList(QComboBox):
     
     self.currentIndexChanged.connect(self.update)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addItem(self, world : μWorld):
     return super().addItem(getIcon(P_ICON_NONE), world.name, world)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def currentItem(self):
     return self.currentData()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def update(self):
     self.setToolTip(self.currentItem().tooltip)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateWorld(self, data : tuple):
     name, chatServer, statusServer = data
     if name in self.worlds.keys():
@@ -120,12 +126,19 @@ class cWorldList(QComboBox):
     self.sigWorldUpdated.emit(True)
 
 
-#----------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  W O R L D   C H E C K E R
+#   
+#     TODO implement this using threading
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class tWorldChecker(QRunnable):
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, world):
     super().__init__()
     self.world = world
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def run(self):
     try:
       webservice, post = getConnection(self.world.statusServer)

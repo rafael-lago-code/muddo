@@ -22,7 +22,7 @@ from PyQt6.QtCore import pyqtSignal, Qt, QObject, QEvent
 from PyQt6.QtCore import QFileSystemWatcher
 from PyQt6.QtGui import QPainter, QColor
 from helpers.μImageFactory import *
-from widgets.μToggler import μToggler
+from widgets.μFloating import μToggler
 from datetime import datetime
 import sys
 

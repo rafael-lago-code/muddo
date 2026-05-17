@@ -23,15 +23,10 @@ from PyQt6.QtCore import QModelIndex, Qt, pyqtSignal
 from PyQt6.QtGui import QStandardItem, QStandardItemModel
 from helpers.util import *
 from typing import TYPE_CHECKING
-# if TYPE_CHECKING:
-#    from cMacrosDaemon import cMacrosDaemon
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                         C H E C K   C O M B O
-#
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  C H E C K   C O M B O
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μCheckCombo(QComboBox):
   changed = pyqtSignal()
 
@@ -47,7 +42,7 @@ class μCheckCombo(QComboBox):
     self.view().pressed.connect(self.onPressed)
     self.rowModel.itemChanged.connect(self.onItemChanged)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onPressed(self, index: QModelIndex):
       item = self.rowModel.itemFromIndex(index)
       if not item:
@@ -68,7 +63,7 @@ class μCheckCombo(QComboBox):
       self.refreshHeader()
       self.changed.emit()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def hidePopup(self):
     if self.blockHide:
       self.blockHide = False
@@ -77,11 +72,11 @@ class μCheckCombo(QComboBox):
     self.refreshHeader()
     super().hidePopup()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setCurrentIndex(self, index):
     super().setCurrentIndex(0)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addCheckItem(self, text: str, checked: bool = True):
     for i in range(1, self.rowModel.rowCount()):
       if self.rowModel.item(i).text() == text:
@@ -100,23 +95,23 @@ class μCheckCombo(QComboBox):
     self.refreshHeader()
     self.rowModel.itemChanged.connect(self.onItemChanged)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getChecked(self) -> list:
     return [self.rowModel.item(i).text()
             for i in range(1, self.rowModel.rowCount())
             if self.rowModel.item(i).checkState() == Qt.CheckState.Checked]
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def areAllChecked(self) -> bool:
     total = self.rowModel.rowCount() - 1
     return total == 0 or len(self.getChecked()) == total
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onItemChanged(self, item):
     self.refreshHeader()
     self.changed.emit()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refreshHeader(self):
     checked = self.getChecked()
     nitems   = self.rowModel.rowCount() - 1

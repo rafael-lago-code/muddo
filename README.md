@@ -50,16 +50,13 @@ Currently implemented features:
       - improve pets reachability
         - for {r} ranges (i.e. "if pet exists, cast this spell on it")
         - support healing and ressurrecting of pets (currently only players work)
-
     - UI improvements
       - create context menu with all existing macros (so that they don't need a keyboard shortcut)
       - vizualize keyboard with its macros
   - Strategy
     - detect party leader
-    - implement overrideFlag() and setFlag() macros
-    - implement withFlag() macro: sets a flag to a value only when executing the next commands; once they are done, restore the flag to its original value
-      - VERY useful for doing things as "withFlag(followSelect=false), selectA, executeA, selectB, executeB, ...", to prevent following the leader from ruining target selection
-    - implement "mimicNPC"
+    - implement "save" reserved word for strateg() command
+    - implement "followDialogue"
     - implement "closeExplorerJournals"
       - OnExplorer event is for something else, explorer journals seem to have no property, they are not fired when OnSelectedObject... I have no idea how to proceed here.
     - test better behaviour when leader is in another computer

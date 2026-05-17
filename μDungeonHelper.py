@@ -21,7 +21,7 @@ from __future__ import annotations
 from μProcess import aProcessItem
 from μSettings import μSettings
 from helpers.χHelper import χHelper
-from helpers.μTop import μTop
+from helpers.χTop import χTop
 import subprocess
 import os, time, threading
 from widgets.μOrb import μOrb
@@ -125,9 +125,9 @@ class μDungeonHelper(aProcessItem):
     def _watchPIDThread(self, baseExec):
       startTime = time.time()
       while True:
-        candidates = μTop.getByCommand(baseExec)
+        candidates = χTop.getByCommand(baseExec)
         for c in candidates:
-          if μTop.getCommand(c).startswith('C:\\'):
+          if χTop.getCommand(c).startswith('C:\\'):
             self.sigGotPID.emit(str(c))
             self.sigChangeRequest.emit(self.status) # just to refresh
             return c
@@ -174,7 +174,7 @@ class μDungeonHelper(aProcessItem):
   def terminate(self):
     super().terminate()
     baseExec = os.path.basename(μSettings.plugins.dhExec())
-    μTop.terminateAll(baseExec)
+    χTop.terminateAll(baseExec)
     self.clear()
   
   #----------------------------------------------------------------------------------------------------------
@@ -194,7 +194,7 @@ class μDungeonHelper(aProcessItem):
     super().kill()
     baseExec = os.path.basename(μSettings.plugins.dhExec())
     μPrint.warning(f"Killing all processes containing {baseExec}...")
-    μTop.killAll(baseExec)
+    χTop.killAll(baseExec)
     self.clear()
 
   #----------------------------------------------------------------------------------------------------------

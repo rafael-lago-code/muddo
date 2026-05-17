@@ -23,7 +23,7 @@ from μProcess import aProcessItem
 from μSettings import μSettings
 from μAuthenticator import μAuthenticator
 from helpers.χHelper import χHelper, windowData
-from helpers.μTop import μTop
+from helpers.χTop import χTop
 import subprocess
 import os, time, glob, threading
 from helpers.μImageFactory import *
@@ -33,7 +33,9 @@ if TYPE_CHECKING:
    from μMainWindow import μMainWindow
    from μWorlds import μWorld
 
-#----------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  D D O
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μDDO(aProcessItem):
   sigAuthenticating = pyqtSignal(str)
   sigAuthenticated = pyqtSignal(str)
@@ -64,10 +66,15 @@ class μDDO(aProcessItem):
 
     self.sigRunning.connect(self.watchPID)
     self.sigGotPID.connect(self.watchWinID)
-    self.sigGotWinID.connect(lambda : self.setStatus(self.status))
-    self.sigGotWinID.connect(lambda x: self.restoreWindow())
+    self.sigGotWinID.connect(self._onGotWinID)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _onGotWinID(self, winID):
+    self.winID.setText(winID)
+    self.setStatus(self.status)
+    self.restoreWindow()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setStatus(self, newStatus):
     _oldstatus = self.status
     if self.status != newStatus:
@@ -92,7 +99,7 @@ class μDDO(aProcessItem):
     if _oldstatus != self.status: self.sigStatusChanged.emit(self.status)
     self.updateTooltip()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def launch(self):
     if self.status == aProcessItem.P_STATUS_RUNNING: return
     t = threading.Thread(target=self._launchThread, daemon=True)
@@ -100,7 +107,7 @@ class μDDO(aProcessItem):
     μPrint.info(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
                       {self.worldname.text()}</font>...")
     
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _launchThread(self):
     self.auth = μAuthenticator(self)
     self.sigChangeRequest.emit(self.P_STATUS_AUTHENTICATING)
@@ -146,31 +153,28 @@ class μDDO(aProcessItem):
     else:
       self.sigChangeRequest.emit(self.P_STATUS_TERMINATED)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def watchWinID(self):
-    def validateWinID(pid : int, winIDList : list):
-      xh = χHelper()
-      if int(self.pid.text()) != pid:
-        print(" --------------> watchWinID: ERROR WRONG PID!!!")
-        return
-      worldPrefix = self.world.name.split(" ")[0]
-      for w in winIDList:
-        title = xh.getWindowTitle(w)
-        if title == 'Dungeons and Dragons Online' or worldPrefix in title:
-          self.winID.setText(str(w))
-          self.sigGotWinID.emit(str(w))
-    xh = χHelper()
-    xh.sigGotWinID.connect(validateWinID)
-    xh.requestWinID(self.pid.text(), 10.0)
+    pid = self.pid.text()
+    def _thread():
+      winIDList = χHelper.waitWinID(pid, 10.0)
+      if winIDList: # validateWinID
+        worldPrefix = self.world.name.split(" ")[0]
+        for w in winIDList:
+          title = χHelper.getWindowTitle(w)
+          if title == 'Dungeons and Dragons Online' or worldPrefix in title:
+            self.sigGotWinID.emit(str(w))
+            break
+    threading.Thread(target=_thread, daemon=True).start()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def watchPID(self):
     def _watchPIDThread(self):
       startTime = time.time()
       while True:
-        candidates = μTop.getByCommand(self.auth.subscription)
+        candidates = χTop.getByCommand(self.auth.subscription)
         for c in candidates:
-          if μTop.getCommand(c).startswith(μDDO.gameExec):
+          if χTop.getCommand(c).startswith(μDDO.gameExec):
             self.sigGotPID.emit(str(c))
             self.sigChangeRequest.emit(self.status)
             return c
@@ -182,7 +186,7 @@ class μDDO(aProcessItem):
     t = threading.Thread(target=_watchPIDThread, args=(self,), daemon=True)
     t.start()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioToggle(self):
     if self.pid.text().isdigit():
       if χHelper.audioQueryMuted(self.pid.text()):
@@ -190,21 +194,21 @@ class μDDO(aProcessItem):
       else:
         self.audioMute()  
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioMute(self):
     if self.pid.text().isdigit():
       μPrint.info(f"{C_SILVER}Muting</font> {self.pid.text()}...")
       χHelper.audioMute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_UNMUTE))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioUnmute(self):
     if self.pid.text().isdigit():
       μPrint.info(f"{C_SILVER}Unmuting</font> {self.pid.text()}...")
       χHelper.audioUnmute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateTooltip(self):
     text = "<i>Not yet authenticated...</i>"
     if self.auth:
@@ -220,40 +224,39 @@ class μDDO(aProcessItem):
         pass
     self.setToolTip(text)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
-    xh = χHelper()
-    winData = xh.getWindowsData(int(self.winID.text()))
+    winData = χHelper.getWindowsData(int(self.winID.text()))
     prefs = self.frozenProfile.session.windowsPreferences
     prefs[self.username.text()] = (winData.posx, winData.posy, winData.width, winData.height, winData.desktop, winData.borderless, winData.audio, False)
     self.frozenProfile.session.setWindowsPreference(prefs)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def restoreWindow(self):
     if self.status != self.P_STATUS_RUNNING: return
+    if not self.winID.text().isdecimal(): return
     winID = int(self.winID.text())
     prefs = self.frozenProfile.session.windowsPreferences
     if self.username.text() not in prefs:
       return
     winData = windowData(prefs[self.username.text()])
-    xh = χHelper()
     if self.frozenProfile.xsettings.position():
-      xh.moveWindow(winID, winData.posx, winData.posy)
+      χHelper.moveWindow(winID, winData.posx, winData.posy)
     if self.frozenProfile.xsettings.size():
-      # xh.resizeWindow(winID, winData.posx, winData.posy)
+      # χHelper.resizeWindow(winID, winData.posx, winData.posy)
       μPrint.warning(f"[cDDO] resizing window not yet implemented")
     if self.frozenProfile.xsettings.desktop():
-      xh.moveVirtualDesktop(winID, winData.desktop)
-    
+      χHelper.moveVirtualDesktop(winID, winData.desktop)
+
     if self.frozenProfile.xsettings.border() == "Remember":
-      if winData.borderless: xh.setBorderless(winID)
-      else: xh.setBorderyes(winID)
+      if winData.borderless: χHelper.setBorderless(winID)
+      else: χHelper.setBorderyes(winID)
     elif self.frozenProfile.xsettings.border().startswith("Always"):
-      xh.setBorderless(winID)
+      χHelper.setBorderless(winID)
     elif self.frozenProfile.xsettings.border().startswith("Never"):
-      xh.setBorderyes(winID)
-    
+      χHelper.setBorderyes(winID)
+
     if self.frozenProfile.xsettings.audio() == "Remember":
       if winData.audio: self.audioUnmute()
       else: self.audioMute()
@@ -269,15 +272,15 @@ class μDDO(aProcessItem):
       self.logShow()
     elif self.frozenProfile.xsettings.audio().startswith("Never"):
       self.logHide()
-  
-    if self.frozenProfile.xsettings.blackscreenFix():
-      xh.remapWindow(winID)  # to verify if works
 
-  #----------------------------------------------------------------------------------------------------------
+    if self.frozenProfile.xsettings.blackscreenFix():
+      χHelper.remapWindow(winID)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getLogFilename(self):
     return f"{P_DEFAULT_LOGSDIR}/ddoLog_{self.username.text()}.txt"
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseArguments(self):
     arg = self.auth.credentials.serverInfo.gameClientArgTemplate
     arg = arg.replace("{LOGIN}", self.world.loginServer)
@@ -291,12 +294,12 @@ class μDDO(aProcessItem):
       arg += " --HighResOutOfDate"
     return arg
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def isCMD(line) -> bool:
     return line.startswith(μDDO.gameExec)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def createFromOrphan(main : μMainWindow, pid : int, cmdline : str) -> μDDO:
     cmdline = cmdline.split(' ')

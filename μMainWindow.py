@@ -33,6 +33,7 @@ from μToolbar import μToolbar
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
+from helpers.χHelper import χHelper
 
 class μMainWindow(QMainWindow):
   P_POS_X = 100
@@ -122,6 +123,7 @@ class μMainWindow(QMainWindow):
     self.credentials.initialize()
     self.macros.initialize()
     self.patch.initialize()
+    χHelper.setup()
     μMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
     μToolbar.setup()

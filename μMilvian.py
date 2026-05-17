@@ -19,17 +19,16 @@
 #
 import sys, mmap, time, struct
 import os, threading, json, re, random
-from enum import IntFlag
-from typing import TYPE_CHECKING
-from helpers.μMilvianPacket import cMilvianPacket, cPacker, cPhonyPacket, packetCommand, packetStatus, packetSignal
+from helpers.μMilvianPacket import μMilvianPacket, cPacker, cPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
 from helpers.μPrint import μPrint
-from helpers.μDispatcher import cDispatcher
+from helpers.χDispatcher import χDispatcher, χSignal
 from helpers.util import *
 from helpers.μStrings import *
-from helpers.μStrings import cString
-from helpers.μAliases import cAliases
+from helpers.μStrings import μString
+from helpers.μAliases import μAliases
 from helpers.χHelper import χHelper
+from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from μSettings import μSettings
 
@@ -39,71 +38,50 @@ P_RESPONSE_CBUFFER_BEGIN = 64
 P_RESPONSE_WRITER_POS    = 4
 P_RESPONSE_READER_POS    = 0
 
-# ---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  P A R S E   C O M M A N D 
 #
-#                                   C O M M A N D   P A R S I N G
-#
-# Module-level helpers: build packets from strings/lists without sending.
-# Used by cMilvian.execute() and internally by the list/ordered-actor builders.
-#
-# ---------------------------------------------------------------------------------------------------------------
-def parseCommand(cmd: str, bridge) -> cMilvianPacket:
+#    Module-level helpers: build packets from strings/lists without sending.
+#    Used by cMilvian.execute() and internally by the list/ordered-actor builders.
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+def parseCommand(cmd: str, bridge) -> μMilvianPacket:
   # Parses a command string into a packet. Handles comma-separated lists and brace expansion. Does not send.
-  cmd = cString(cmd.strip())
+  cmd = μString(cmd.strip())
 
   parts = cmd.split(',')
   if len(parts) > 1: return parseList(bridge, parts)
 
   expanded = cmd.expand()
   if len(expanded) > 1: return parseList(bridge, expanded)
-  cmd = cString(expanded[0])
-  for k, a in cAliases.get().items():
-    cmd = cString(cmd.replace(k, a))
+  cmd = μString(expanded[0])
+  for k, a in μAliases.get().items():
+    cmd = μString(cmd.replace(k, a))
 
   parts = cmd.split(',')
   if len(parts) > 1: return parseList(bridge, parts)
   expanded = cmd.expand()
   if len(expanded) > 1: return parseList(bridge, expanded)
-  cmd = cString(expanded[0].lower())
+  cmd = μString(expanded[0].lower())
 
-  if cmd == 'sleep_*': return cMilvianPacket(packetCommand.sleep, bridge, struct.pack("<f", float(cmd[6:])))
-  if cmd == 'chat(*)': return cMilvianPacket(packetCommand.chat, bridge, cPacker.pack(cmd[5:-1]))
-  if cmd == 'strategy(*)':       return _parseStrategy(cmd, bridge)
-  if cmd == 'pausestrategy(*)':  return _parseStrategy(cmd, bridge, packetCommand.pauseStrategy)
-  if cmd == 'resumestrategy(*)': return _parseStrategy(cmd, bridge, packetCommand.resumeStrategy)
-  if cmd == 'togglestrategy(*,*)':
-    content  = cmd[cmd.index('(')+1:-1]
-    parts    = splitGroups(content)
-    flagName = ''
-    overrides = {}
-    for p in parts[1:]:
-      if '=' in p:
-        k, v = p.split('=', 1)
-        overrides[k.strip()] = v.strip()
-      else:
-        flagName = p.strip()
-    if not flagName:
-      return _parseStrategy({'filename': parts[0], **overrides}, bridge, packetCommand.toggleStrategy)
-    patchJson = json.dumps(overrides) if overrides else ''
-    inData  = cPacker.packString(flagName)
-    inData += cPacker.packString(patchJson)
-    return cMilvianPacket(packetCommand.toggleFlag, bridge, inData)
-  if cmd == 'togglestrategy(*)': return _parseStrategy(cmd, bridge, packetCommand.toggleStrategy)
-  if cmd == 'debug(*)': return cMilvianPacket(packetCommand.debug, bridge, cPacker.pack(cmd[6:-1]))
-  if cmd == 'ordered(*)': return _parseOrderedActors(cmd, bridge)
-
-  if cmd == 'enterportal': return cMilvianPacket(packetCommand.enterPortal, bridge)
-  if cmd == 'closeexplorerjournal': return cMilvianPacket(packetCommand.closeExplorerJournal, bridge)
-  if cmd == 'select(*)': return cMilvianPacket(packetCommand.selectEntity, bridge, cPacker.packString(cmd[7:-1]))
+  if cmd == 'sleep_*': return μMilvianPacket(packetCommand.sleep, bridge, struct.pack("<f", float(cmd[6:])))
+  if cmd == 'chat(*)': return μMilvianPacket(packetCommand.chat, bridge, cPacker.pack(cmd[5:-1]))
+  if cmd == 'strategy(*)': return _parseStrategy(cmd, bridge)
+  if cmd == 'debug(*)':    return μMilvianPacket(packetCommand.debug, bridge, cPacker.pack(cmd[6:-1]))
+  if cmd == 'ordered(*)':  return _parseOrdered(cmd, bridge)
+  if cmd == 'enterportal': return μMilvianPacket(packetCommand.enterPortal, bridge)
+  if cmd == 'select(*)':   return μMilvianPacket(packetCommand.selectEntity, bridge, cPacker.packString(cmd[7:-1]))
+  if cmd == 'closeexplorerjournal': return μMilvianPacket(packetCommand.closeExplorerJournal, bridge)
   if cmd in μMilvian.inputActions:
     inData = μMilvian.inputActions[cmd] + struct.pack('<I', 10000)
-    return cMilvianPacket(packetCommand.inputaction, bridge, inData)
+    return μMilvianPacket(packetCommand.inputaction, bridge, inData)
 
   # Fall back to namedAction — C# will resolve the name (supports * wildcards)
-  return cMilvianPacket(packetCommand.namedaction, bridge, cPacker.pack(cmd))
+  return μMilvianPacket(packetCommand.namedaction, bridge, cPacker.pack(cmd))
 
-# ----------------------------------------------------------------------------------------------------------
-def parseList(bridge, data) -> cMilvianPacket:
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  P A R S E   L I S T 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+def parseList(bridge, data) -> μMilvianPacket:
   # Builds a list packet from a list of command strings. Unwraps single-element lists. Does not send.
   while isinstance(data, (list, tuple)) and len(data) == 1: data = data[0]
   if not isinstance(data, (list, tuple)): return parseCommand(data, bridge)
@@ -114,10 +92,12 @@ def parseList(bridge, data) -> cMilvianPacket:
   for item in data:
     packed = parseCommand(item, bridge).pack()  # id(4) + command(4) + payload
     inData += struct.pack('<I', len(packed) - 4) + packed[4:]  # drop id, prepend length
-  return cMilvianPacket(packetCommand.list, bridge, inData)
+  return μMilvianPacket(packetCommand.list, bridge, inData)
 
-# ----------------------------------------------------------------------------------------------------------
-def _parseOrderedActors(cmd: str, bridge) -> cMilvianPacket:
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  P A R S E   O R D E R E D   A C T O R S
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+def _parseOrdered(cmd: str, bridge) -> μMilvianPacket:
   # Parses an ordered(...) string into an orderedActors packet. Does not send.
   fields = [s.strip('"') for s in splitGroups(cmd.strip()[8:-1], ',')]
   if len(fields) < 3:
@@ -127,46 +107,57 @@ def _parseOrderedActors(cmd: str, bridge) -> cMilvianPacket:
   filterTargets = fields[4] if len(fields) > 4 else ""
   return _buildOrderedActors(bridge, fields[0], fields[1], fields[2], filterActors, filterTargets)
 
-# Known strategy setting keys that map to JSON fields in the .strategy file
-_STRATEGY_SETTING_KEYS = {
-  'class', 'captain', 'commander', 'leader', 'stopDistance', 'refreshIntervalMs',
-  'followMount', 'followRecall', 'acceptParty', 'acceptRess', 'acceptQuest',
-  'closeExplorerJournal', 'followJump', 'followSelect', 'followAttack', 'followPortal', 'followDirection',
-  'autonomyTime',
-}
 
-# ----------------------------------------------------------------------------------------------------------
-# Packet layout:
-#   [4+N] str   filename   – full path to .strategy file; empty string = no file
-#   [4+N] str   patchJson  – partial JSON overrides; empty string = no overrides
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  P A R S E   S T R A T E G Y
 #
-# strategy(filename='default')                    → load file, launch
-# strategy(filename='default', followPortal=false) → load file, override flags, launch
-# strategy(followPortal=false)                    → override flags on running strategy
-def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> cMilvianPacket:
+#    Packet layout:
+#      [4+N] str   filename – full path to .strategy file; empty = no file
+#      [4+N] str   args     – remaining args verbatim (e.g. "flag1, flag2, flag3")
+#
+#    strategy(directives=blabla, flag1, flag2, flag3)
+#      → filename=/home/.../strategy/blabla.strategy  args="flag1, flag2, flag3"
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPacket:
   if isinstance(cmd, str):
     idx = cmd.index('(')
-    content = cmd[idx+1:-1].strip()
-    cmd = {'filename': content} if content and '=' not in content else cString(content).dictionary()
+    content = μString.dictionary(cmd[idx+1:-1].strip())
+  else:
+    pass # assume it is a dict already
 
-  filename = cmd.get('filename', '')
-  if filename and not filename.startswith('/'):
-    filename = os.path.join(P_DEFAULT_CONFIGDIR, 'strategy', filename + '.strategy')
+  directives = ""
+  if "toggle" in content.keys(): content['action'] = 'toggle'; del content['toggle']
+  if "set" in content.keys():    content['action'] = 'set';    del content['set']
+  if "resume" in content.keys(): content['state']  = 'resume'; del content['resume']
+  if "pause" in content.keys():  content['state']  = 'pause';  del content['pause']
+  if "directives" in content.keys(): directives = content['directives']; del content['directives']
 
-  overrides = {k: v for k, v in cmd.items() if k in _STRATEGY_SETTING_KEYS and k != 'filename'}
-  patchJson = json.dumps(overrides) if overrides else ''
+  if not directives: 
+    # if not tagged explicitly, then it HAS to be the first word
+    idx = cmd.index('(')
+    directives = μString(μString.split(cmd[idx+1:-1].strip(),",")[0])
+    if directives == ("*=*","_","set","toggle","resume","pause"): directives=""
+    else: del content[directives]
 
-  inData  = cPacker.packString(filename)
-  inData += cPacker.packString(patchJson)
-  return cMilvianPacket(command, bridge, inData)
+  if directives and not directives.startswith('/'):
+    # TODO needs to do this smartly; check if file exists, and if relative paths were passed
+    directives = os.path.join(P_DEFAULT_CONFIGDIR, 'strategy', directives + '.strategy')
 
-# ----------------------------------------------------------------------------------------------------------
-def _buildOrderedActors(bridge, actors, targets, action, filterActors="", filterTargets="") -> cMilvianPacket:
+  args = ', '.join(f'{k.strip()}={v.strip()}' if (v is not True and v is not None) else k.strip() for k, v in content.items())
+  print(f" DEBUG STRATEGY: {directives}\n{args}")
+  inData  = cPacker.packString(directives)
+  inData += cPacker.packString(args)
+  return μMilvianPacket(command, bridge, inData)
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  B U I L D   O R D E R E D   A C T O R S
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+def _buildOrderedActors(bridge, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
   # Builds an orderedActors packet from parsed arguments. Does not send.
   if isinstance(actors,  str): actors  = [a.strip() for a in actors.split(',')  if a.strip()]
   if isinstance(targets, str): targets = [t.strip() for t in targets.split(',') if t.strip()]
 
-  if not isinstance(action, cMilvianPacket):
+  if not isinstance(action, μMilvianPacket):
     action = parseList(bridge, action) if isinstance(action, (list, tuple)) else parseCommand(action, bridge)
 
   inData  = cPacker.pack(actors)
@@ -174,29 +165,13 @@ def _buildOrderedActors(bridge, actors, targets, action, filterActors="", filter
   inData += cPacker.pack(filterActors)
   inData += cPacker.pack(filterTargets)
   inData += cPacker.pack(action)
-  return cMilvianPacket(packetCommand.orderedActors, bridge, inData)
+  return μMilvianPacket(packetCommand.orderedActors, bridge, inData)
 
-# ---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  M I L V I A N 
 #
-#
-#                                            M I L V I A N
-#
-#
-# ---------------------------------------------------------------------------------------------------------------
-def _resolveSelf(cmd):
-  name = μMilvianSelf.getFocusedName()
-  if not name: return cmd
-  if isinstance(cmd, str):          return re.sub(r'\bself\b', name, cmd)
-  if isinstance(cmd, (list,tuple)): return [re.sub(r'\bself\b', name, c) if isinstance(c, str) else c for c in cmd]
-  return cmd
-
-def _resolveAny(cmd):
-  name = μMilvianSelf.getRandomName()
-  if not name: return cmd
-  if isinstance(cmd, str):          return re.sub(r'\bany\b', name, cmd)
-  if isinstance(cmd, (list,tuple)): return [re.sub(r'\bany\b', name, c) if isinstance(c, str) else c for c in cmd]
-  return cmd
-
+#     The star of the show.
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMilvian():
   _lastAlive = False
   charName   = None
@@ -205,7 +180,7 @@ class μMilvian():
   responseDaemonStopSignal = None
   id = 0
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setup(cls):
     from μSettings import μSettings
@@ -216,7 +191,7 @@ class μMilvian():
     cls.setBridgePath(shmPath)
     cls.getInputActions(dhPath)
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getInputActions(cls, dhpath):
     if cls.inputActions: return
@@ -238,24 +213,24 @@ class μMilvian():
         ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
     cls.inputActions = ia
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setBridgePath(cls, path):
     cls.bridgePath = path
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def printInputActions(cls):
     if not cls.inputActions: cls.getInputActions()
     μPrint.debug(cls.inputActions.keys())
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def isInputAction(cls, cmd: str):
     if not cls.inputActions: cls.getInputActions()
     return cmd in cls.inputActions.keys()
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, bridgePath: str):
     super().__init__()
     self.charName    = None
@@ -272,7 +247,8 @@ class μMilvian():
       return
 
     self.responseDaemonStopSignal = threading.Event()
-    cDispatcher.connect((self.id, packetSignal.gotData), self.parseData)
+    self.χigGotData = χSignal()
+    self.χigGotData.connect(self.parseData)
     self.responseDaemonThread = tStoppableThread(stopper=self.responseDaemonStopSignal, target=self.responseDaemon, daemon=True)
     self.responseDaemonThread.start()
 
@@ -291,13 +267,13 @@ class μMilvian():
     self._lastAlive = True
     μPrint.info(f"[cMilvian] got charName {C_SILVER}\"{self.charName}\"</font> for {os.path.basename(bridgePath)}")
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def close(self):
     if self.responseDaemonStopSignal is None: return
     self.responseDaemonStopSignal.set()
     self.responseDaemonThread.join(timeout=0.1)
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def responseDaemon(self) -> bool:
     try:
       with open(self.pathResponse, 'r+b') as fdResponse:
@@ -320,14 +296,14 @@ class μMilvian():
             return False
 
           rawData = μMilvian.readCircularBuffer(mmResponse, readerPos+4, lenMessage)
-          cDispatcher.emit((self.id, packetSignal.gotData), rawData)
+          self.χigGotData.emit(rawData)
           μMilvian.setResponseReaderPos(mmResponse, readerPos+4+lenMessage)
 
     except Exception as e:
       print(f" EXCEPTION: {e}")
     return True
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def readCircularBuffer(mmResponse: mmap, pos: int, nbytes: int) -> bytes:
     pos = P_RESPONSE_CBUFFER_BEGIN + (pos - P_RESPONSE_CBUFFER_BEGIN) % (P_SHM_SIZE - P_RESPONSE_CBUFFER_BEGIN)
@@ -342,84 +318,72 @@ class μMilvian():
       # data += mmResponse[P_RESPONSE_CBUFFER_BEGIN:secondChunk]
     return data
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def setResponseReaderPos(mmResponse, pos: int):
     epos = P_RESPONSE_CBUFFER_BEGIN + (pos - P_RESPONSE_CBUFFER_BEGIN) % (P_SHM_SIZE - P_RESPONSE_CBUFFER_BEGIN)
     mmResponse[P_RESPONSE_READER_POS:P_RESPONSE_READER_POS+4] = struct.pack('<I', epos)
     mmResponse.flush()
 
-  # ----------------------------------------------------------------------------------------------------------
-  def parseResponse(self, packet: cMilvianPacket):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def parseResponse(self, packet: μMilvianPacket):
     μPrint.debug(f"[cMilvian.parseResponse]:\n{packet}")
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseData(self, rawData: bytes):
     id = rawData[0:4]
-    if cDispatcher.contains((self.id, id, packetSignal.gotResponse)):
-      cDispatcher.emit((self.id, id, packetSignal.gotResponse), rawData)
+    if id in self.knownPackets:
+      self.knownPackets.pop(id).χigResponse.emit(rawData)
       return
 
-    packet = cMilvianPacket(packetCommand.unrequested, self)
+    packet = μMilvianPacket(packetCommand.unrequested, self)
     packet.id     = id
     packet.status = packetStatus(rawData[4:8])
     packet.outData    = rawData[12:] if len(rawData) > 12 else None
     packet.outMessage = [packet.status.name, packet.outData.decode('utf-8') if packet.outData else None]
     μPrint.info(f"[cMilvian.parseData] Unhandled packet: {packet}")
 
-  # ----------------------------------------------------------------------------------------------------------
-  #
-  #                               C O M M A N D   M E T H O D S
-  #
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  #   ❖  Milvian Commands
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def debug(self, subcmd: str = "selected") -> μMilvianPacket:
+    return self.send(μMilvianPacket(packetCommand.debug, self, cPacker.pack(subcmd)))
 
-  def debug(self, subcmd: str = "selected") -> cMilvianPacket:
-    return self.send(cMilvianPacket(packetCommand.debug, self, cPacker.pack(subcmd)))
-
-  def inputAction(self, cmd: str, timeout: int = 10000) -> cMilvianPacket:
+  def inputAction(self, cmd: str, timeout: int = 10000) -> μMilvianPacket:
     inData = μMilvian.inputActions[cmd.lower()]
     if timeout > 0: inData += struct.pack('<I', timeout)
-    return self.send(cMilvianPacket(packetCommand.inputaction, self, inData))
+    return self.send(μMilvianPacket(packetCommand.inputaction, self, inData))
 
-  def sleep(self, nsec: float) -> cMilvianPacket:
-    return self.send(cMilvianPacket(packetCommand.sleep, self, struct.pack("<f", float(nsec))))
+  def sleep(self, nsec: float) -> μMilvianPacket:
+    return self.send(μMilvianPacket(packetCommand.sleep, self, struct.pack("<f", float(nsec))))
 
-  def chat(self, text: str) -> cMilvianPacket:
-    return self.send(cMilvianPacket(packetCommand.chat, self, cPacker.pack(text)))
+  def chat(self, text: str) -> μMilvianPacket:
+    return self.send(μMilvianPacket(packetCommand.chat, self, cPacker.pack(text)))
   
-  def strategy(self, data: dict) -> cMilvianPacket:
+  def strategy(self, data: dict) -> μMilvianPacket:
     return self.send(_parseStrategy(data, self))
 
-  def pauseStrategy(self, data: dict = {}) -> cMilvianPacket:
-    return self.send(_parseStrategy(data, self, packetCommand.pauseStrategy))
-
-  def resumeStrategy(self, data: dict = {}) -> cMilvianPacket:
-    return self.send(_parseStrategy(data, self, packetCommand.resumeStrategy))
-
-  def toggleStrategy(self, data: dict = {}) -> cMilvianPacket:
-    return self.send(_parseStrategy(data, self, packetCommand.toggleStrategy))
-
-  def query(self, command) -> cMilvianPacket:
+  def query(self, command) -> μMilvianPacket:
     cmd = command if isinstance(command, packetCommand) else packetCommand[str(command)]
-    return self.send(cMilvianPacket(cmd, self))
+    return self.send(μMilvianPacket(cmd, self))
 
-  def orderedActors(self, actors, targets, action, filterActors="", filterTargets="") -> cMilvianPacket:
+  def orderedActors(self, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
     return self.send(_buildOrderedActors(self, actors, targets, action, filterActors, filterTargets))
 
-  def execute(self, cmd) -> cMilvianPacket:
+  def execute(self, cmd) -> μMilvianPacket:
     # Sends any command: a string, a list of strings, or a cMilvianPacket.
-    cmd = _resolveSelf(cmd)
-    cmd = _resolveAny(cmd)
-    if isinstance(cmd, cMilvianPacket):
+    cmd = μMilvianMeta.resolve(cmd)
+    if isinstance(cmd, μMilvianPacket):
       return self.send(cmd)
     if isinstance(cmd, (list, tuple)):
       return self.send(parseList(self, cmd))
     return self.send(parseCommand(cmd, self))
 
-  # ----------------------------------------------------------------------------------------------------------
-  def send(self, packet: cMilvianPacket) -> cMilvianPacket:
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def send(self, packet: μMilvianPacket) -> μMilvianPacket:
     if not self.isAlive(): return cPhonyPacket
-    cDispatcher.fate((self.id, packet.id, packetSignal.gotResponse), lambda data, p=packet: p.parseRawData(data))
+    self.knownPackets[packet.id] = packet
+    packet.χigResponse.fate(lambda data, p=packet: p.parseRawData(data))
     message = packet.pack()
     with open(self.pathRequest, 'r+b') as fdSHMI:
       shmI = mmap.mmap(fdSHMI.fileno(), 0, access=mmap.ACCESS_WRITE)
@@ -431,7 +395,7 @@ class μMilvian():
       shmI.close()
     return packet
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def isAlive(self) -> bool:
     newStatus = os.path.exists(self.pathRequest)
     if self._lastAlive != newStatus and self.charName is not None:
@@ -442,7 +406,7 @@ class μMilvian():
     self._lastAlive = newStatus
     return newStatus
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clearResponses(self):
     μPrint.info(f"[*] cMilvian: clearing {self.pathResponse}")
     with open(self.pathResponse, 'r+b') as fdSHMO:
@@ -453,7 +417,7 @@ class μMilvian():
       os.fsync(fdSHMO.fileno())
       shmO.close()
 
-  # ----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def scanBridges(cls, path=None, getUnknown=False, purgeUnknown=False) -> dict:
     if not path: path = cls.bridgePath
@@ -487,56 +451,77 @@ class μMilvian():
           os.remove(f[:-1]+"I")
         del runningThreads[f]
       if runningThreads: time.sleep(0.05)
-    if len(characters.keys())>0: characters['self'] = μMilvianSelf(characters)
+    μMilvianMeta.setBridges(characters)
     return characters
 
-# ---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            M I L V I A N
-#
-#
-# ---------------------------------------------------------------------------------------------------------------
-class μMilvianSelf(μMilvian):
-  _instance: 'μMilvianSelf' = None
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  P H O N Y   M I L V I A N
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μPhonyMilvian:
+  charName = ""
+  def __getattr__(self, name):
+    return lambda *args, **kwargs: None
 
-  def __init__(self, otherBridges : dict):
-    self.otherBridges = otherBridges
-    self._xh = χHelper()
-    μMilvianSelf._instance = self
 
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  M I L V I A N   M E T A
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μMilvianMeta():
+  realBridges = None
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def getFocusedName(cls) -> str:
-    if cls._instance is None: return None
-    bridge = cls._instance._resolve()
-    return bridge.charName if bridge else None
+  def setBridges(cls, bridges):
+    cls.realBridges = bridges
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def getRandomName(cls) -> str:
-    if cls._instance is None: return None
-    keys = [k for k in cls._instance.otherBridges if k != 'self']
-    if not keys: return None
-    return random.choice(keys)
-
-  def _resolve(self) -> 'μMilvian':
-    title = self._xh.getWindowTitle(self._xh.getFocusedWindow())
-    if not title:
-      μPrint.warning(f"[μMilvianSelf] could not get focused window title")
-      return None
+  def getFocused(cls) -> μMilvian:
+    if cls.realBridges is None: return μPhonyMilvian()
+    title = χHelper.getWindowTitle(χHelper.getFocusedWindow())
+    if not title: return μPhonyMilvian()
     target = title.split()[0].lower()
-    bridge = self.otherBridges.get(target)
-    if bridge is None:
-      μPrint.warning(f"[μMilvianSelf] no bridge for \"{target}\" (title=\"{title}\")")
-    return bridge
+    return cls.realBridges.get(target, μPhonyMilvian())
+    
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def getAny(cls) -> μMilvian:
+    if not cls.realBridges or len(cls.realBridges.keys())==0: return μPhonyMilvian()
+    return cls.realBridges[random.choice(list(cls.realBridges.keys()))]
 
-  def execute(self, cmd) -> cMilvianPacket:
-    bridge = self._resolve()
-    if bridge is None: return cPhonyPacket
-    return bridge.execute(cmd)
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def get(cls, meta) -> μMilvian:
+    if meta == "any": return μMilvianMeta.getAny()
+    if meta == "self": return μMilvianMeta.getFocused()
 
-  def send(self, packet: cMilvianPacket) -> cMilvianPacket:
-    bridge = self._resolve()
-    if bridge is None: return cPhonyPacket
-    return bridge.send(packet)
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def resolve(cls, cmd) -> μString:
+    out = []
+    it = (cmd,) if isinstance(cmd, str) else cmd
+    for c in it:
+      if hasKeyword(c,"self"): c = c.replace('self', f.charName) if (f := cls.getFocused()) else c
+      if hasKeyword(c,"any"):  c = c.replace('any',  f.charName) if (f := cls.getAny())     else c
+      out.append(c)
+    return out[0] if isinstance(cmd,str) else out
+    
 
-  def close(self): pass
+
+
+  # def execute(self, cmd) -> cMilvianPacket:
+  #   if bridge := self.pick() is None: return cPhonyPacket
+  #   return bridge.execute(cmd)
+
+  # def send(self, packet: cMilvianPacket) -> cMilvianPacket:
+  #   if bridge := self.pick() is None: return cPhonyPacket
+  #   return bridge.send(packet)
+
+  # def close(self): pass
+
+# def _resolveAny(cmd):
+#   name = μMilvianMeta.getRandomName()
+#   if not name: return cmd
+#   if isinstance(cmd, str):          return re.sub(r'\bany\b', name, cmd)
+#   if isinstance(cmd, (list,tuple)): return [re.sub(r'\bany\b', name, c) if isinstance(c, str) else c for c in cmd]
+#   return cmd
