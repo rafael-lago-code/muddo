@@ -141,10 +141,9 @@ def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPack
 
   if directives and not directives.startswith('/'):
     # TODO needs to do this smartly; check if file exists, and if relative paths were passed
-    directives = os.path.join(P_DEFAULT_CONFIGDIR, 'strategy', directives + '.strategy')
+    directives = os.path.join(P_DEFAULT_CONFIGDIR, 'strategy', directives + '.directives')
 
   args = ', '.join(f'{k.strip()}={v.strip()}' if (v is not True and v is not None) else k.strip() for k, v in content.items())
-  print(f" DEBUG STRATEGY: {directives}\n{args}")
   inData  = cPacker.packString(directives)
   inData += cPacker.packString(args)
   return μMilvianPacket(command, bridge, inData)
@@ -493,7 +492,7 @@ class μMilvianMeta():
   @classmethod
   def get(cls, meta) -> μMilvian:
     if meta == "any": return μMilvianMeta.getAny()
-    if meta == "self": return μMilvianMeta.getFocused()
+    if meta == "focus": return μMilvianMeta.getFocused()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -501,7 +500,7 @@ class μMilvianMeta():
     out = []
     it = (cmd,) if isinstance(cmd, str) else cmd
     for c in it:
-      if hasKeyword(c,"self"): c = c.replace('self', f.charName) if (f := cls.getFocused()) else c
+      if hasKeyword(c,"focus"): c = c.replace('focus', f.charName) if (f := cls.getFocused()) else c
       if hasKeyword(c,"any"):  c = c.replace('any',  f.charName) if (f := cls.getAny())     else c
       out.append(c)
     return out[0] if isinstance(cmd,str) else out

@@ -1,16 +1,14 @@
 # μDDO
-
-![](./docs/readme_example.png)
+![](./docs/mainOrbUI.png)
 
 ## Overview
 
-A Linux launcher for the game Dungeons & Dragons Online, using Python and Qt6. Based on the now (unsupported?) PyLotRO launcher.
+A powerful Linux launcher for the game Dungeons & Dragons Online, using Python and Qt6. Based on the now (unsupported?) PyLotRO launcher.
 
 ## Features
-Currently implemented features:
- - launching the game and managing multiple (no upper limit) accounts at once
+ - full multiaccount support (no upper limit)
  - manages all processes/instances launched, including terminate, kill, restart, etc
- - basic X window management of game windows: save position and border status and restores them
+ - basic X window management of game windows: save position, border status and restores them
    - no Wayland support and no plans for it
    - fixes blackscreen bug for WMs which suffer from it
  - basic Pipewire support for Audio muting/unmuting (you don't want all game instances narrating the dungeon, do you?)
@@ -18,68 +16,59 @@ Currently implemented features:
     - quick patching or full patching (calls original launcher)
     - displays same news as the original launcher
  - basic [Dungeon Helper](https://dungeonhelper.com/) integration (must be installed separately)
- - basic [Macro'ing](docs/Macros.md) capabilities, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
-    - set to global shortcuts
-    - set to μDDO's toolbar (e.g. for occasional and not urgent macros)
- - support for inventory management via Milvian (alpha stage)
+ - [Macro'ing](docs/Macros.md) via Milvian Bridges, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
+ - Storage management via Milvian
     - fetches current inventory information
     - advanced filtering in the local UI
     - batch-dissolving of selected items
     - batch-selling (mark as junk) of selected items
     - repair-all, sell gems also enabled
     - store selected items into open container
- - support for Strategy
-    - basic follow (equivalent to AAF)
-    - basic follows jump, direction, target selection and ladder behaviour
+ - NEW: Strategy management via Milvian
+    - basic follow (analogous to Dungeon Helper's AAF)
+    - basifollows jump, direction, target selection and ladder behaviour
     - accept quest share, party invite and ressurrection
     - local leader only:
       - follows into most quests instance ("followPortal" but not really a portal)
       - follows recall
+    - splitting of roles - assigning a commander and a captain to the party
+    - advanced and fully functional shortcut configuration support for all of the above
 
 
 ## TODO
-  - update README's screenshot
-  - Milvian Bridge (Macros Daemon)
+  - Macros Daemon
     - add number of active bridges/sets in "summary"
     - add complex macros
-      - allow loops
-      - allow branches
-      - allow asynchronous behaviour
-      - allow check state (e.g. cooldown)
-      - allow check effect and equipment (i.e. cast Flame Arrow, change gear, cast initial buffs at the beginning of each dungeon)
-      - improve pets reachability
-        - for {r} ranges (i.e. "if pet exists, cast this spell on it")
-        - support healing and ressurrecting of pets (currently only players work)
+      - allow loops, branches, conditionals, check states (e.g. cooldown) and equipment
+        - example usecase: cast Flame Arrow, change gear, cast initial buffs at the beginning of each dungeon
+      - revamp the macros parsing (i.e. "consolidation") because it is super messy and difficult to debug now
+        - use μString to simplify things (a lot)
     - UI improvements
-      - create context menu with all existing macros (so that they don't need a keyboard shortcut)
+      - enable menu macros
+      - enable macro(*) macros
       - vizualize keyboard with its macros
   - Strategy
     - detect party leader
     - implement "save" reserved word for strateg() command
     - implement "followDialogue"
-    - implement "closeExplorerJournals"
+    - fix and test further "closeExplorerJournals"
       - OnExplorer event is for something else, explorer journals seem to have no property, they are not fired when OnSelectedObject... I have no idea how to proceed here.
-    - test better behaviour when leader is in another computer
-    - nice to have:
+    - test Sargeant behaviour
+    - Nice to have:
       - improve "followJump"
         - currently jump detection relies on δZ
           - for local leader: use "canjump" flag instead, no δZ shenenigans. Keep δZ for nonlocal      
         - requires the user to manually set jump shortcut to "space" (even if default is space, it needs to be manually set)
       - implement "followMount"
-        - currently detects but fails to send the "mount" input
+        - currently detects but fails to send the "mount" input (cannot find the hotkey for it!)
         - implement dismount as well
         - maybe unnecessary for this framework
-      - implement "followBlock" (and most importantly: UNBLOCK!!!!)
-      - implement "followTeleport" (items like key to estar and the D12)
-      - implement "followSneak"
-      - implement "shareLoot"
-
-
-  - Inventory Manager
-    - enable trading
+      - implement "followBlock" (and most importantly: UNBLOCK!!!!), "followTeleport" (items like key to estar and the D12),  "followSneak", "shareLoot"
+  - Storage Manager
+    - enable sorting
+    - enable tracking inside of containers (i.e. bags)
+      - more advanced features: sharing of collectibles and ingredients
     - enable tracking of last known state for each container/character/bank (like Trove Plugin)
-  - cDispatcher:
-    - improve and make it "signal-like"
   - MiniBrowser
     - a low-feature ad-blocking minibrowser that automatically opens to the wiki page of the current quest or currently selected item
   - Other 
@@ -88,7 +77,7 @@ Currently implemented features:
     - use keyring to store passwords instead of plain text format
     - test the launcher with Wine (currently tested with Steam Proton)
     - add cmd line option for verbosity
-    - maybe add support for downloading/installing DungeonHelper.exe?
+    - maybe add support for downloading/installing DungeonHelper.exe and the game itself
 
 ## License
 
@@ -96,11 +85,14 @@ This is licensed under GPL-3 license. See https://www.gnu.org/licenses/ for deta
 
 ## About "Lord of the Rings Online" Support
 
-I removed the support to LotRO simply because I could not test it. The added complexity should be small, if anyone is interested in expanding the app for LoTRO too.
+I removed the support to LotRO from the launcher simply because I could not test it. The added complexity for the launcher portion should be small, if anyone is interested in expanding for LoTRO too. For Milvian and everything depending on it (Macros, Storage, Strategy, etc) it probably requires a major review or even a rewrite.
 
 ## About Windows and/or MacOS Support
 
 I couldn't care less about Windows and/or MacOS (a.k.a. reciprocity 😉). You are welcome to do the porting/testing/maintaining for other platforms, but please notice that you'll be bound to the GPL-3 license.
+
+## Thanks to
+"Benny Enny" for his pre-alpha-stage-testing of several of the features and continuous feedback. 
 
 ## Links:
 - https://www.ddo.com

@@ -62,7 +62,7 @@ class μStorage(μToggler):
   def __init__(self, main):
     self.main = main
     super().__init__("Storage\nManager", P_ICON_CHEST)
-    self.toggler.setToolTip("Toggle StorageManager UI<br><b><i>NOT IMPLEMENTED</i></b>")
+    self.toggler.setToolTip("Toggle Storage Manager UI")
     self.table = μItemsTable(self)
     self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
     setBGColour(self.table.viewport(), P_DEFAULT_BG)

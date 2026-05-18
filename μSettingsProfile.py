@@ -227,6 +227,8 @@ class dToolbar(dSection):
     self._macroFillRowFirst = μBoxCheck("fill rows first")
     self._macroFillMissing  = μBoxCheck("fill missing/inactive macros")
     self._transparentIcon   = μBoxCheck("enable transparent icons (magenta mask)")
+    self._macroFloating.setVisible(False)   # Not implemented
+    self._transparentIcon.setVisible(False) # Not implemented
     super().__init__(state)
 
   def saveWidgetGeometry(self, widget):
@@ -341,8 +343,8 @@ class μSettingsProfile(QWidget):
     gplugins.appendRow([self.plugins._useMilvian, "Milvian SHM Path:",          self.plugins._milvianSHMPath, self.plugins.btnMilvianSHMPath])
 
     gtoolbar = μGridLayout()
-    gtoolbar.appendRow(["Number of Rows:", self.toolbar._macroNRows, "Number of Columns:", self.toolbar._macroNCols, self.toolbar._macroFillRowFirst])
-    gtoolbar.appendRow([self.toolbar._macroFloating, ">", self.toolbar._macroFillMissing, ">", self.toolbar._transparentIcon])
+    gtoolbar.appendRow(["Number of Rows:", self.toolbar._macroNRows, "Number of Columns:", self.toolbar._macroNCols])
+    gtoolbar.appendRow([self.toolbar._macroFillRowFirst, ">", self.toolbar._macroFillMissing])
 
     self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")
     self.tab.addTab(newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"]), "X && Audio")

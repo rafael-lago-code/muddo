@@ -39,12 +39,9 @@ if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            T A B L E   R O W
-#
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖ T A B L E   R O W 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cTableRow(QTableWidgetItem):
   def __init__(self, text=None):
     super().__init__(text)
@@ -52,12 +49,9 @@ class cTableRow(QTableWidgetItem):
     self.setFlags(~Qt.ItemFlag.ItemIsDropEnabled)
 
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                            M A C R O   I T E M
-#
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  M A C R O   I T E M 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class cMacroSet(QListWidgetItem):
   def __init__(self, parent : μMacros, name : str):
     super().__init__()
@@ -67,14 +61,14 @@ class cMacroSet(QListWidgetItem):
     self.setCheckState(Qt.CheckState.Unchecked)
     self.data = [["", "", "", ""]]
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setActive(self, val : bool):
     if val:
       self.setCheckState(Qt.CheckState.Checked)
     else:
       self.setCheckState(Qt.CheckState.Unchecked)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def sync(self, row, column):
     while row >= len(self.data):
       self.data.append([None, None, None, None])
@@ -85,7 +79,7 @@ class cMacroSet(QListWidgetItem):
     else:
       self.data[row][column] = modifiedCell.text()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def display(self):
     table : QTableWidget = self.parent.table
     for row in self.data:
@@ -103,17 +97,17 @@ class cMacroSet(QListWidgetItem):
       table.setItem(pos, 2, cTableRow(str(row[2])))
       table.setItem(pos, 3, cTableRow(str(row[3])))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def save(self):
     filename = P_DEFAULT_MACRODIR + os.sep + self.text() + P_DEFAULT_MACROEXT
     json.dump(self.data, open(filename,'w'), cls=muJSONEncoder)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeRow(self, row : int):
     if row < len(self.data):
       self.data = self.data[:row] + self.data[row+1:]
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self):
     filename = P_DEFAULT_MACRODIR + os.sep + self.text() + P_DEFAULT_MACROEXT
     try:
@@ -123,7 +117,7 @@ class cMacroSet(QListWidgetItem):
       μPrint.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
       self.data = []
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def consolidate(self, consolidated = {}, aliases = {}, meta = {}) -> tuple:
     # Macros format:
     #     [<icon>, <name>, <hotkey>, <scripts>]
@@ -187,12 +181,9 @@ class cMacroSet(QListWidgetItem):
     return consolidated, meta
 
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                                M A C R O S
-#
-#---------------------------------------------------------------------------------------------------------------
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  M A C R O S
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMacros(μToggler):
   def __init__(self, main : μMainWindow):
     self.widgetID = "Macros"
@@ -210,7 +201,7 @@ class μMacros(μToggler):
     self.btnAddEntry    = μOrbSmall(icon=P_ICON_ADD, tooltip="Add a new macro to the currently selected set")
     self.btnRemoveEntry = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected macro from the currently selected set")
     self.btnEditIcon    = μOrbSmall(icon=P_ICON_IMAGE, tooltip="Set icon for the selected macro")
-    self.btnHelp        = μOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how macros work here (lol)")
+    # self.btnHelp        = μOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how macros work here (lol)")
     self.btnPlay        = μOrbSmall(icon=P_ICON_PLAY, tooltip="Executes current text as-is, if Milvian is running already. <b><i>Ctrl+Enter</i></b> is a shortcut for that.")
 
     self.btnAddAlias    = μOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
@@ -269,7 +260,7 @@ class μMacros(μToggler):
     _topSplitter = QSplitter()
     _topSplitter.addWidget(newVFrame([ "Sets:",
                               newHLayout([self.setListWidget,
-                                newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, self.btnHelp, "__stretch__"])])]))
+                                newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, "__stretch__"])])]))
     _topSplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]),
                            newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias, "__stretch__"])]))
 
@@ -287,7 +278,7 @@ class μMacros(μToggler):
 
     self.btnNewSet.clicked.connect(self.newMacroSet)
     self.btnDeleteSet.clicked.connect(self.deleteMacroSet)
-    self.btnHelp.clicked.connect(self.showHelpWindow)
+    # self.btnHelp.clicked.connect(self.showHelpWindow)
     self.btnPlay.clicked.connect(self.playMacro)
     self.setListWidget.itemChanged.connect(self.renameMacroSetFile)
     self.setListWidget.itemSelectionChanged.connect(self.updateTable)
@@ -311,7 +302,7 @@ class μMacros(μToggler):
 
     self.reloadAlias()
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _saveWhenDropped(self, event):
     QTableWidget.dropEvent(self.table, event)
     cset : cMacroSet = self.setListWidget.currentItem()
@@ -321,7 +312,7 @@ class μMacros(μToggler):
     self.setListWidget.currentItem().save()
 
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def initialize(self):
     super().initialize()
     allFiles = glob.glob(os.path.join(P_DEFAULT_MACRODIR, "*"+P_DEFAULT_MACROEXT))
@@ -337,16 +328,16 @@ class μMacros(μToggler):
       self.toActivate = None
     self._ensureSetListSelection()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateProfile(self, prof : μSettingsProfile, last : str):
     if prof.session.macroSets: self.setActiveSets(prof.session.macroSets)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _ensureSetListSelection(self):
     if not self.setListWidget.selectedItems() and self.setListWidget.count() > 0:
       self.setListWidget.setCurrentRow(0)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateTable(self):
     sset = self.setListWidget.selectedItems()
     if not sset:
@@ -363,7 +354,7 @@ class μMacros(μToggler):
     if self.table.rowCount() > 0:
       self.table.selectRow(0)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addMacroEntry(self):
     pos = self.table.rowCount()
     self.table.insertRow(pos)
@@ -375,35 +366,35 @@ class μMacros(μToggler):
     self.table.setItem(pos, 2, cTableRow(""))
     self.table.setItem(pos, 3, cTableRow(""))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def syncTable2Data(self, row, column):
     if self._loading: return
     sset = self.setListWidget.selectedItems()
     if not sset: return
     sset[0].sync(row, column)
-    self.activeSetLabel.setText(f"Shortcuts in \"{sset[0].text()}\":")
+    self.activeSetLabel.setText(f"Macros in \"{sset[0].text()}\":")
     sset[0].save()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addAlias(self, alias="", action=""):
     pos = self.aliasTable.rowCount()
     self.aliasTable.insertRow(pos)
     self.aliasTable.setItem(pos, 0, cTableRow(alias))
     self.aliasTable.setItem(pos, 1, cTableRow(action))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeAlias(self):
     crow = self.aliasTable.currentRow()
     if crow >= 0:
       self.aliasTable.removeRow(crow)
       self.saveAlias()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onAliasCellChanged(self, row, column):
     if self._aliasLoading: return
     self.saveAlias()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def reloadAlias(self):
     self._aliasLoading = True
     self.aliasTable.clearContents()
@@ -416,14 +407,14 @@ class μMacros(μToggler):
     self._aliasLoading = False
     μAliases.set(data)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveAlias(self):
     d = self.getAliases()
     filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
     json.dump(d, open(filename,'w'), cls=muJSONEncoder)
     μAliases.set(d)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getAliases(self):
     d = {}
     for row in range(self.aliasTable.rowCount()):
@@ -433,7 +424,7 @@ class μMacros(μToggler):
         d[k.text()] = v.text()
     return d
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def filterAlias(self, text: str):
     text = text.lower()
     for row in range(self.aliasTable.rowCount()):
@@ -442,14 +433,14 @@ class μMacros(μToggler):
       match = (text in (alias.text().lower() if alias else "")) or (text in (translation.text().lower() if translation else ""))
       self.aliasTable.setRowHidden(row, bool(text) and not match)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def newMacroSet(self):
     i = 1
     while f"NewSet{i}" in self.allMacroItems:
       i += 1
     self.appendMacroSet(f"NewSet{i}")
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def appendMacroSet(self, name : str):
     if name in self.allMacroItems: return
 
@@ -463,7 +454,7 @@ class μMacros(μToggler):
       μPrint.info(f"New macro set being created in \"{C_SILVER}{P_DEFAULT_MACRODIR}</font>\"...")
       self.allMacroItems[name].save()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getActiveSets(self):
     allActive = []
     sset : cMacroSet
@@ -472,7 +463,7 @@ class μMacros(μToggler):
         allActive.append(sset.text())
     return allActive
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setActiveSets(self, toActivate : list):
     if not self.initialized:
       self.toActivate = toActivate
@@ -485,7 +476,7 @@ class μMacros(μToggler):
       else:
         sset.setActive(False)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def playMacro(self):
     action = self.actionEditor.toPlainText().strip()
     if not action: return
@@ -509,7 +500,7 @@ class μMacros(μToggler):
       for t in targets:
         bridges[t].execute(actions)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def showHelpWindow(self):
     dlg = QDialog(self)
     dlg.setWindowTitle("Shortcuts Help")
@@ -549,7 +540,7 @@ class μMacros(μToggler):
     dlg.resize(400, 300)
     dlg.exec()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def deleteMacroSet(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
@@ -562,7 +553,7 @@ class μMacros(μToggler):
     self.setListWidget.takeItem(self.setListWidget.row(sset[0]))
     del sset[0]
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def consolidateActiveMacros(self) -> tuple:
     allActive = self.getActiveSets()
     aliases = self.getAliases()
@@ -580,7 +571,7 @@ class μMacros(μToggler):
         μPrint.debug(f"     {target}: {consolidated[hk][target]}")
     return consolidated, meta
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeMacroEntry(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
@@ -592,12 +583,12 @@ class μMacros(μToggler):
     self._loading = False
     sset[0].save()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onCellDoubleClicked(self, row, column):
     if column == 0:
       self.editMacroIcon()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def editMacroIcon(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
@@ -618,7 +609,7 @@ class μMacros(μToggler):
         sset[0].sync(crow, 0)
         sset[0].save()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onSelectionChanged(self):
     indexes = self.table.selectionModel().selectedRows()
     self._actionLoading = True
@@ -632,7 +623,7 @@ class μMacros(μToggler):
       self.actionEditor.setEnabled(len(indexes) == 1)
     self._actionLoading = False
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _saveAction(self):
     if self._actionLoading or self._loading: return
     indexes = self.table.selectionModel().selectedRows()
@@ -645,7 +636,7 @@ class μMacros(μToggler):
     else:
       self.table.setItem(row, 3, cTableRow(text))
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def swapTriggers(self, trigger_a: str, trigger_b: str):
     for cset in self.allMacroItems.values():
       modified = False
@@ -660,7 +651,7 @@ class μMacros(μToggler):
         cset.save()
     self.updateTable()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def renameMacroSetFile(self, sset : cMacroSet):
     key = next((k for k, v in self.allMacroItems.items() if v is sset), None)
     if key != sset.text():
