@@ -160,7 +160,7 @@ class cMacroSet(QListWidgetItem):
         cs = {}
 
       for s in scripts:
-        s = s.split(':')
+        s = s.split(':', 1)
         if len(s) == 1:
           actors = ["self"]
         else:

@@ -151,7 +151,7 @@ class μItemData(QTableWidgetItem):
   @staticmethod
   def readString(f) -> str:
     count = int.from_bytes(f.read(2), byteorder='little', signed=False)
-    return f.read(count).decode('utf-8')
+    return f.read(count).decode('utf-8', errors='replace')
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod

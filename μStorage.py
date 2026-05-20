@@ -205,7 +205,6 @@ class μStorage(μToggler):
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setStatus(self, bridge, newStatus):
-    print(f"STARTING STATUS {bridge} {newStatus}")
     if newStatus != P_STATUS_IDLE:
       self.status[bridge]=newStatus
       if len(self.status.keys())>1:
@@ -216,7 +215,6 @@ class μStorage(μToggler):
         # someone is still doing something; set newStatus to the first one found
         newStatus=list(self.status.values())[0]
 
-    print(f"CONTINUING STATUS {bridge} {newStatus}")
     if newStatus == P_STATUS_BUSY_REFRESH:
       self.btnRefresh.setEnabled(True)
       self.btnDissolve.setEnabled(False)
@@ -406,7 +404,7 @@ class μStorage(μToggler):
       μPrint.info(f"[cStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
     else:
-      μPrint.info(f"[cStorage] {C_ORANGE}{packet.outData.decode('utf-8')}</font>")
+      μPrint.info(f"[cStorage] {C_ORANGE}{packet.outData.decode('utf-8', errors='replace')}</font>")
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

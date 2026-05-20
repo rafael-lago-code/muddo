@@ -48,6 +48,8 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - enable macro(*) macros
       - vizualize keyboard with its macros
   - Strategy
+    - test and improve swimming following (  -> [Byte] Player_Water_Wading = 1
+  -> [Byte] Player_Water_OnSurface = 1)
     - detect party leader
     - implement "save" reserved word for strateg() command
     - implement "followDialogue"

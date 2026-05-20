@@ -16,7 +16,7 @@
 import os
 from helpers.util import *
 from PyQt6 import QtCore
-from PyQt6.QtGui import QIcon, QPixmap
+from PyQt6.QtGui import QIcon, QImage, QPixmap
 
 P_DEFAULT_ICON_SIZE=QtCore.QSize(28,28)
 
@@ -212,6 +212,7 @@ class μImageFactory():
   def getIcon(cls, a0) -> QIcon:
     if isinstance(a0, QIcon): return a0
     elif isinstance(a0, QPixmap): return QIcon(a0)
+    elif isinstance(a0, QImage): return QIcon(QPixmap.fromImage(a0))
     elif isinstance(a0, str): return QIcon(cls.getPixmap(a0))
     else: return QIcon()
   

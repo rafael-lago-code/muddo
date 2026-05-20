@@ -143,7 +143,7 @@ def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPack
     # TODO needs to do this smartly; check if file exists, and if relative paths were passed
     directives = os.path.join(P_DEFAULT_CONFIGDIR, 'strategy', directives + '.directives')
 
-  args = ', '.join(f'{k.strip()}={v.strip()}' if (v is not True and v is not None) else k.strip() for k, v in content.items())
+  args = ', '.join(f'{k.strip()}={str(v).strip()}' if (v is not True and v is not None) else k.strip() for k, v in content.items())
   inData  = cPacker.packString(directives)
   inData += cPacker.packString(args)
   return μMilvianPacket(command, bridge, inData)
@@ -201,6 +201,7 @@ class μMilvian():
     clr.AddReference("VoK.Sdk")
     clr.AddReference("System.Private.CoreLib")
     from VoK.Sdk.Ddo.Enums import InputActions  # type: ignore
+    from VoK.Sdk.Ddo.Enums import AltInputActions  # type: ignore
     from System import Enum as DotNetEnum        # type: ignore
 
     iaNames  = DotNetEnum.GetNames(InputActions)
@@ -210,6 +211,13 @@ class μMilvian():
     for b in range(10):
       for k in range(10):
         ia[f"b{b+1}k{k+1}"] = ia[f"shortcut_bar{b+1}_key{k+1}"]
+    for k in range(12):
+        ia[f"tpm{k+1}"] = ia[f"target_fellow_{k+1}_key"]
+        ia[f"tpp{k+1}"] = ia[f"target_fellow_pet_{k+1}_key"]
+    aiaNames  = DotNetEnum.GetNames(AltInputActions)
+    aiaValues = DotNetEnum.GetValues(AltInputActions)
+    for (n, v) in zip(aiaNames, aiaValues):
+      ia[n.lower()] = int(v).to_bytes(4, byteorder='little', signed=False)
     cls.inputActions = ia
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -261,7 +269,7 @@ class μMilvian():
       μPrint.error(f"[cMilvian] got status {packet.status} when querying charName on {os.path.basename(bridgePath)}.")
       return
 
-    self.charName = packet.outData if isinstance(packet.outData, str) else packet.outData.decode('utf-8')
+    self.charName = packet.outData if isinstance(packet.outData, str) else packet.outData.decode('utf-8', errors='replace')
     self.charName = self.charName.split()[0]
     self._lastAlive = True
     μPrint.info(f"[cMilvian] got charName {C_SILVER}\"{self.charName}\"</font> for {os.path.basename(bridgePath)}")
@@ -332,14 +340,18 @@ class μMilvian():
   def parseData(self, rawData: bytes):
     id = rawData[0:4]
     if id in self.knownPackets:
-      self.knownPackets.pop(id).χigResponse.emit(rawData)
+      status = packetStatus(rawData[4:8])
+      packet = self.knownPackets[id]
+      if status in (packetStatus.success, packetStatus.error):
+        self.knownPackets.pop(id)
+      packet.χigResponse.emit(rawData)
       return
 
     packet = μMilvianPacket(packetCommand.unrequested, self)
     packet.id     = id
     packet.status = packetStatus(rawData[4:8])
     packet.outData    = rawData[12:] if len(rawData) > 12 else None
-    packet.outMessage = [packet.status.name, packet.outData.decode('utf-8') if packet.outData else None]
+    packet.outMessage = [packet.status.name, packet.outData.decode('utf-8', errors='replace') if packet.outData else None]
     μPrint.info(f"[cMilvian.parseData] Unhandled packet: {packet}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
