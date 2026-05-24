@@ -26,7 +26,7 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - store selected items into open container
  - NEW: Strategy management via Milvian
     - basic follow (analogous to Dungeon Helper's AAF)
-    - basifollows jump, direction, target selection and ladder behaviour
+    - follows jump, swim, direction (but not camera pitch), target selection and ladder behaviour
     - accept quest share, party invite and ressurrection
     - local leader only:
       - follows into most quests instance ("followPortal" but not really a portal)
@@ -48,11 +48,12 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - enable macro(*) macros
       - vizualize keyboard with its macros
   - Strategy
-    - test and improve swimming following (  -> [Byte] Player_Water_Wading = 1
-  -> [Byte] Player_Water_OnSurface = 1)
     - detect party leader
     - implement "save" reserved word for strateg() command
     - implement "followDialogue"
+      - already working, but needs to follow closeDialogue too
+    - implement "followPortal"
+      - already working, but needs to follow closePortal too
     - fix and test further "closeExplorerJournals"
       - OnExplorer event is for something else, explorer journals seem to have no property, they are not fired when OnSelectedObject... I have no idea how to proceed here.
     - test Sargeant behaviour

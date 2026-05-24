@@ -51,7 +51,8 @@ P_DEFAULT_SERVERDIR   = P_DEFAULT_CONFIGDIR+"/serverInfo/"
 P_DEFAULT_SERVERCONFIG= P_DEFAULT_SERVERDIR+"/dndlauncher.server.xml"
 P_DEFAULT_LOGSDIR     = P_DEFAULT_CONFIGDIR+"/logs/"
 
-P_DEFAULT_CONF = "muDDO/settings"
+P_DEFAULT_CONF    = "muDDO/settings"
+P_DEFAULT_SHM_DIR = "/dev/shm/milvian/"
 
 P_CERTFILE = None
 P_CERTCTX = None

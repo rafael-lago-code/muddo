@@ -44,11 +44,12 @@ class μMacrosDaemon(aProcessItem):
                            "<br><b>Ctrl+Click</b> to purge all shortcuts and restart daemon<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
     # self.orbToggler.setMenu(QMenu("Macros Daemon", self.orbToggler))
-    self.menuActionToggle  = self.orb.menu.addAction("Launch Bridges")
-    self.menuActionRestart = self.orb.menu.addAction("Restart Bridges")
-    self.menuActionKill    = self.orb.menu.addAction("Kill Bridges")
-    self.menuActionPurge   = self.orb.menu.addAction("Purge defunct bridges")
-    self.menuActionConf    = self.orb.menu.addAction("Show/Hide setting UI")
+    self.menuActionToggle   = self.orb.menu.addAction("Launch Bridges")
+    self.menuActionRestart  = self.orb.menu.addAction("Restart Bridges")
+    self.menuActionKill     = self.orb.menu.addAction("Kill Bridges")
+    self.menuActionPurge    = self.orb.menu.addAction("Purge defunct bridges")
+    self.menuActionConf     = self.orb.menu.addAction("Show/Hide setting UI")
+    self.menuActionLaunchV2 = self.orb.menu.addAction("Launch v2 (test)")
 
     self.orb.clicked.connect(self.toggle)
     self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
@@ -57,6 +58,7 @@ class μMacrosDaemon(aProcessItem):
     self.menuActionKill.triggered.connect(lambda : self.terminate(force=True))
     self.menuActionConf.triggered.connect(lambda : main.macros.toggle())
     self.menuActionPurge.triggered.connect(lambda : μMilvian.scanBridges(purgeUnknown=True))
+    self.menuActionLaunchV2.triggered.connect(self.launch_v2)
     
     self.profileID.setText("")
     self.worldname.setText("")
@@ -231,4 +233,76 @@ class μMacrosDaemon(aProcessItem):
     μToolbar.clearItems()
     χHelper.forceCleanup()
 
-  
+  #----------------------------------------------------------------------------------------------------------
+  def convert_v2(self, consolidated: dict) -> dict:
+    from μMilvian import μMilvianMeta
+    bridges = self.getBridges()
+    if not bridges: return {}
+
+    parsed = {}
+    for trigger, actor_map in consolidated.items():
+      items = []
+      for actor, actions in actor_map.items():
+        if not actions:
+          continue
+        if actor == 'focus':
+          item      = lambda a=actions: μMilvianMeta.getFocused().execute(a)
+          item.char = 'focus'
+          item.cmd  = actions
+        elif actor == 'any':
+          item      = lambda a=actions: μMilvianMeta.getAny().execute(a)
+          item.char = 'any'
+          item.cmd  = actions
+        elif actor in bridges:
+          item      = lambda t=actor, a=actions: bridges[t].execute(a)
+          item.char = actor
+          item.cmd  = actions
+        else:
+          μPrint.debug(f'[convert_v2] actor "{actor}" not in bridges, skipping')
+          continue
+        items.append(item)
+      if items:
+        parsed[trigger] = items
+
+    μPrint.debug("  [v2] Shortcuts converted:")
+    μPrint.debug("--------------------------------------------------------")
+    for trigger, items in parsed.items():
+      μPrint.debug(f"  {trigger}: {[f'{i.char}:{i.cmd}' for i in items]}")
+    μPrint.debug("--------------------------------------------------------")
+    return parsed
+
+  #----------------------------------------------------------------------------------------------------------
+  def launch_v2(self):
+    if self.process:
+      μPrint.warning("[v2] Macros Daemon already running. Kill it first.")
+      return
+    consolidated, meta = self.main.macros.consolidateActiveMacros_v2()
+    parsed = self.convert_v2(consolidated)
+    if not parsed:
+      μPrint.warning("[v2] No macros after consolidation. Check active sets and online accounts.")
+      return
+
+    toolbarMacros = {k: parsed.pop(k) for k in list(parsed) if k.startswith('toolbar')}
+    for hk, script in parsed.items():
+      parsed[hk] = lambda x=script: χHelper.execute(x)
+    self.process = χHelper.getShortcutsDaemon(parsed)
+
+    if toolbarMacros:
+      μPrint.info(f"[v2] found {len(toolbarMacros)} toolbar macros")
+      μToolbar.clearItems()
+      for tb, script in toolbarMacros.items():
+        m        = meta.get(tb, {})
+        commands = [cmd for item in script if callable(item) for cmd in item.cmd]
+        μToolbar.addItems(μToolbarItem(tb, script,
+                                       icon=m.get('icon'),
+                                       names=m.get('names', set()),
+                                       commands=commands))
+      μToolbar.sortLayout()
+
+    if not self.main.processManager.itemExists(self):
+      self.main.processManager.addItem(self)
+    self.setStatus(self.P_STATUS_RUNNING)
+    self.process.start()
+    self.pid.setText("R")
+
+

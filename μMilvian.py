@@ -24,6 +24,7 @@ from helpers.tStoppableThread import tStoppableThread
 from helpers.μPrint import μPrint
 from helpers.χDispatcher import χDispatcher, χSignal
 from helpers.util import *
+from helpers.util import P_DEFAULT_SHM_DIR
 from helpers.μStrings import *
 from helpers.μStrings import μString
 from helpers.μAliases import μAliases
@@ -183,7 +184,7 @@ class μMilvian():
   @classmethod
   def setup(cls):
     from μSettings import μSettings
-    shmPath = μSettings.plugins.milvianSHMPath()
+    shmPath = μSettings.plugins.milvianSHMPath() or P_DEFAULT_SHM_DIR
     dhPath  = os.path.dirname(μSettings.plugins.dhExec())
     μPrint.debug(f"[cMilvian.setup] shmPath={shmPath!r} | dhPath={dhPath!r}")
     cls.configPath = dhPath
@@ -240,17 +241,17 @@ class μMilvian():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, bridgePath: str):
     super().__init__()
-    self.charName    = None
+    self.charName     = None
     self.knownPackets = {}
 
-    if bridgePath.endswith("I") or bridgePath.endswith("O"):
-      bridgePath = bridgePath[:-1]
-    self.pathResponse = bridgePath + "O"
-    self.pathRequest  = bridgePath + "I"
-    self.id = int(os.path.basename(bridgePath)[6:])
+    # bridgePath is the character directory: /dev/shm/milvian/<charName>/
+    bridgePath = bridgePath.rstrip('/')
+    self.pathRequest  = os.path.join(bridgePath, 'request')
+    self.pathResponse = os.path.join(bridgePath, 'response')
+    charNameFromPath  = os.path.basename(bridgePath)
 
     if not os.path.exists(self.pathRequest) or not os.path.exists(self.pathResponse):
-      μPrint.error(f"[cMilvian] error, {os.path.basename(self.pathRequest)} or {os.path.basename(self.pathResponse)} do not exist!")
+      μPrint.error(f"[cMilvian] missing request/response in {bridgePath!r}")
       return
 
     self.responseDaemonStopSignal = threading.Event()
@@ -261,18 +262,20 @@ class μMilvian():
 
     packet = self.query(packetCommand.querycharname)
     if not packet.wait(1.0):
-      μPrint.error(f"[cMilvian] timedout while waiting for charName. Is {os.path.basename(bridgePath)} defunct?")
+      μPrint.error(f"[cMilvian] timeout waiting for charName in {bridgePath!r}. Bridge dead?")
       μPrint.error(f" ~~~~  {packet}")
       return
 
     if packet.status != packetStatus.success:
-      μPrint.error(f"[cMilvian] got status {packet.status} when querying charName on {os.path.basename(bridgePath)}.")
+      μPrint.error(f"[cMilvian] status {packet.status} querying charName in {bridgePath!r}")
       return
 
     self.charName = packet.outData if isinstance(packet.outData, str) else packet.outData.decode('utf-8', errors='replace')
     self.charName = self.charName.split()[0]
+    if self.charName.lower() != charNameFromPath:
+      μPrint.warning(f"[cMilvian] charName mismatch: got \"{self.charName}\", dir is \"{charNameFromPath}\"")
     self._lastAlive = True
-    μPrint.info(f"[cMilvian] got charName {C_SILVER}\"{self.charName}\"</font> for {os.path.basename(bridgePath)}")
+    μPrint.info(f"[cMilvian] bridge \"{C_SILVER}{self.charName}</font>\" live at {bridgePath!r}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def close(self):
@@ -430,37 +433,39 @@ class μMilvian():
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def scanBridges(cls, path=None, getUnknown=False, purgeUnknown=False) -> dict:
-    if not path: path = cls.bridgePath
-    if not os.path.exists(path): return
-    files  = [f for f in os.listdir(path) if f.startswith("bridge")]
-    filesO = [os.path.join(path, f) for f in files if f.endswith("O")]
+  def scanBridges(cls, path=None, purgeUnknown=False) -> dict:
+    if not path: path = cls.bridgePath or P_DEFAULT_SHM_DIR
+    if not os.path.exists(path): return {}
+    # Each subdir containing a 'request' file is a potential bridge
+    charDirs = [
+      os.path.join(path, d) for d in os.listdir(path)
+      if os.path.isdir(os.path.join(path, d))
+      and os.path.exists(os.path.join(path, d, 'request'))
+    ]
 
-    def _launchInit(bridgePath: str, outDict):
-      outDict[bridgePath] = μMilvian(bridgePath)
+    def _launchInit(charDir: str, outDict):
+      outDict[charDir] = μMilvian(charDir)
 
     pendingBridges = {}
     runningThreads = {}
-    for f in filesO:
-      runningThreads[f] = threading.Thread(target=_launchInit, args=(f, pendingBridges), daemon=True)
-      runningThreads[f].start()
+    for d in charDirs:
+      runningThreads[d] = threading.Thread(target=_launchInit, args=(d, pendingBridges), daemon=True)
+      runningThreads[d].start()
 
     characters = {}
     while runningThreads:
-      for f, t in list(runningThreads.items()):
+      for d, t in list(runningThreads.items()):
         if t.is_alive(): continue
-        m = pendingBridges.get(f)
+        m = pendingBridges.get(d)
         if isinstance(m, μMilvian) and m.charName:
           characters[m.charName.lower()] = m
-        elif isinstance(m, μMilvian) and getUnknown:
-          i = 1
-          while f"NA{i}" in characters: i += 1
-          characters[f"NA{i}"] = m
         elif purgeUnknown:
-          μPrint.info(f" [*] cMilvian: file {os.path.basename(f)} seems to be orphaned. Deleting... ")
-          os.remove(f)
-          os.remove(f[:-1]+"I")
-        del runningThreads[f]
+          μPrint.info(f"[cMilvian] {os.path.basename(d)!r} has no live bridge, purging...")
+          try:
+            import shutil; shutil.rmtree(d)
+          except Exception as e:
+            μPrint.warning(f"[cMilvian] purge failed: {e}")
+        del runningThreads[d]
       if runningThreads: time.sleep(0.05)
     μMilvianMeta.setBridges(characters)
     return characters

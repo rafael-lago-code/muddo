@@ -215,55 +215,60 @@ class μStorage(μToggler):
         # someone is still doing something; set newStatus to the first one found
         newStatus=list(self.status.values())[0]
 
-    if newStatus == P_STATUS_BUSY_REFRESH:
-      self.btnRefresh.setEnabled(True)
-      self.btnDissolve.setEnabled(False)
-      self.btnSell.setEnabled(False)
-      self.btnTrade.setEnabled(False)
-      self.btnStore.setEnabled(False)
-      self.btnFeedJewel.setEnabled(False)
-      self.btnSort.setEnabled(False)
-    elif newStatus == P_STATUS_BUSY_DISSOLVE:
-      self.btnRefresh.setEnabled(False)
-      self.btnDissolve.setEnabled(True)
-      self.btnSell.setEnabled(False)
-      self.btnTrade.setEnabled(False)
-      self.btnStore.setEnabled(False)
-      self.btnFeedJewel.setEnabled(False)
-      self.btnSort.setEnabled(False)
-    elif newStatus == P_STATUS_BUSY_SELL:
-      self.btnRefresh.setEnabled(False)
-      self.btnDissolve.setEnabled(False)
-      self.btnSell.setEnabled(True)
-      self.btnTrade.setEnabled(False)
-      self.btnStore.setEnabled(False)
-      self.btnFeedJewel.setEnabled(False)
-      self.btnSort.setEnabled(False)
-    elif newStatus == P_STATUS_BUSY_TRADE:
-      self.btnRefresh.setEnabled(False)
-      self.btnDissolve.setEnabled(False)
-      self.btnSell.setEnabled(False)
-      self.btnTrade.setEnabled(True)
-      self.btnStore.setEnabled(False)
-      self.btnFeedJewel.setEnabled(False)
-      self.btnSort.setEnabled(False)
-    elif newStatus == P_STATUS_BUSY_STORE:
-      self.btnRefresh.setEnabled(False)
-      self.btnDissolve.setEnabled(False)
-      self.btnSell.setEnabled(False)
-      self.btnTrade.setEnabled(False)
-      self.btnStore.setEnabled(True)
-      self.btnFeedJewel.setEnabled(False)
-      self.btnSort.setEnabled(False)
-    elif newStatus == P_STATUS_BUSY_FEEDJEWEL:
-      self.btnRefresh.setEnabled(False)
-      self.btnDissolve.setEnabled(False)
-      self.btnSell.setEnabled(False)
-      self.btnTrade.setEnabled(False)
-      self.btnStore.setEnabled(False)
-      self.btnFeedJewel.setEnabled(True)
-      self.btnSort.setEnabled(False)
-    elif newStatus == P_STATUS_IDLE:
+    # This is easily bugged if we don't get a proper response from the bridge. 
+    # Commenting for now, so the UI will basically act as a request-sender
+    # Status is merely figurative and you can send many overlapping requests
+    # They overwrite each other. That's fine for now, I guess
+    # if newStatus == P_STATUS_BUSY_REFRESH:
+    #   self.btnRefresh.setEnabled(True)
+    #   self.btnDissolve.setEnabled(False)
+    #   self.btnSell.setEnabled(False)
+    #   self.btnTrade.setEnabled(False)
+    #   self.btnStore.setEnabled(False)
+    #   self.btnFeedJewel.setEnabled(False)
+    #   self.btnSort.setEnabled(False)
+    # elif newStatus == P_STATUS_BUSY_DISSOLVE:
+    #   self.btnRefresh.setEnabled(False)
+    #   self.btnDissolve.setEnabled(True)
+    #   self.btnSell.setEnabled(False)
+    #   self.btnTrade.setEnabled(False)
+    #   self.btnStore.setEnabled(False)
+    #   self.btnFeedJewel.setEnabled(False)
+    #   self.btnSort.setEnabled(False)
+    # elif newStatus == P_STATUS_BUSY_SELL:
+    #   self.btnRefresh.setEnabled(False)
+    #   self.btnDissolve.setEnabled(False)
+    #   self.btnSell.setEnabled(True)
+    #   self.btnTrade.setEnabled(False)
+    #   self.btnStore.setEnabled(False)
+    #   self.btnFeedJewel.setEnabled(False)
+    #   self.btnSort.setEnabled(False)
+    # elif newStatus == P_STATUS_BUSY_TRADE:
+    #   self.btnRefresh.setEnabled(False)
+    #   self.btnDissolve.setEnabled(False)
+    #   self.btnSell.setEnabled(False)
+    #   self.btnTrade.setEnabled(True)
+    #   self.btnStore.setEnabled(False)
+    #   self.btnFeedJewel.setEnabled(False)
+    #   self.btnSort.setEnabled(False)
+    # elif newStatus == P_STATUS_BUSY_STORE:
+    #   self.btnRefresh.setEnabled(False)
+    #   self.btnDissolve.setEnabled(False)
+    #   self.btnSell.setEnabled(False)
+    #   self.btnTrade.setEnabled(False)
+    #   self.btnStore.setEnabled(True)
+    #   self.btnFeedJewel.setEnabled(False)
+    #   self.btnSort.setEnabled(False)
+    # elif newStatus == P_STATUS_BUSY_FEEDJEWEL:
+    #   self.btnRefresh.setEnabled(False)
+    #   self.btnDissolve.setEnabled(False)
+    #   self.btnSell.setEnabled(False)
+    #   self.btnTrade.setEnabled(False)
+    #   self.btnStore.setEnabled(False)
+    #   self.btnFeedJewel.setEnabled(True)
+    #   self.btnSort.setEnabled(False)
+    # elif newStatus == P_STATUS_IDLE:
+    if True:
       self.btnRefresh.setEnabled(True)
       self.btnDissolve.setEnabled(True)
       self.btnSell.setEnabled(True)
@@ -387,7 +392,7 @@ class μStorage(μToggler):
     self.table.staleData = {}
     for bridge in self.daemon.getBridges().values():
       bridge : μMilvian
-      try: os.remove(f'/dev/shm/Milvian/InventoryData{bridge.id}.bin')
+      try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
       except: pass
       self.table.staleData[bridge.charName] = []
       p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
@@ -664,7 +669,7 @@ class μStorage(μToggler):
         self.table.staleData[bridge.charName].append(self.table.item(i,P_ITEM_COLUMNS.index("Name")))
     
     def _refreshStorageThread(self : μStorage, bridge : μMilvian):
-      filename = f'/dev/shm/Milvian/InventoryData{bridge.id}.bin'
+      filename = f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin'
       while not os.path.exists(filename) or os.path.getsize(filename) < 13:
         time.sleep(0.1)
 

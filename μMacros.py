@@ -572,6 +572,24 @@ class μMacros(μToggler):
     return consolidated, meta
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def consolidateActiveMacros_v2(self) -> tuple:
+    from helpers.μMacroParser import MacroParser
+    aliases      = self.getAliases()
+    bridges      = self.daemon.getBridges()
+    bridge_names = list(bridges.keys())
+    active_sets  = [self.allMacroItems[n] for n in self.getActiveSets() if n in self.allMacroItems]
+    consolidated, meta = MacroParser.consolidate(active_sets, aliases, bridge_names)
+
+    μPrint.debug("--------------------------------------------------------")
+    μPrint.debug("  [v2] Consolidated macros (all active sets)")
+    μPrint.debug("--------------------------------------------------------")
+    for hk, actors in consolidated.items():
+      μPrint.debug(f"  {hk}:")
+      for actor, cmds in actors.items():
+        μPrint.debug(f"     {actor}: {cmds}")
+    return consolidated, meta
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeMacroEntry(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
