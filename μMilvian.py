@@ -22,12 +22,11 @@ import os, threading, json, re, random
 from helpers.μMilvianPacket import μMilvianPacket, cPacker, cPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
 from helpers.μPrint import μPrint
-from helpers.χDispatcher import χDispatcher, χSignal
+from helpers.χDispatcher import χSignal
 from helpers.util import *
 from helpers.util import P_DEFAULT_SHM_DIR
 from helpers.μStrings import *
 from helpers.μStrings import μString
-from helpers.μAliases import μAliases
 from helpers.χHelper import χHelper
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -47,6 +46,7 @@ P_RESPONSE_READER_POS    = 0
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def parseCommand(cmd: str, bridge) -> μMilvianPacket:
   # Parses a command string into a packet. Handles comma-separated lists and brace expansion. Does not send.
+  from μMacros import μMacroRegistry
   cmd = μString(cmd.strip())
 
   parts = cmd.split(',')
@@ -55,7 +55,7 @@ def parseCommand(cmd: str, bridge) -> μMilvianPacket:
   expanded = cmd.expand()
   if len(expanded) > 1: return parseList(bridge, expanded)
   cmd = μString(expanded[0])
-  for k, a in μAliases.get().items():
+  for k, a in μMacroRegistry.aliases.items():
     cmd = μString(cmd.replace(k, a))
 
   parts = cmd.split(',')

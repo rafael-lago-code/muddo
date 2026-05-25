@@ -18,13 +18,13 @@
 #
 #
 from __future__ import annotations
+from dataclasses import dataclass, field
 from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
                               QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit,
                               QTableWidget, QTableWidgetItem, QLabel, QDialog)
 from helpers.μPrint import μPrint
 from helpers.μImageFactory import *
 from helpers.μStrings import *
-from helpers.μAliases import μAliases
 from μSettings import μSettings
 from μSettingsProfile import μSettingsProfile
 from widgets.μFloating import μToggler
@@ -34,32 +34,262 @@ from PyQt6.QtCore import QSize, Qt
 import glob, re, os, random
 from typing import TYPE_CHECKING
 from μMacrosDaemon import μMacrosDaemon
-from widgets.μIconSelectDialog import μIconSelectDialog
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖ T A B L E   R O W 
+#   ❖ M A C R O   C O N S O L I D A T E D
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class cTableRow(QTableWidgetItem):
-  def __init__(self, text=None):
-    super().__init__(text)
-    self.setFlags(Qt.ItemFlag.ItemIsDragEnabled)
-    self.setFlags(~Qt.ItemFlag.ItemIsDropEnabled)
+@dataclass
+class μConsolidatedScript:
+  icon    : str     = ""
+  name    : μString = μString("")
+  actions : μString = μString("")
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖  M A C R O   I T E M 
+#   🮿  M A C R O   R E G I S T R Y
+#                                  
+#   This is a static class. Don't instantiate it.
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class cMacroSet(QListWidgetItem):
+class μMacroRegistry:
+  triggers : dict[str, list[μMacroEntry]] = {}
+  sets     : dict[str, μMacroSet] = {}
+  aliases  : dict[str, str] = {}
+  consolidatedTriggers : dict[str, dict] = {}
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def registerMacro(cls, macro, setName : str):
+    # unparsed list directly from the json file
+    if isinstance(macro, list):
+      newMacro = μMacroEntry(macro[0], macro[1], macro[2], macro[3], setName)
+      if newMacro.parentSet in cls.sets:
+        cls.sets[newMacro.parentSet].append(newMacro)
+      else:
+        μPrint.error(f"[μMacroRegistry] set \"{newMacro.parentSet}\" not registered; macro \"{newMacro.name}\" orphaned")
+        return
+      cls.triggers.setdefault(newMacro.trigger, []).append(newMacro)
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def registerSet(cls, macroSet : μMacroSet):
+    cls.sets[macroSet.name] = macroSet
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def unregisterMacro(cls, macro : μMacroEntry):
+    if macro.trigger in cls.triggers:
+      cls.triggers[macro.trigger].remove(macro)
+      if not cls.triggers[macro.trigger]:
+        del cls.triggers[macro.trigger]
+    if macro.parentSet in cls.sets:
+      cls.sets[macro.parentSet].entries.remove(macro)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def editMacroTrigger(cls, macro : μMacroEntry, newTrigger : str):
+    oldTrigger = macro.trigger
+    if oldTrigger in cls.triggers:
+      cls.triggers[oldTrigger].remove(macro)
+      if not cls.triggers[oldTrigger]:
+        del cls.triggers[oldTrigger]
+    cls.triggers.setdefault(newTrigger, []).append(macro)
+    macro.trigger = newTrigger
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def unregisterSet(cls, name : str):
+    if name not in cls.sets:
+      μPrint.error(f"[μMacroRegistry] set \"{name}\" does not exist; cannot unregister")
+      return
+    for macro in list(cls.sets[name].entries):
+      cls.unregisterMacro(macro)
+    del cls.sets[name]
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def renameSet(cls, old_name: str, new_name: str):
+    if old_name not in cls.sets:
+      μPrint.error(f"[μMacroRegistry] set \"{old_name}\" not found; cannot rename")
+      return
+    sset = cls.sets.pop(old_name)
+    sset.name = new_name
+    cls.sets[new_name] = sset
+    for entry in sset.entries:
+      entry.parentSet = new_name
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def __str__(cls):
+    string = ""
+    for t in cls.triggers:
+      string += f"   ✚ {t}\n"
+      for e in cls.triggers[t]:
+        string += f"       ● {e}\n"
+    return string
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def activateSet(cls, setName):
+    if setName in cls.sets:
+      cls.sets[setName].activate()
+    else:
+      μPrint.error(f"[μMacroRegistry] set \"{setName}\" does not exist and cannot be activated; doing nothing...")
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def deactivateSet(cls, setName):
+    if setName in cls.sets:
+      cls.sets[setName].deactivate()
+    else:
+      μPrint.error(f"[μMacroRegistry] set \"{setName}\" does not exist and cannot be deactivated; doing nothing...")
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def loadAliases(cls):
+    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
+    try:
+      with open(filename, "r") as f:
+        cls.aliases = json.load(f)
+    except Exception as e:
+      μPrint.error(f"[μMacroRegistry] error loading aliases: {e}")
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def saveAliases(cls):
+    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
+    try:
+      json.dump(cls.aliases, open(filename, 'w'), cls=muJSONEncoder)
+    except Exception as e:
+      μPrint.error(f"[μMacroRegistry] error saving aliases: {e}")
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  C O N S O L I D A T E   T R I G G E R
+  #
+  #   Parses all macros for a specific trigger. Order:
+  #     1. for each active μMacroEntries associated with this trigger
+  #        a. for each Script in μMacroEntry
+  #           i. for each Actor in parseActorAlias(Script)
+  #               consolidated[Actor] += Script + ","
+  #     2. for each Actor in consolidated
+  #        a. consolidated[Actor] = consolidated[Actor].normalize()
+  #        b. consolidated[Actor] = parseScriptAlias(consolidated[Actor])
+  #        c. consolidated[Actor] = consolidated[Actor].split(",")
+  #     3. return consolidated
+  #
+  #   μMacroRegistry should keeps a copy of this consolidated dictionary for future references. Editing macros or
+  #   aliases should trigger the re-consolidation for its trigger
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  @classmethod
+  def consolidateTrigger(cls, trigger : str) -> dict:
+    if trigger not in cls.triggers: return {}
+    consolidated = {}
+    for e in (e for e in cls.triggers[trigger] if e.active):
+      cls.consolidateEntry(e, consolidated)
+    cls.consolidatedTriggers[trigger] = consolidated
+    μPrint.debug(f" [*] ── {μPrint.fill(f"Consolidated: {trigger}  ", 62, "─")}")
+    for actor, c in consolidated.items():
+      μPrint.debug(f"      Name: {μPrint.fill(c.name.normalize()[:-2], 15)}")
+      μPrint.debug(f"      {μPrint.fill(f"{actor}", 15)} │ {c.actions.normalize()[:-2]}")
+    μPrint.debug(f"     ─────────────────┴─────────────────────────────────────────────────────")
+    return consolidated
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def consolidateEntry(cls, entry: μMacroEntry, consolidated: dict = None) -> dict:
+    if consolidated is None: consolidated = {}
+    for script in entry.scripts.split(";"):
+      if not script.strip(): continue
+      if len(script.split(":")) < 2:
+        μPrint.error(f"[μMacroRegistry] cannot consolidate script \"{script}\", missing \":\"")
+        continue
+      actors, actions = script.split(":", 1)
+      actors  = μString(actors).fullExpansion()
+      actions = μString(actions).fullExpansion()
+      for k, v in cls.aliases.items(): actors  = actors.normalize().replace(k, v)
+      for k, v in cls.aliases.items(): actions = actions.normalize().replace(k, v)
+      for actor in μString(actors).split(","):
+        c = consolidated.get(actor, μConsolidatedScript())
+        c.actions += actions + ", "
+        c.name    += entry.name + ", "
+        c.icon     = entry.icon
+        consolidated[actor] = c
+    return consolidated
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖ M A C R O   E N T R Y 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μMacroEntry:
+  def __init__(self, icon, name, trigger, scripts, parentSet):
+    self.icon = icon
+    self.name = name
+    self.trigger = trigger
+    self.parentSet = parentSet
+    self.active = False
+    self.scripts = scripts
+
+  def serialize(self): return [self.icon, self.name, self.trigger, self.scripts]
+
+  def setTrigger(self, newTrigger: str): μMacroRegistry.editMacroTrigger(self, newTrigger)
+  def setName(self, newName: str):       self.name = newName
+  def setIcon(self, newIcon: str):       self.icon = newIcon
+  def setScripts(self, scripts: str):    self.scripts = scripts
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def __str__(self):
+    return f"{self.name} [{self.trigger}]: {μString.normalize(self.scripts)}"
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def editMacroIcon(self, table, row, parent) -> bool:
+    from widgets.μIconSelectDialog import μIconSelectDialog
+    dlg = μIconSelectDialog(current=self.icon, parent=parent)
+    if not dlg.exec(): return False
+    path = dlg.selectedPath()
+    if not path: return False
+    self.setIcon(path)
+    icon_item = table.item(row, 0)
+    if not icon_item:
+      icon_item = QTableWidgetItem()
+      icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+      table.setItem(row, 0, icon_item)
+    icon_item.setData(Qt.ItemDataRole.UserRole, path)
+    icon_item.setIcon(getIcon(path))
+    return True
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def insertToTable(self, table, pos):
+    table.insertRow(pos)
+    icon_item = QTableWidgetItem()
+    icon_item.setData(Qt.ItemDataRole.UserRole, self.icon or "")
+    icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+    if self.icon:
+      icon_item.setIcon(getIcon(self.icon))
+    else:
+      icon_item.setIcon(getIcon(P_ICON_PLACEHOLDER)) #TODO
+    table.setItem(pos, 0, icon_item)
+    table.setItem(pos, 1, QTableWidgetItem(str(self.name)))
+    table.setItem(pos, 2, QTableWidgetItem(str(self.trigger)))
+    table.setItem(pos, 3, QTableWidgetItem(str(self.scripts)))
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  M A C R O   S E T  
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μMacroSet(QListWidgetItem):
   def __init__(self, parent : μMacros, name : str):
     super().__init__()
+    self.entries : list[μMacroEntry] = []
     self.parent = parent
+    self.name = name
     self.setText(name)
     self.setFlags(self.flags() | Qt.ItemFlag.ItemIsUserCheckable | Qt.ItemFlag.ItemIsEditable)
     self.setCheckState(Qt.CheckState.Unchecked)
-    self.data = [["", "", "", ""]]
+    μMacroRegistry.registerSet(self)
+
+  def activate(self): self.setActive(True)
+  def deactivate(self): self.setActive(False)
+  def append(self, macro : μMacroEntry): self.entries.append(macro)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setActive(self, val : bool):
@@ -67,55 +297,32 @@ class cMacroSet(QListWidgetItem):
       self.setCheckState(Qt.CheckState.Checked)
     else:
       self.setCheckState(Qt.CheckState.Unchecked)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def sync(self, row, column):
-    while row >= len(self.data):
-      self.data.append([None, None, None, None])
-    modifiedCell = self.parent.table.item(row, column)
-    if modifiedCell is None: return
-    if column == 0:
-      self.data[row][0] = modifiedCell.data(Qt.ItemDataRole.UserRole) or ""
-    else:
-      self.data[row][column] = modifiedCell.text()
+    for e in self.entries:
+      e.active = val
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def display(self):
     table : QTableWidget = self.parent.table
-    for row in self.data:
-      pos = table.rowCount()
-      table.insertRow(pos)
-      icon_item = cTableRow()
-      icon_item.setData(Qt.ItemDataRole.UserRole, row[0] or "")
-      icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-      if row[0]:
-        icon_item.setIcon(getIcon(row[0]))
-      else:
-        icon_item.setIcon(getIcon(P_ICON_PLACEHOLDER)) #TODO
-      table.setItem(pos, 0, icon_item)
-      table.setItem(pos, 1, cTableRow(str(row[1])))
-      table.setItem(pos, 2, cTableRow(str(row[2])))
-      table.setItem(pos, 3, cTableRow(str(row[3])))
+    for entry in self.entries:
+      entry.insertToTable(table, table.rowCount())
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def save(self):
-    filename = P_DEFAULT_MACRODIR + os.sep + self.text() + P_DEFAULT_MACROEXT
-    json.dump(self.data, open(filename,'w'), cls=muJSONEncoder)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def removeRow(self, row : int):
-    if row < len(self.data):
-      self.data = self.data[:row] + self.data[row+1:]
+    filename = P_DEFAULT_MACRODIR + os.sep + self.name + P_DEFAULT_MACROEXT
+    json.dump([e.serialize() for e in self.entries], open(filename,'w'), cls=muJSONEncoder)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self):
-    filename = P_DEFAULT_MACRODIR + os.sep + self.text() + P_DEFAULT_MACROEXT
+    filename = P_DEFAULT_MACRODIR + os.sep + self.name + P_DEFAULT_MACROEXT
     try:
       with open(filename,"r") as f:
-        self.data = json.load(f)
+        data = json.load(f)
     except Exception as e:
       μPrint.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
-      self.data = []
+      data = []
+
+    for entry in data:
+      μMacroRegistry.registerMacro(entry, self.name)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def consolidate(self, consolidated = {}, aliases = {}, meta = {}) -> tuple:
@@ -142,9 +349,9 @@ class cMacroSet(QListWidgetItem):
         continue
       validAliases[k] = a
 
-    for row in self.data:
-      icon, name = row[0], row[1]
-      hotkey  = row[2]
+    for e in self.entries:
+      icon, name = e.icon, e.name
+      hotkey  = e.trigger
       for k,a in validAliases.items():
         hotkey = replaceAlias(hotkey, k, a)
       hotkey  = (hotkey.replace(" ", "")).lower()
@@ -152,7 +359,7 @@ class cMacroSet(QListWidgetItem):
       entry = meta.setdefault(hotkey, {'icon': None, 'names': set()})
       if icon: entry['icon'] = icon
       if name: entry['names'].add(name)
-      scripts = [e.strip() for e in row[3].split(";") if e.strip()]
+      scripts = [s.strip() for s in e.scripts.split(";") if s.strip()]
 
       if hotkey in consolidated.keys():
         cs = consolidated[hotkey]
@@ -196,8 +403,8 @@ class μMacros(μToggler):
 
     self.daemon = μMacrosDaemon(self.main)
 
-    self.btnNewSet      = μOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
-    self.btnDeleteSet   = μOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
+    self.btnAddSet      = μOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
+    self.btnRemoveSet   = μOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
     self.btnAddEntry    = μOrbSmall(icon=P_ICON_ADD, tooltip="Add a new macro to the currently selected set")
     self.btnRemoveEntry = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected macro from the currently selected set")
     self.btnEditIcon    = μOrbSmall(icon=P_ICON_IMAGE, tooltip="Set icon for the selected macro")
@@ -207,8 +414,8 @@ class μMacros(μToggler):
     self.btnAddAlias    = μOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
     self.btnRemoveAlias = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
 
-    self.btnNewSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
-    self.btnDeleteSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
+    self.btnAddSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
+    self.btnRemoveSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
 
     self.setListWidget = QListWidget()
     self.setListWidget.setWordWrap(True)
@@ -231,7 +438,6 @@ class μMacros(μToggler):
 
     self.aliasFilter = QLineEdit()
 
-    self.allMacroItems = {}
     self.activeSetLabel = QLabel("Macros in selected set:")
     self._loading = False
     self._aliasLoading = False
@@ -260,7 +466,7 @@ class μMacros(μToggler):
     _topSplitter = QSplitter()
     _topSplitter.addWidget(newVFrame([ "Sets:",
                               newHLayout([self.setListWidget,
-                                newVLayout(["__stretch__",self.btnNewSet, self.btnDeleteSet, "__stretch__"])])]))
+                                newVLayout(["__stretch__",self.btnAddSet, self.btnRemoveSet, "__stretch__"])])]))
     _topSplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]),
                            newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias, "__stretch__"])]))
 
@@ -276,14 +482,14 @@ class μMacros(μToggler):
 
     self.table.dropEvent = lambda x : self._saveWhenDropped(x)      
 
-    self.btnNewSet.clicked.connect(self.newMacroSet)
-    self.btnDeleteSet.clicked.connect(self.deleteMacroSet)
+    self.btnAddSet.clicked.connect(self.addMacroSet)
+    self.btnRemoveSet.clicked.connect(self.removeMacroSet)
     # self.btnHelp.clicked.connect(self.showHelpWindow)
     self.btnPlay.clicked.connect(self.playMacro)
-    self.setListWidget.itemChanged.connect(self.renameMacroSetFile)
+    self.setListWidget.itemChanged.connect(self.editMacroSet)
     self.setListWidget.itemSelectionChanged.connect(self.updateTable)
     self.setListWidget.itemSelectionChanged.connect(self._ensureSetListSelection)
-    self.table.cellChanged.connect(self.syncTable2Data)
+    self.table.cellChanged.connect(self.editMacroEntry)
     self.table.cellDoubleClicked.connect(self._onCellDoubleClicked)
     self.table.itemSelectionChanged.connect(self._onSelectionChanged)
     self.actionEditor.textChanged.connect(self._saveAction)
@@ -301,11 +507,11 @@ class μMacros(μToggler):
     self.btnEditIcon.clicked.connect(self.editMacroIcon)
 
     self.reloadAlias()
-  
+    
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _saveWhenDropped(self, event):
     QTableWidget.dropEvent(self.table, event)
-    cset : cMacroSet = self.setListWidget.currentItem()
+    cset : μMacroSet = self.setListWidget.currentItem()
     for row in range(self.table.rowCount()):
       for col in range(4):
         cset.sync(row,col)
@@ -327,6 +533,9 @@ class μMacros(μToggler):
       self.setActiveSets(self.toActivate)
       self.toActivate = None
     self._ensureSetListSelection()
+
+    print(μMacroRegistry.__str__())
+    for t in μMacroRegistry.triggers: μMacroRegistry.consolidateTrigger(t)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateProfile(self, prof : μSettingsProfile, last : str):
@@ -356,31 +565,33 @@ class μMacros(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addMacroEntry(self):
-    pos = self.table.rowCount()
-    self.table.insertRow(pos)
-    icon = cTableRow()
-    icon.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-    icon.setIcon(getIcon(P_ICON_PLACEHOLDER))
-    self.table.setItem(pos, 0, icon)
-    self.table.setItem(pos, 1, cTableRow(""))
-    self.table.setItem(pos, 2, cTableRow(""))
-    self.table.setItem(pos, 3, cTableRow(""))
+    sset = self.setListWidget.selectedItems()
+    if not sset: return
+    μMacroRegistry.registerMacro(["", "", "none", ""], sset[0].name)
+    sset[0].entries[-1].insertToTable(self.table, self.table.rowCount())
+    sset[0].save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def syncTable2Data(self, row, column):
+  def editMacroEntry(self, row, column):
     if self._loading: return
     sset = self.setListWidget.selectedItems()
     if not sset: return
-    sset[0].sync(row, column)
-    self.activeSetLabel.setText(f"Macros in \"{sset[0].text()}\":")
+    if row >= len(sset[0].entries): return
+    entry = sset[0].entries[row]
+    cell = self.table.item(row, column)
+    if cell is None: return
+    if   column == 1: entry.setName(cell.text())
+    elif column == 2: entry.setTrigger(cell.text())
+    elif column == 3: entry.setRaw(cell.text())
+    self.activeSetLabel.setText(f"Macros in \"{sset[0].name}\":")
     sset[0].save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addAlias(self, alias="", action=""):
     pos = self.aliasTable.rowCount()
     self.aliasTable.insertRow(pos)
-    self.aliasTable.setItem(pos, 0, cTableRow(alias))
-    self.aliasTable.setItem(pos, 1, cTableRow(action))
+    self.aliasTable.setItem(pos, 0, QTableWidgetItem(alias))
+    self.aliasTable.setItem(pos, 1, QTableWidgetItem(action))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeAlias(self):
@@ -399,20 +610,15 @@ class μMacros(μToggler):
     self._aliasLoading = True
     self.aliasTable.clearContents()
     self.aliasTable.setRowCount(0)
-    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
-    with open(filename, "r") as f:
-      data = json.load(f)
-    for k in data.keys():
-      self.addAlias(k, data[k])
+    μMacroRegistry.loadAliases()
+    for k, v in μMacroRegistry.aliases.items():
+      self.addAlias(k, v)
     self._aliasLoading = False
-    μAliases.set(data)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveAlias(self):
-    d = self.getAliases()
-    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
-    json.dump(d, open(filename,'w'), cls=muJSONEncoder)
-    μAliases.set(d)
+    μMacroRegistry.aliases = self.getAliases()
+    μMacroRegistry.saveAliases()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getAliases(self):
@@ -434,34 +640,29 @@ class μMacros(μToggler):
       self.aliasTable.setRowHidden(row, bool(text) and not match)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def newMacroSet(self):
+  def addMacroSet(self):
     i = 1
-    while f"NewSet{i}" in self.allMacroItems:
+    while f"NewSet{i}" in μMacroRegistry.sets:
       i += 1
     self.appendMacroSet(f"NewSet{i}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def appendMacroSet(self, name : str):
-    if name in self.allMacroItems: return
+    if name in μMacroRegistry.sets: return
 
-    self.allMacroItems[name] = cMacroSet(self,name)
-    self.setListWidget.addItem(self.allMacroItems[name])
+    sset = μMacroSet(self, name)
+    self.setListWidget.addItem(sset)
 
     filename = P_DEFAULT_MACRODIR+os.sep+name+P_DEFAULT_MACROEXT
     if os.path.exists(filename):
-      self.allMacroItems[name].load()
+      sset.load()
     else:
       μPrint.info(f"New macro set being created in \"{C_SILVER}{P_DEFAULT_MACRODIR}</font>\"...")
-      self.allMacroItems[name].save()
+      sset.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getActiveSets(self):
-    allActive = []
-    sset : cMacroSet
-    for sset in self.allMacroItems.values():
-      if sset.checkState() == Qt.CheckState.Checked:
-        allActive.append(sset.text())
-    return allActive
+    return [s.name for s in μMacroRegistry.sets.values() if s.checkState() == Qt.CheckState.Checked]
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setActiveSets(self, toActivate : list):
@@ -469,9 +670,9 @@ class μMacros(μToggler):
       self.toActivate = toActivate
       return
 
-    sset : cMacroSet
-    for sset in self.allMacroItems.values():
-      if sset.text() in toActivate:
+    sset : μMacroSet
+    for sset in μMacroRegistry.sets.values():
+      if sset.name in toActivate:
         sset.setActive(True)
       else:
         sset.setActive(False)
@@ -541,13 +742,14 @@ class μMacros(μToggler):
     dlg.exec()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def deleteMacroSet(self):
+  def removeMacroSet(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
-    μPrint.info(f"Removing macro set \"{C_SILVER}{sset[0].text()}</font>\"...")
-    del self.allMacroItems[sset[0].text()]
+    name = sset[0].name
+    μPrint.info(f"Removing macro set \"{C_SILVER}{name}</font>\"...")
+    μMacroRegistry.unregisterSet(name)
     try:
-      os.remove(P_DEFAULT_MACRODIR+os.sep+sset[0].text()+P_DEFAULT_MACROEXT)
+      os.remove(P_DEFAULT_MACRODIR+os.sep+name+P_DEFAULT_MACROEXT)
     except:
       pass
     self.setListWidget.takeItem(self.setListWidget.row(sset[0]))
@@ -556,11 +758,11 @@ class μMacros(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def consolidateActiveMacros(self) -> tuple:
     allActive = self.getActiveSets()
-    aliases = self.getAliases()
+    aliases = μMacroRegistry.aliases
     consolidated = {}
     meta = {}
     for name in allActive:
-      consolidated, meta = self.allMacroItems[name].consolidate(consolidated, aliases, meta)
+      consolidated, meta = μMacroRegistry.sets[name].consolidate(consolidated, aliases, meta)
 
     μPrint.debug(f"--------------------------------------------------------")
     μPrint.debug(f"  Consolidated macros (all active sets)")
@@ -577,7 +779,7 @@ class μMacros(μToggler):
     aliases      = self.getAliases()
     bridges      = self.daemon.getBridges()
     bridge_names = list(bridges.keys())
-    active_sets  = [self.allMacroItems[n] for n in self.getActiveSets() if n in self.allMacroItems]
+    active_sets  = [μMacroRegistry.sets[n] for n in self.getActiveSets() if n in μMacroRegistry.sets]
     consolidated, meta = MacroParser.consolidate(active_sets, aliases, bridge_names)
 
     μPrint.debug("--------------------------------------------------------")
@@ -595,7 +797,8 @@ class μMacros(μToggler):
     if not sset: return
     crow = self.table.currentRow()
     if crow < 0: return
-    sset[0].removeRow(crow)
+    if crow < len(sset[0].entries):
+      μMacroRegistry.unregisterMacro(sset[0].entries[crow])
     self._loading = True
     self.table.removeRow(crow)
     self._loading = False
@@ -611,21 +814,9 @@ class μMacros(μToggler):
     sset = self.setListWidget.selectedItems()
     if not sset: return
     crow = self.table.currentRow()
-    if crow < 0: return
-    current_icon = sset[0].data[crow][0] if crow < len(sset[0].data) else None
-    dlg = μIconSelectDialog(current=current_icon, parent=self)
-    if dlg.exec():
-      path = dlg.selectedPath()
-      if path:
-        icon_item = self.table.item(crow, 0)
-        if not icon_item:
-          icon_item = cTableRow()
-          icon_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
-          self.table.setItem(crow, 0, icon_item)
-        icon_item.setData(Qt.ItemDataRole.UserRole, path)
-        icon_item.setIcon(getIcon(path))
-        sset[0].sync(crow, 0)
-        sset[0].save()
+    if crow < 0 or crow >= len(sset[0].entries): return
+    if sset[0].entries[crow].editMacroIcon(self.table, crow, self):
+      sset[0].save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onSelectionChanged(self):
@@ -652,28 +843,26 @@ class μMacros(μToggler):
     if item:
       if item.text() != text: item.setText(text)
     else:
-      self.table.setItem(row, 3, cTableRow(text))
+      self.table.setItem(row, 3, QTableWidgetItem(text))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def swapTriggers(self, trigger_a: str, trigger_b: str):
-    for cset in self.allMacroItems.values():
+    for cset in μMacroRegistry.sets.values():
       modified = False
-      for row in cset.data:
-        if row[2] == trigger_a:
-          row[2] = trigger_b
+      for entry in cset.entries:
+        if entry.trigger == trigger_a:
+          entry.setTrigger(trigger_b)
           modified = True
-        elif row[2] == trigger_b:
-          row[2] = trigger_a
+        elif entry.trigger == trigger_b:
+          entry.setTrigger(trigger_a)
           modified = True
       if modified:
         cset.save()
     self.updateTable()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def renameMacroSetFile(self, sset : cMacroSet):
-    key = next((k for k, v in self.allMacroItems.items() if v is sset), None)
-    if key != sset.text():
-      μPrint.info(f"Renaming macro set from \"{C_SILVER}{key}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
-      os.rename(P_DEFAULT_MACRODIR+os.sep+key+P_DEFAULT_MACROEXT, P_DEFAULT_MACRODIR+os.sep+sset.text()+P_DEFAULT_MACROEXT)
-      self.allMacroItems[sset.text()] = sset
-      del self.allMacroItems[key]
+  def editMacroSet(self, sset : μMacroSet):
+    if sset.name != sset.text():
+      μPrint.info(f"Renaming macro set from \"{C_SILVER}{sset.name}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
+      os.rename(P_DEFAULT_MACRODIR+os.sep+sset.name+P_DEFAULT_MACROEXT, P_DEFAULT_MACRODIR+os.sep+sset.text()+P_DEFAULT_MACROEXT)
+      μMacroRegistry.renameSet(sset.name, sset.text())

@@ -17,8 +17,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 import re
+# if TYPE_CHECKING:
+#    from μString import μString
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  
@@ -30,11 +33,11 @@ def alphaRange(start, stop : str) -> list[str]:
   try:
     μstart = int(start)
     μstop = int(stop)
-    return [str(i) for i in range(μstart, μstop + 1)]
+    return [μString(i) for i in range(μstart, μstop + 1)]
   except:
     μstart = ord(start)
     μstop = ord(stop)
-    return [chr(i) for i in range(μstart, μstop + 1)]
+    return [μString(chr(i)) for i in range(μstart, μstop + 1)]
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    expandRange
@@ -51,7 +54,7 @@ def expandRange(text : str) -> list[str]:
     if "-"   in text: splitIdx = text.find('-')
     elif ":" in text: splitIdx = text.find(':')
     elif "~" in text: splitIdx = text.find('~')
-    else: return [text]
+    else: return [μString(text)]
     return alphaRange(text[:splitIdx], text[splitIdx+1:])
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -70,7 +73,7 @@ def expandRepeaters(text : str) -> list:
     for s in [prefix + i + suffix for i in expandRange(rng)]: out += expandRepeaters(s)
     return out
   else:
-    return [text]
+    return [μString(text)]
 
 P_GROUPING={"\"":"\"", "(":")", "{":"}", "[":"]", "<":">"}
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -90,8 +93,8 @@ def splitGroups(text: str, delim : str = ",", strip: str = " ") -> list[str]:
       j+=1
     j+=1
   parts.append(text[i:])
-  if strip: return [p.strip(strip) for p in parts if p.strip(strip)]
-  else:     return parts
+  if strip: return [μString(p.strip(strip)) for p in parts if p.strip(strip)]
+  else:     return [μString(p) for p in parts]
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    dictionary
@@ -128,7 +131,7 @@ def guess(text: str):
       return text[1:-1]
     else:
       return splitGroups(text[1:-1])
-  return text
+  return μString(text)
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    replaceAlias
@@ -145,7 +148,7 @@ def replaceAlias(text: str, key: str, translation: str) -> str:
     s = translation
     for i, v in enumerate(m.groups(), 1): s = s.replace(f'${i}', v)
     return s
-  return re.sub(left + body + right, repl, text)
+  return μString(re.sub(left + body + right, repl, text))
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    globmatch
@@ -168,7 +171,7 @@ def contains(s: str, sub) -> bool:
 #    returns a tuple containing each line in a file
 def fileContents(path) -> tuple[str]:
   with open(path, 'r') as f:
-    return tuple(line.rstrip('\n') for line in f if line.strip())
+    return tuple(μString(line.rstrip('\n')) for line in f if line.strip())
   
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 #    hasKeywords
@@ -177,11 +180,27 @@ def hasKeyword(text, keyword : str):
   text = ' '.join(text) if isinstance(text, (list, tuple)) else text
   return bool(re.search(rf'\b{keyword}\b', text))
 
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+#    fullExpansion    
+#    expand braces in a loop until there is nothing more to expand. Returns a μString
+def fullExpansion(text) -> str:
+  while "{" in text:
+    text = μString(text).split(",")
+    parsed = []
+    for word in list(text):
+      parsed += μString(word).expand()
+    text = ", ".join(parsed)
+  return μString(text)
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+#    normalize
+#    removes double spaces and newlines from string
+def normalize(text) -> str:
+  return μString(" ".join(str(text).split()))
+
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  S T R I N G 
-#                                  
-#   Not hasheable; helpful for string manipulation, but don't use it for dict keys or sets.
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μString(str):
   def __new__(cls, value):
@@ -192,10 +211,19 @@ class μString(str):
   def __ne__(self, other): return not self.__eq__(other)
   def __contains__(self, sub): return contains(self, sub) 
   def expand(self): return expandRepeaters(self)
+  def fullExpansion(self): return fullExpansion(self)
   def split(self, sep : str = None, strip: str = " "): return splitGroups(self, sep, strip)
   def replace(self, key: str, translation: str): return replaceAlias(self, key, translation)
   def guess(self): return guess(self)
   def dictionary(self, delim : str = ",", strip: str = " "): return dictionary(self, delim, strip)
   def keywordIn(self, text : str): return hasKeyword(text, self)
   def hasKeyword(self, keyword : str): return hasKeyword(self, keyword)
+  def normalize(self): return normalize(self)
+
+  def __add__(self, other): return μString(super().__add__(other))
+  def __radd__(self, other): return μString(str(other) + str(self))
+  def join(self, iterable): return μString(super().join(iterable))
+  def strip(self, chars=None):  return μString(super().strip(chars))
+  def lstrip(self, chars=None): return μString(super().lstrip(chars))
+  def rstrip(self, chars=None): return μString(super().rstrip(chars))
   

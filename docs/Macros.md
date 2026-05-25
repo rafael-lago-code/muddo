@@ -66,7 +66,7 @@ The last ";" is optional. It can also be a single script, in which case no ";" i
 
 `<actor1>, ..., <actorN>: <action1>, ..., <actionM>`
 
-Each `<actor>` is a character currently hooked to the framework via Milvian Bridge. The list must be comma-separated. It will make a lot of sense to use the *meta actors* too, most importantly, "`all`"; see [Meta Actors](#meta-actors-and-targets) subsection later on. The `<actions>` are the actual commands to be executed, also comma-separated. Everything is case-insensitive. There are A LOT of possible actions, I'll go over the basic ones now and some advanced ones afterwards.
+Each `<actor>` is a character currently hooked to the framework via Milvian Bridge. The list must be comma-separated. It will make a lot of sense to use the *meta actors* too, most importantly, "`all`"; see [Meta Actors](#meta-actors-and-targets) subsection later on. The `<actions>` are the actual commands to be executed, also comma-separated. Everything is case-insensitive. There are A LOT of possible actions, I'll go over the basic ones now and some advanced ones afterwards. You may press **Ctrl+S** to save your changes.
 
 | Action | Syntax | Description |
 |---|---|---|
@@ -87,6 +87,7 @@ Each `<actor>` is a character currently hooked to the framework via Milvian Brid
 > **InputAction vs NamedAction:** InputActions target specific hotbar slots and allow different characters to execute complementary actions simultaneously. NamedActions resolve by name so all characters execute the same spell. InputActions also support braces expansion (see Aliases section).
 
 > **⚠️ There is no validation mechanism**. Nonsense macros just cause nonsense behaviour. 
+
 
 ### Advanced Action - ordered(*)
 This is an advanced command with several moving parts. It allows to define a priority list of possible actors (e.g. healers) and a priority for targets (e.g. who to keep alive). Syntax:
@@ -140,7 +141,7 @@ These are keywords that are resolved (automatically) before executing a macro. T
 ---------------------------------
 As their name implies, they are just nicknames for longer commands. Click the "+" sign to add a new alias and edit it in-line in the table. Aliases are always saved in the same file: `${HOME}/.config/muDDO/macros/aliases.json`. They are global for all sets and even all μDDO profiles (but local to each Linux user).
 
-Aliases are applied **first**, before script splitting or actor/action parsing. Aliases are saved automatically on every edit.
+Aliases are applied **last**, after script splitting or actor/action parsing. Aliases are saved automatically on every edit.
 
   - **simple alias**: replaced 1 to 1, always respecting word boundaries. Example: `petOwners → john, michelangelo`, then the macro `petOwners: b5k1` translates to `john, michelangelo: b5k1`
   - **parametrized alias**: these aliases expect a parameter. The syntax is `<aliasPrefix>$X<aliasSuffix>` where X is a number from 1 to 9. It replaces the value passed as a literal. Example: `castJump$1 → target_fellow_$1_key, jump`, then the macro `michelangelo: castJump1, castJump5` will select Party Member 1, cast Jump, then select Party Member 5 and cast Jump again. 
@@ -149,6 +150,8 @@ Aliases are applied **first**, before script splitting or actor/action parsing. 
 You may combine bracers expansion with parametrized aliases to create powerful combinations like `michelangelo: castJump{1-12}`. The macro is blind to the current game state, though; if there are only 9 players, it will cast jump on the first 8 once and then 4 times on the last player. 
 
 >**⚠️ Avoid using aliases within aliases**. It may work or not, depending on the order they are defined, but it is always a bad idea.
+
+>**⚠️ Do not use braces** in the aliases. Braces are expanded BEFORE aliases, so aliases containing braces retain their braces without any expansion.
 
 >**⚠️ There is no validation mechanism**. Nonsense aliases just cause nonsense behaviour. Aliasing reserved works like "focus", "all" or "strategy" will just cause mayhem.
 

@@ -20,7 +20,6 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QGridLayout
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from μCredentials import cCredentials
-from μSettingsProfile import μSettingsProfile
 from μSettings import μSettings
 from μMacros import μMacros
 from μPatch import μPatch

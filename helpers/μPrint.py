@@ -50,3 +50,33 @@ class μPrint():
     cls.warning = lambda x,e=None : print(x + f"\n{e}" if e else "")
     cls.error   = lambda x,e=None : print(x + f"\n{e}" if e else "")
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def fillRight(text, length: int, char: str = " ") -> str:
+    s = str(text)
+    if len(s) >= length: return s[:length]
+    return s + char * (length - len(s))
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def fillLeft(text, length: int, char: str = " ") -> str:
+    s = str(text)
+    if len(s) >= length: return s[:length]
+    return char * (length - len(s)) + s
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def fillCenter(text, length: int, char: str = " ") -> str:
+    s = str(text)
+    if len(s) >= length: return s[:length]
+    total = length - len(s)
+    left  = total // 2
+    right = total - left
+    return char * left + s + char * right
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def fill(text, length: int, char: str = " ", align : str = "l") -> str:
+    if align == "r": return μPrint.fillLeft(text, length, char)
+    if align == "l": return μPrint.fillRight(text, length, char)
+    if align == "c": return μPrint.fillCenter(text, length, char)
