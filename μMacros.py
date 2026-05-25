@@ -29,6 +29,7 @@ from μSettings import μSettings
 from μSettingsProfile import μSettingsProfile
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
+from widgets.μTextEdit import μTextEdit
 from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt
 import glob, re, os, random
@@ -38,10 +39,27 @@ if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
 
+# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+def printConsolidatedDict(trigger, consolidated):
+  μPrint.debug(f" [*] ── {μPrint.fill(f"Consolidated: {trigger}  ", 62, "─")}")
+  prevName = ""
+  for actor, c in consolidated.items():
+    if (prevName != c.name.normalize()[:-1]):
+      prevName = c.name.normalize()[:-1]
+      μPrint.debug(f"  ○   Macro \"{c.name.normalize()[:-1]}\"")
+    μPrint.debug(f"      {μPrint.fill(f"{actor}", 15)} │ {c.actions.normalize()[:-1]}")
+  μPrint.debug(f"     ─────────────────┴─────────────────────────────────────────────────────")
+
+# ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+# Can be used for actors or actions
+def parseText(text):
+  text = μString(text).fullExpansion()
+  for k, v in μMacroRegistry.aliases.items(): text  = text.normalize().replace(k, v)
+  return text
+
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖ M A C R O   C O N S O L I D A T E D
+#   ❖ C O N S O L I D A T E D   S C R I P T
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-@dataclass
 class μConsolidatedScript:
   icon    : str     = ""
   name    : μString = μString("")
@@ -58,6 +76,8 @@ class μMacroRegistry:
   sets     : dict[str, μMacroSet] = {}
   aliases  : dict[str, str] = {}
   consolidatedTriggers : dict[str, dict] = {}
+  actors     : set = set()
+  metaActors : set = {'all', 'self', 'any', 'none', 'etal', 'focus'}
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -65,6 +85,7 @@ class μMacroRegistry:
     # unparsed list directly from the json file
     if isinstance(macro, list):
       newMacro = μMacroEntry(macro[0], macro[1], macro[2], macro[3], setName)
+      cls.registerActors(macro[3])
       if newMacro.parentSet in cls.sets:
         cls.sets[newMacro.parentSet].append(newMacro)
       else:
@@ -76,6 +97,17 @@ class μMacroRegistry:
   @classmethod
   def registerSet(cls, macroSet : μMacroSet):
     cls.sets[macroSet.name] = macroSet
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def registerActors(cls, scripts: str):
+    for script in scripts.split(";"):
+      if ":" not in script: continue
+      actors_text, _ = script.split(":", 1)
+      for a in parseText(actors_text).split(","):
+        a = str(a).strip()
+        if a: cls.actors.add(a)
+    cls.actors -= cls.metaActors
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -97,6 +129,8 @@ class μMacroRegistry:
         del cls.triggers[oldTrigger]
     cls.triggers.setdefault(newTrigger, []).append(macro)
     macro.trigger = newTrigger
+    if oldTrigger in cls.triggers: cls.consolidateTrigger(oldTrigger)
+    cls.consolidateTrigger(newTrigger)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -166,7 +200,7 @@ class μMacroRegistry:
       μPrint.error(f"[μMacroRegistry] error saving aliases: {e}")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  #   🞋  C O N S O L I D A T E   T R I G G E R
+  #   🮿  C O N S O L I D A T E   T R I G G E R
   #
   #   Parses all macros for a specific trigger. Order:
   #     1. for each active μMacroEntries associated with this trigger
@@ -182,23 +216,25 @@ class μMacroRegistry:
   #   μMacroRegistry should keeps a copy of this consolidated dictionary for future references. Editing macros or
   #   aliases should trigger the re-consolidation for its trigger
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  @classmethod
-  def consolidateTrigger(cls, trigger : str) -> dict:
-    if trigger not in cls.triggers: return {}
+  @staticmethod
+  def consolidateTrigger(trigger : str) -> dict:
+    if trigger not in μMacroRegistry.triggers: return {}
     consolidated = {}
-    for e in (e for e in cls.triggers[trigger] if e.active):
-      cls.consolidateEntry(e, consolidated)
-    cls.consolidatedTriggers[trigger] = consolidated
-    μPrint.debug(f" [*] ── {μPrint.fill(f"Consolidated: {trigger}  ", 62, "─")}")
-    for actor, c in consolidated.items():
-      μPrint.debug(f"      Name: {μPrint.fill(c.name.normalize()[:-2], 15)}")
-      μPrint.debug(f"      {μPrint.fill(f"{actor}", 15)} │ {c.actions.normalize()[:-2]}")
-    μPrint.debug(f"     ─────────────────┴─────────────────────────────────────────────────────")
+    for e in (e for e in μMacroRegistry.triggers[trigger] if e.active):
+      μMacroRegistry.consolidateEntry(e, consolidated)
+    μMacroRegistry.consolidatedTriggers[trigger] = consolidated
+    printConsolidatedDict(trigger, consolidated)
     return consolidated
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @classmethod
-  def consolidateEntry(cls, entry: μMacroEntry, consolidated: dict = None) -> dict:
+  @staticmethod
+  def consolidateAll():
+    for trigger in list(μMacroRegistry.triggers.keys()):
+      μMacroRegistry.consolidateTrigger(trigger)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def consolidateEntry(entry: μMacroEntry, consolidated: dict = None) -> dict:
     if consolidated is None: consolidated = {}
     for script in entry.scripts.split(";"):
       if not script.strip(): continue
@@ -206,11 +242,9 @@ class μMacroRegistry:
         μPrint.error(f"[μMacroRegistry] cannot consolidate script \"{script}\", missing \":\"")
         continue
       actors, actions = script.split(":", 1)
-      actors  = μString(actors).fullExpansion()
-      actions = μString(actions).fullExpansion()
-      for k, v in cls.aliases.items(): actors  = actors.normalize().replace(k, v)
-      for k, v in cls.aliases.items(): actions = actions.normalize().replace(k, v)
-      for actor in μString(actors).split(","):
+      actors  = μMacroRegistry.parseMetaActors(actors)
+      actions = parseText(actions)
+      for actor in actors:
         c = consolidated.get(actor, μConsolidatedScript())
         c.actions += actions + ", "
         c.name    += entry.name + ", "
@@ -218,12 +252,40 @@ class μMacroRegistry:
         consolidated[actor] = c
     return consolidated
 
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🮿  C O N S O L I D A T E   M E T A   A C T O R S
+  #    This does split and re-merge again several times because it is easier to read than creating a bunch
+  #    of nested loops...
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def parseMetaActors(actors) -> set:
+    actors = μString(actors).fullExpansion()
+    for k, v in μMacroRegistry.aliases.items(): actors = actors.normalize().replace(k, v)
+    actors = {str(a) for a in actors.split(",") if str(a) != "none"}
+    if "all" in actors or "self" in actors:
+      actors = (actors | μMacroRegistry.actors) - {"all", "self"} | {"etal"}
+    return actors
+  
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🮿  C O N S O L I D A T E   M E T A   T A R G E T S
+  #    This does split and re-merge again several times because it is easier to read than creating a bunch
+  #    of nested loops...
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def parseMetaActors(actors) -> set:
+    actors = μString(actors).fullExpansion()
+    for k, v in μMacroRegistry.aliases.items(): actors = actors.normalize().replace(k, v)
+    actors = {str(a) for a in actors.split(",") if str(a) != "none"}
+    if "all" in actors or "self" in actors:
+      actors = (actors | μMacroRegistry.actors) - {"all", "self"} | {"etal"}
+    return actors
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖ M A C R O   E N T R Y 
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μMacroEntry:
+class μMacroEntry(QTableWidgetItem):
   def __init__(self, icon, name, trigger, scripts, parentSet):
+    super().__init__(name)
     self.icon = icon
     self.name = name
     self.trigger = trigger
@@ -233,10 +295,28 @@ class μMacroEntry:
 
   def serialize(self): return [self.icon, self.name, self.trigger, self.scripts]
 
-  def setTrigger(self, newTrigger: str): μMacroRegistry.editMacroTrigger(self, newTrigger)
-  def setName(self, newName: str):       self.name = newName
-  def setIcon(self, newIcon: str):       self.icon = newIcon
-  def setScripts(self, scripts: str):    self.scripts = scripts
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setTrigger(self, trigger: str):
+    μMacroRegistry.editMacroTrigger(self, trigger) # this also calls consolidate trigger
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setIcon(self, icon: str):
+    if icon == self.icon: return
+    self.icon = icon
+    μMacroRegistry.consolidateTrigger(self.trigger)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setName(self, name: str):
+    if name == self.name: return
+    self.name = name; self.setText(name)
+    μMacroRegistry.consolidateTrigger(self.trigger)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setScripts(self, scripts: str):
+    if ",".join(μString(scripts).normalize().split(",")) == ",".join(μString(self.scripts).normalize().split(",")): return
+    self.scripts = scripts
+    μMacroRegistry.consolidateTrigger(self.trigger)
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __str__(self):
     return f"{self.name} [{self.trigger}]: {μString.normalize(self.scripts)}"
@@ -269,9 +349,9 @@ class μMacroEntry:
     else:
       icon_item.setIcon(getIcon(P_ICON_PLACEHOLDER)) #TODO
     table.setItem(pos, 0, icon_item)
-    table.setItem(pos, 1, QTableWidgetItem(str(self.name)))
+    table.setItem(pos, 1, self)
     table.setItem(pos, 2, QTableWidgetItem(str(self.trigger)))
-    table.setItem(pos, 3, QTableWidgetItem(str(self.scripts)))
+    # table.setItem(pos, 3, QTableWidgetItem(str(self.scripts)))
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  M A C R O   S E T  
@@ -290,15 +370,16 @@ class μMacroSet(QListWidgetItem):
   def activate(self): self.setActive(True)
   def deactivate(self): self.setActive(False)
   def append(self, macro : μMacroEntry): self.entries.append(macro)
+  def isActive(self): return self.checkState() == Qt.CheckState.Checked
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def setActive(self, val : bool):
-    if val:
-      self.setCheckState(Qt.CheckState.Checked)
-    else:
-      self.setCheckState(Qt.CheckState.Unchecked)
-    for e in self.entries:
-      e.active = val
+  def setActive(self, val: bool, reconsolidate: bool = True):
+    if self.isActive() == val: return
+    if val: self.setCheckState(Qt.CheckState.Checked)                                                                                                                   
+    else:   self.setCheckState(Qt.CheckState.Unchecked)     
+    for e in self.entries: e.active = val
+    if reconsolidate:
+      for trigger in {e.trigger for e in self.entries}: μMacroRegistry.consolidateTrigger(trigger)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def display(self):
@@ -457,7 +538,7 @@ class μMacros(μToggler):
     self.table.setDragDropOverwriteMode(False)
     self.table.setColumnHidden(3, True)
 
-    self.actionEditor = QTextEdit()
+    self.actionEditor = μTextEdit()
     _asplitter = QSplitter(Qt.Orientation.Horizontal)
     _asplitter.addWidget(self.table)
     _asplitter.addWidget(self.actionEditor)
@@ -492,7 +573,7 @@ class μMacros(μToggler):
     self.table.cellChanged.connect(self.editMacroEntry)
     self.table.cellDoubleClicked.connect(self._onCellDoubleClicked)
     self.table.itemSelectionChanged.connect(self._onSelectionChanged)
-    self.actionEditor.textChanged.connect(self._saveAction)
+    self.actionEditor.editingFinished.connect(self._saveAction)
     QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._saveAction)
     QShortcut(QKeySequence("Ctrl+Return"), self).activated.connect(self.playMacro)
     QShortcut(QKeySequence("Ctrl+Enter"), self).activated.connect(self.playMacro)
@@ -512,10 +593,9 @@ class μMacros(μToggler):
   def _saveWhenDropped(self, event):
     QTableWidget.dropEvent(self.table, event)
     cset : μMacroSet = self.setListWidget.currentItem()
-    for row in range(self.table.rowCount()):
-      for col in range(4):
-        cset.sync(row,col)
-    self.setListWidget.currentItem().save()
+    if cset is None: return
+    cset.entries = [self.table.item(row, 1) for row in range(self.table.rowCount()) if self.table.item(row, 1)]
+    cset.save()
 
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -526,7 +606,8 @@ class μMacros(μToggler):
       name = os.path.splitext(os.path.basename(n))[0]
       self.appendMacroSet(name)
     self.initialized = True
-    self.setListWidget.itemChanged.connect(lambda a, x = μSettings: x.session.setMacroSets(self.getActiveSets()))
+    self.setListWidget.itemChanged.connect(lambda sset: μSettings.session.setMacroSets(self.getActiveSets()))
+    self.setListWidget.itemChanged.connect(lambda sset: sset.setActive(sset.isActive()))
     μSettings.widget.sigProfileChanged.connect(self.updateProfile)
     self.updateProfile(μSettings.profile, μSettings.lastProfile)
     if self.toActivate:
@@ -574,17 +655,17 @@ class μMacros(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def editMacroEntry(self, row, column):
     if self._loading: return
-    sset = self.setListWidget.selectedItems()
-    if not sset: return
-    if row >= len(sset[0].entries): return
-    entry = sset[0].entries[row]
-    cell = self.table.item(row, column)
-    if cell is None: return
-    if   column == 1: entry.setName(cell.text())
-    elif column == 2: entry.setTrigger(cell.text())
-    elif column == 3: entry.setRaw(cell.text())
-    self.activeSetLabel.setText(f"Macros in \"{sset[0].name}\":")
-    sset[0].save()
+    entry : μMacroEntry = self.table.item(row, 1)
+    if entry is None: return
+    if   column == 1: entry.setName(entry.text())
+    elif column == 2:
+      cell = self.table.item(row, 2)
+      if cell: entry.setTrigger(cell.text())
+    else: return
+    sset = μMacroRegistry.sets.get(entry.parentSet)
+    if sset:
+      self.activeSetLabel.setText(f"Macros in \"{sset.name}\":")
+      sset.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addAlias(self, alias="", action=""):
@@ -619,6 +700,7 @@ class μMacros(μToggler):
   def saveAlias(self):
     μMacroRegistry.aliases = self.getAliases()
     μMacroRegistry.saveAliases()
+    μMacroRegistry.consolidateAll()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getAliases(self):
@@ -662,7 +744,7 @@ class μMacros(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getActiveSets(self):
-    return [s.name for s in μMacroRegistry.sets.values() if s.checkState() == Qt.CheckState.Checked]
+    return [s.name for s in μMacroRegistry.sets.values() if s.isActive()]
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setActiveSets(self, toActivate : list):
@@ -671,11 +753,11 @@ class μMacros(μToggler):
       return
 
     sset : μMacroSet
-    for sset in μMacroRegistry.sets.values():
-      if sset.name in toActivate:
-        sset.setActive(True)
-      else:
-        sset.setActive(False)
+    for setName in toActivate:
+      if setName in μMacroRegistry.sets.keys(): μMacroRegistry.sets[setName].setActive(True, False)
+    # This is supposed to be called rarely, primarily after initialization. So I just simplify
+    # and consolidate all instead of going through the trouble of determining triggers and such
+    μMacroRegistry.consolidateAll()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def playMacro(self):
@@ -793,16 +875,16 @@ class μMacros(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeMacroEntry(self):
-    sset = self.setListWidget.selectedItems()
-    if not sset: return
     crow = self.table.currentRow()
     if crow < 0: return
-    if crow < len(sset[0].entries):
-      μMacroRegistry.unregisterMacro(sset[0].entries[crow])
+    entry : μMacroEntry = self.table.item(crow, 1)
+    if entry is None: return
+    sset = μMacroRegistry.sets.get(entry.parentSet)
+    μMacroRegistry.unregisterMacro(entry)
     self._loading = True
     self.table.removeRow(crow)
     self._loading = False
-    sset[0].save()
+    if sset: sset.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onCellDoubleClicked(self, row, column):
@@ -811,12 +893,13 @@ class μMacros(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def editMacroIcon(self):
-    sset = self.setListWidget.selectedItems()
-    if not sset: return
     crow = self.table.currentRow()
-    if crow < 0 or crow >= len(sset[0].entries): return
-    if sset[0].entries[crow].editMacroIcon(self.table, crow, self):
-      sset[0].save()
+    if crow < 0: return
+    entry : μMacroEntry = self.table.item(crow, 1)
+    if entry is None: return
+    if entry.editMacroIcon(self.table, crow, self):
+      sset = μMacroRegistry.sets.get(entry.parentSet)
+      if sset: sset.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onSelectionChanged(self):
@@ -827,8 +910,8 @@ class μMacros(μToggler):
       self.actionEditor.setPlainText("")
     else:
       last_row = max(idx.row() for idx in indexes)
-      item = self.table.item(last_row, 3)
-      self.actionEditor.setPlainText(item.text() if item else "")
+      entry : μMacroEntry = self.table.item(last_row, 1)
+      self.actionEditor.setPlainText(entry.scripts if entry else "")
       self.actionEditor.setEnabled(len(indexes) == 1)
     self._actionLoading = False
 
@@ -837,13 +920,11 @@ class μMacros(μToggler):
     if self._actionLoading or self._loading: return
     indexes = self.table.selectionModel().selectedRows()
     if len(indexes) != 1: return
-    row = indexes[0].row()
-    item = self.table.item(row, 3)
-    text = self.actionEditor.toPlainText()
-    if item:
-      if item.text() != text: item.setText(text)
-    else:
-      self.table.setItem(row, 3, QTableWidgetItem(text))
+    entry : μMacroEntry = self.table.item(indexes[0].row(), 1)
+    if entry is None: return
+    entry.setScripts(self.actionEditor.toPlainText())
+    sset = μMacroRegistry.sets.get(entry.parentSet)
+    if sset: sset.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def swapTriggers(self, trigger_a: str, trigger_b: str):

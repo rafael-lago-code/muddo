@@ -263,25 +263,25 @@ class dSession(dSection):
     self.windowsPreferences = {}
     super().__init__(state)
   
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setAccounts(self, selectedAccounts : list):
     self.accounts = selectedAccounts
     self._state.setValue("session/accounts", ", ".join(selectedAccounts))
     self._state.sync()
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setWorld(self, world : str):
     self.world = world
     self._state.setValue("session/world", world)
     self._state.sync()
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setMacroSets(self, macroSets : list):
     self.macroSets = macroSets
     self._state.setValue("session/macroSets", ", ".join(macroSets))
     self._state.sync()
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────-----
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setWindowsPreference(self, windowsPreferences : dict):
     self.windowsPreferences = windowsPreferences
     lines = [f'  {json.dumps(k)}: {json.dumps(list(v))}' for k, v in windowsPreferences.items()]
