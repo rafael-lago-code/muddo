@@ -200,7 +200,7 @@ class μMacroRegistry:
       μPrint.error(f"[μMacroRegistry] error saving aliases: {e}")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  #   🮿  C O N S O L I D A T E   T R I G G E R
+  #   🞋  C O N S O L I D A T E   T R I G G E R
   #
   #   Parses all macros for a specific trigger. Order:
   #     1. for each active μMacroEntries associated with this trigger
@@ -216,25 +216,25 @@ class μMacroRegistry:
   #   μMacroRegistry should keeps a copy of this consolidated dictionary for future references. Editing macros or
   #   aliases should trigger the re-consolidation for its trigger
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  @staticmethod
-  def consolidateTrigger(trigger : str) -> dict:
-    if trigger not in μMacroRegistry.triggers: return {}
+  @classmethod
+  def consolidateTrigger(cls, trigger : str) -> dict:
+    if trigger not in cls.triggers: return {}
     consolidated = {}
-    for e in (e for e in μMacroRegistry.triggers[trigger] if e.active):
-      μMacroRegistry.consolidateEntry(e, consolidated)
-    μMacroRegistry.consolidatedTriggers[trigger] = consolidated
+    for e in (e for e in cls.triggers[trigger] if e.active):
+      cls.consolidateEntry(e, consolidated)
+    cls.consolidatedTriggers[trigger] = consolidated
     printConsolidatedDict(trigger, consolidated)
     return consolidated
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def consolidateAll():
-    for trigger in list(μMacroRegistry.triggers.keys()):
-      μMacroRegistry.consolidateTrigger(trigger)
+  @classmethod
+  def consolidateAll(cls):
+    for trigger in list(cls.triggers.keys()):
+      cls.consolidateTrigger(trigger)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def consolidateEntry(entry: μMacroEntry, consolidated: dict = None) -> dict:
+  @classmethod
+  def consolidateEntry(cls, entry: μMacroEntry, consolidated: dict = None) -> dict:
     if consolidated is None: consolidated = {}
     for script in entry.scripts.split(";"):
       if not script.strip(): continue
@@ -242,7 +242,7 @@ class μMacroRegistry:
         μPrint.error(f"[μMacroRegistry] cannot consolidate script \"{script}\", missing \":\"")
         continue
       actors, actions = script.split(":", 1)
-      actors  = μMacroRegistry.parseMetaActors(actors)
+      actors  = cls.parseMetaActors(actors)
       actions = parseText(actions)
       for actor in actors:
         c = consolidated.get(actor, μConsolidatedScript())
@@ -253,32 +253,63 @@ class μMacroRegistry:
     return consolidated
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  #   🮿  C O N S O L I D A T E   M E T A   A C T O R S
+  #   🞋  P A R S E   M E T A   A C T O R S
   #    This does split and re-merge again several times because it is easier to read than creating a bunch
   #    of nested loops...
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def parseMetaActors(actors) -> set:
+  @classmethod
+  def parseMetaActors(cls, actors) -> set:
     actors = μString(actors).fullExpansion()
-    for k, v in μMacroRegistry.aliases.items(): actors = actors.normalize().replace(k, v)
+    for k, v in cls.aliases.items(): actors = actors.normalize().replace(k, v)
     actors = {str(a) for a in actors.split(",") if str(a) != "none"}
     if "all" in actors or "self" in actors:
-      actors = (actors | μMacroRegistry.actors) - {"all", "self"} | {"etal"}
+      actors = (actors | cls.actors) - {"all", "self"} | {"etal"}
     return actors
   
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  #   🮿  C O N S O L I D A T E   M E T A   T A R G E T S
-  #    This does split and re-merge again several times because it is easier to read than creating a bunch
-  #    of nested loops...
+  #   🞋  F I N A L I Z E   C O N S O L I D A T I O N
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def parseMetaActors(actors) -> set:
-    actors = μString(actors).fullExpansion()
-    for k, v in μMacroRegistry.aliases.items(): actors = actors.normalize().replace(k, v)
-    actors = {str(a) for a in actors.split(",") if str(a) != "none"}
-    if "all" in actors or "self" in actors:
-      actors = (actors | μMacroRegistry.actors) - {"all", "self"} | {"etal"}
-    return actors
+  @classmethod
+  def finalizeConsolidation(cls, trigger, bridges : dict) -> dict:
+    from μMilvian import μMilvian, μMilvianMeta
+    if trigger not in cls.consolidatedTriggers: return
+    finalizedScripts : dict[str,μConsolidatedScript] = dict(cls.consolidatedTriggers[trigger])
+    bridgeNames = bridges.keys()
+    if not finalizedScripts or not bridgeNames: return
+
+    _focusedActor = None
+    allActors     = ",".join(bridgeNames)
+    etalActors    = set(bridgeNames) - set(finalizedScripts.keys())
+
+    def focusedActor():
+      nonlocal _focusedActor
+      if _focusedActor is None: _focusedActor = μMilvianMeta.getFocused()
+      return _focusedActor
+
+    # Drop actors not connected and not meta
+    finalizedScripts = {a: c for a, c in finalizedScripts.items() if a in (set(bridgeNames) | cls.metaActors)}
+
+    # Resolve meta actors;
+    # All and self are parsed before in parseMetaActors. Only focus/any/etal are left here
+    for key, getActors in [("focus", lambda: [focusedActor()]),
+                           ("any",   lambda: [μMilvianMeta.getAny()]),
+                           ("etal",  lambda:  etalActors)]:
+      if key not in finalizedScripts: continue
+      meta = finalizedScripts.pop(key)
+      for a in getActors():
+        if a in finalizedScripts: finalizedScripts[a].actions += meta.actions
+        else:                     finalizedScripts[a] = meta
+
+    # Replace focus/any/all tokens inside action strings
+    # None and etal are left untouched
+    for a,c in finalizedScripts.items():
+      if "focus" in c.actions: c.actions = c.actions.replace("focus", focusedActor())
+      if "any"   in c.actions: c.actions = c.actions.replace("any",   μMilvianMeta.getAny())
+      if "all"   in c.actions: c.actions = c.actions.replace("all",   allActors)
+      if "self"  in c.actions: c.actions = c.actions.replace("self",  a)
+
+    return finalizedScripts
+  
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖ M A C R O   E N T R Y 

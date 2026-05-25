@@ -106,7 +106,7 @@ def _parseOrdered(cmd: str, bridge) -> μMilvianPacket:
     return cPhonyPacket
   filterActors  = fields[3] if len(fields) > 3 else ""
   filterTargets = fields[4] if len(fields) > 4 else ""
-  return _buildOrderedActors(bridge, fields[0], fields[1], fields[2], filterActors, filterTargets)
+  return _buildOrdered(bridge, fields[0], fields[1], fields[2], filterActors, filterTargets)
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -150,9 +150,9 @@ def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPack
   return μMilvianPacket(command, bridge, inData)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   🮿  B U I L D   O R D E R E D   A C T O R S
+#   🮿  B U I L D   O R D E R E D
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-def _buildOrderedActors(bridge, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
+def _buildOrdered(bridge, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
   # Builds an orderedActors packet from parsed arguments. Does not send.
   if isinstance(actors,  str): actors  = [a.strip() for a in actors.split(',')  if a.strip()]
   if isinstance(targets, str): targets = [t.strip() for t in targets.split(',') if t.strip()]
@@ -382,7 +382,7 @@ class μMilvian():
     return self.send(μMilvianPacket(cmd, self))
 
   def orderedActors(self, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
-    return self.send(_buildOrderedActors(self, actors, targets, action, filterActors, filterTargets))
+    return self.send(_buildOrdered(self, actors, targets, action, filterActors, filterTargets))
 
   def execute(self, cmd) -> μMilvianPacket:
     # Sends any command: a string, a list of strings, or a cMilvianPacket.
