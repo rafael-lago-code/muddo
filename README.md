@@ -19,11 +19,9 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
  - [Macro'ing](docs/Macros.md) via Milvian Bridges, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
  - Storage management via Milvian
     - fetches current inventory information
-    - advanced filtering in the local UI
-    - batch-dissolving of selected items
-    - batch-selling (mark as junk) of selected items
+    - batch-dissolving, selling (mark as junk), storing or using of selected items
     - repair-all, sell gems also enabled
-    - store selected items into open container
+    - advanced filtering in the local UI
  - NEW: Strategy management via Milvian
     - basic follow (analogous to Dungeon Helper's AAF)
     - follows jump, swim, direction (but not camera pitch), target selection and ladder behaviour

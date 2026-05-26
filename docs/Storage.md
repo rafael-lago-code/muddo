@@ -28,6 +28,9 @@ For this action to be performed, open a bank (personal or shared) or a guild che
 
 Select all items you want to store from the table and click the big red button "Store" and that's it.
 
+## Use
+This action does not require any UI intervention (except for clicking a confirmation dialog). It uses the selected item (or equips them if that's a thing). Ctrl+Click to automatically accept potential confirmation dialogs. 
+
 ## Selling
 Open a vendor UI and select your items in mDDO. Left-click "Sell" and voila, it marks all selected items as junk and adds them to the cart.
 

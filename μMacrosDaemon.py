@@ -49,8 +49,6 @@ class μMacrosDaemon(aProcessItem):
     self.menuActionKill     = self.orb.menu.addAction("Kill Bridges")
     self.menuActionPurge    = self.orb.menu.addAction("Purge defunct bridges")
     self.menuActionConf     = self.orb.menu.addAction("Show/Hide setting UI")
-    self.menuActionLaunchV2 = self.orb.menu.addAction("Launch v2 (test)")
-
     self.orb.clicked.connect(self.toggle)
     self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
     self.menuActionToggle.triggered.connect(self.toggle)
@@ -58,7 +56,6 @@ class μMacrosDaemon(aProcessItem):
     self.menuActionKill.triggered.connect(lambda : self.terminate(force=True))
     self.menuActionConf.triggered.connect(lambda : main.macros.toggle())
     self.menuActionPurge.triggered.connect(lambda : μMilvian.scanBridges(purgeUnknown=True))
-    self.menuActionLaunchV2.triggered.connect(self.launch_v2)
     
     self.profileID.setText("")
     self.worldname.setText("")
@@ -85,69 +82,12 @@ class μMacrosDaemon(aProcessItem):
       return True
     
   #----------------------------------------------------------------------------------------------------------
-  def getBridges(self, returnMeta=False) -> dict:
-    from μMilvian import μMilvianMeta
+  def getBridges(self) -> dict:
     if not self.isInitialized():  self.initialize()
     if not self.isInitialized():
       μPrint.warning("[cMacrosDaemon] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
       return {}
-    if returnMeta:
-      return self.bridges | {'self': μMilvianMeta.getFocused(), 'any': μMilvianMeta.getAny()}
-    else:
-      return self.bridges
-
-  #----------------------------------------------------------------------------------------------------------
-  def convert(self, consolidated : dict) -> dict:
-    bridges = self.getBridges()
-    if not bridges: return {}
-
-    parsed = {}
-    # first, get rid of "alls" and "selfs":
-    for trigger in consolidated.keys():
-      if "all" in consolidated[trigger].keys():
-        for c in bridges.keys():
-          if c in consolidated[trigger].keys():
-            consolidated[trigger][c] += consolidated[trigger]["all"]
-          else:
-            consolidated[trigger][c] = consolidated[trigger]["all"]
-        del consolidated[trigger]["all"]
-    # winID["self"] = "self"
-
-    for trigger in consolidated.keys():
-      parsed[trigger] = []
-      for target in consolidated[trigger].keys():
-        if target not in bridges.keys(): continue
-        if not consolidated[trigger][target]: continue
-        action = consolidated[trigger][target]
-        if not isinstance(action, list): action = list(action)
-        item = lambda t=target,a=action: bridges[t].execute(a)
-        item.char = target
-        item.cmd = action
-        parsed[trigger].append(item)
-        # for k in consolidated[trigger][target]:
-        #   if k.startswith("sleep") or k.startswith("focus") or k.startswith("point") or k.startswith("click"):
-        #     parsed[trigger].append(k)
-        #   else:
-        #     item = lambda t=target,x=k: self.milvianProc[t].sendInputAction(x)
-        #     item.char = target
-        #     item.cmd = k
-        #     parsed[trigger].append(item)
-
-      if not parsed[trigger]:
-        del parsed[trigger]
-
-    μPrint.debug(f"  Shortcuts converted to commands:")
-    μPrint.debug(f"--------------------------------------------------------")
-    for trigger in parsed.keys():
-      dbgList = []
-      for i in parsed[trigger]:
-        if callable(i):
-          dbgList.append(f"{i.char}:{i.cmd}")
-        else:
-          dbgList.append(i)
-      μPrint.debug(f"  {trigger} : {dbgList}")
-    μPrint.debug(f"--------------------------------------------------------")
-    return parsed
+    return self.bridges
 
   #----------------------------------------------------------------------------------------------------------
   def toggle(self):
@@ -155,44 +95,6 @@ class μMacrosDaemon(aProcessItem):
       self.terminate()
     else:
       self.launch()
-
-  #----------------------------------------------------------------------------------------------------------
-  def launch(self):
-    if self.process:
-      μPrint.warning(" Macros Daemon already running through Milvian."+
-                                " Try right-click->kill to cleanup state.")
-    else:
-      consolidatedMacros, meta = self.main.macros.consolidateActiveMacros()
-      parsed = self.convert(consolidatedMacros)
-
-      if not parsed:
-        μPrint.warning(" Attempting to launch Macros Daemon but no macros found." \
-        " Make sure you have macro sets selected and that the relevant accounts are online. No shortcuts daemon" \
-        " has been started")
-        return
-      else:
-        toolbarMacros = {k: parsed.pop(k) for k in list(parsed) if k.startswith('toolbar')}
-
-        for hk, script in parsed.items():
-          parsed[hk] = lambda x=script: χHelper.execute(x)
-        self.process = χHelper.getShortcutsDaemon(parsed)
-
-        if toolbarMacros:
-          μPrint.info(f"[cMacrosDaemon] found {len(toolbarMacros.keys())} toolbar macros")
-          μToolbar.clearItems()
-          for tb, script in toolbarMacros.items():
-            m = meta.get(tb, {})
-            commands = [cmd for item in script if callable(item) for cmd in item.cmd]
-            μToolbar.addItems(μToolbarItem(tb, script,
-                                           icon=m.get('icon'),
-                                           names=m.get('names', set()),
-                                           commands=commands))
-          μToolbar.sortLayout()
-    if not self.main.processManager.itemExists(self):
-      self.main.processManager.addItem(self)
-    self.setStatus(self.P_STATUS_RUNNING)
-    self.process.start()
-    self.pid.setText("R")
 
   #----------------------------------------------------------------------------------------------------------
   def setStatus(self, status):
@@ -234,69 +136,35 @@ class μMacrosDaemon(aProcessItem):
     χHelper.forceCleanup()
 
   #----------------------------------------------------------------------------------------------------------
-  def convert_v2(self, consolidated: dict) -> dict:
-    from μMilvian import μMilvianMeta
-    bridges = self.getBridges()
-    if not bridges: return {}
-
-    parsed = {}
-    for trigger, actor_map in consolidated.items():
-      items = []
-      for actor, actions in actor_map.items():
-        if not actions:
-          continue
-        if actor == 'focus':
-          item      = lambda a=actions: μMilvianMeta.getFocused().execute(a)
-          item.char = 'focus'
-          item.cmd  = actions
-        elif actor == 'any':
-          item      = lambda a=actions: μMilvianMeta.getAny().execute(a)
-          item.char = 'any'
-          item.cmd  = actions
-        elif actor in bridges:
-          item      = lambda t=actor, a=actions: bridges[t].execute(a)
-          item.char = actor
-          item.cmd  = actions
-        else:
-          μPrint.debug(f'[convert_v2] actor "{actor}" not in bridges, skipping')
-          continue
-        items.append(item)
-      if items:
-        parsed[trigger] = items
-
-    μPrint.debug("  [v2] Shortcuts converted:")
-    μPrint.debug("--------------------------------------------------------")
-    for trigger, items in parsed.items():
-      μPrint.debug(f"  {trigger}: {[f'{i.char}:{i.cmd}' for i in items]}")
-    μPrint.debug("--------------------------------------------------------")
-    return parsed
-
-  #----------------------------------------------------------------------------------------------------------
-  def launch_v2(self):
+  def launch(self):
+    from μMacros import μMacroRegistry
     if self.process:
-      μPrint.warning("[v2] Macros Daemon already running. Kill it first.")
+      μPrint.warning("[μMacrosDaemon] already running. Kill it first.")
       return
-    consolidated, meta = self.main.macros.consolidateActiveMacros_v2()
-    parsed = self.convert_v2(consolidated)
-    if not parsed:
-      μPrint.warning("[v2] No macros after consolidation. Check active sets and online accounts.")
+    bridges = self.getBridges()
+    if not bridges: return
+
+    triggers = {}
+    for trigger, scripts in μMacroRegistry.consolidatedTriggers.items():
+      if trigger == "none": continue
+      ft = μMacroRegistry.finalizeScript(scripts, bridges)
+      if ft is not None and ft.items: triggers[trigger] = ft
+
+    if not triggers:
+      μPrint.warning("[μMacrosDaemon] no macros after finalization. Check active sets and online accounts.")
       return
 
-    toolbarMacros = {k: parsed.pop(k) for k in list(parsed) if k.startswith('toolbar')}
-    for hk, script in parsed.items():
-      parsed[hk] = lambda x=script: χHelper.execute(x)
-    self.process = χHelper.getShortcutsDaemon(parsed)
+    toolbarMacros = {k: triggers.pop(k) for k in list(triggers) if k.startswith('toolbar')}
+    for hk, ft in triggers.items():
+      triggers[hk] = lambda x=ft.items: χHelper.execute(x)
+    self.process = χHelper.getShortcutsDaemon(triggers)
 
     if toolbarMacros:
-      μPrint.info(f"[v2] found {len(toolbarMacros)} toolbar macros")
+      μPrint.info(f"[μMacrosDaemon] found {len(toolbarMacros)} toolbar macros")
       μToolbar.clearItems()
-      for tb, script in toolbarMacros.items():
-        m        = meta.get(tb, {})
-        commands = [cmd for item in script if callable(item) for cmd in item.cmd]
-        μToolbar.addItems(μToolbarItem(tb, script,
-                                       icon=m.get('icon'),
-                                       names=m.get('names', set()),
-                                       commands=commands))
+      for tb, ft in toolbarMacros.items():
+        commands = [cmd for item in ft.items for cmd in item.cmd]
+        μToolbar.addItems(μToolbarItem(tb, ft.items, icon=ft.icon, names=ft.names, commands=commands))
       μToolbar.sortLayout()
 
     if not self.main.processManager.itemExists(self):

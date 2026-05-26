@@ -482,7 +482,7 @@ class μPhonyMilvian:
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  M I L V I A N   M E T A
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μMilvianMeta():
+class μMilvianMeta:
   realBridges = None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -498,18 +498,29 @@ class μMilvianMeta():
     if not title: return μPhonyMilvian()
     target = title.split()[0].lower()
     return cls.realBridges.get(target, μPhonyMilvian())
-    
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @classmethod
-  def getAny(cls) -> μMilvian:
-    if not cls.realBridges or len(cls.realBridges.keys())==0: return μPhonyMilvian()
-    return cls.realBridges[random.choice(list(cls.realBridges.keys()))]
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def get(cls, meta) -> μMilvian:
-    if meta == "any": return μMilvianMeta.getAny()
-    if meta == "focus": return μMilvianMeta.getFocused()
+  def getNamed(cls, target) -> μMilvian:
+    return cls.realBridges.get(target, μPhonyMilvian())
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def getAny(cls) -> μMilvian:
+    if not cls.realBridges: return μPhonyMilvian()
+    return random.choice(list(cls.realBridges.values()))
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def get(cls, target) -> μMilvian:
+    if target == "any":   return μMilvianMeta.getAny()
+    if target == "focus": return μMilvianMeta.getFocused()
+    return μMilvianMeta.getNamed(target)
+
+  @classmethod
+  def getAll(cls, exclude: set = None) -> list:
+    if not cls.realBridges: return []
+    return [b for k, b in cls.realBridges.items() if not exclude or k not in exclude]
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod

@@ -113,6 +113,7 @@ P_STATUS_BUSY_SELL      = 4
 P_STATUS_BUSY_TRADE     = 5
 P_STATUS_BUSY_STORE     = 6
 P_STATUS_BUSY_FEEDJEWEL = 7
+P_STATUS_BUSY_USE       = 8
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  I T E M   D A T A 

@@ -69,18 +69,20 @@ class μStorage(μToggler):
     
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
     self.btnRefresh   = μOrb("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
-    self.btnFeedJewel = μOrb("Feed\nJewel", icon=getIcon('cannith_feed_jewel'),
-                             tooltip="Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
     self.btnDissolve  = μOrb("Dissolve",    icon=getIcon('cannith_dissolve_lean'),
-                             tooltip="Dissolve all selected items. Item Deconstruction UI must be open. <br><b>Ctrl+Click</b> to skip confirmation<b>.")
+                             tooltip="Dissolve all selected items. Item Deconstruction UI must be open.")
     self.btnSell      = μOrb("Sell",        icon=getIcon('cannith_vendor_lean'),
                              tooltip="Sell all selected items to the currently open vendor UI. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnTrade     = μOrb("Trade",       icon=getIcon('cannith_trade_lean'),
-                             tooltip="Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnSort      = μOrb("Sort",       icon=getIcon('sort'),
-                             tooltip="Sort selected items by type. <br><b>Right+Click</b> to sort by name<b>.<br><b><i>Right-click for more options</i></b>")
+    self.btnUse       = μOrb("Use",        icon=getIcon('use_gears'),
+                             tooltip="Use selected items. <b><i>Ctrl+Click</i></b> for auto-accepting confirmation dialogues")
     self.btnStore     = μOrb("Store",       icon=getIcon('cannith_bank_lean'),
                              tooltip="Store selected items in the currently open bank/chest. <br><b><i>Ctrl+click</i></b> to send to character bank (guild or shared banks preferred otherwise)")
+    self.btnSort      = μOrb("Sort",       icon=getIcon('sort'),
+                             tooltip="<b><i>Not Implemented Yet</b></i><br>Sort selected items by type. <br><i><b>Ctrl+Click</b></i> to sort by name<b>.<br><b><i>Right-click for more options</i></b>")
+    self.btnFeedJewel = μOrb("Feed\nJewel", icon=getIcon('cannith_feed_jewel'),
+                             tooltip="<b><i>Not Implemented Yet</b></i><br>Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
+    self.btnTrade     = μOrb("Trade",       icon=getIcon('cannith_trade_lean'),
+                             tooltip="<b><i>Not Implemented Yet</b></i><br>Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
 
     self.filterCB = SimpleNamespace()
     for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Sellable", "Unsellable", "Name", "Description"]:
@@ -137,10 +139,10 @@ class μStorage(μToggler):
     self.filterScriptList      = QListWidget()
     self.filterScriptLabel     = QLabel("Selected Filter Script:")
     self.filterBtnNewScript    = μOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new filter script with the text currently in the editor")
-    self.filterBtnSaveScript   = μOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected filter script. Ctrl+S while editing to save it.\nCtrl+Left click to save all")
+    self.filterBtnSaveScript   = μOrbSmall(icon=P_ICON_SAVE, tooltip="Save currently selected filter script.<br><b><i>Shortcut: Ctrl+S</b></i>.<br><b><i>Ctrl+Left</b></i> click to save all")
     self.filterBtnDelScript    = μOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected filter script - this action cannot be undone!")
     self.filterBtnReloadScript = μOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected script from file\nCtrl+Left click to reload all")
-    self.filterBtnApplyScript  = μOrbSmall(icon=P_ICON_FILTER, tooltip="Apply current filter. Ctrl+Enter while editing to save it.")
+    self.filterBtnApplyScript  = μOrbSmall(icon=P_ICON_FILTER, tooltip="Apply current filter.<br><b><i>Shortcut: Ctrl+Enter</b></i>.")
     self.filterBtnHelp         = μOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how script work here (lol)")
     self.filterScriptEdit      = QTextEdit()
     filtersContainer = newHSplitter([newHFrame([newVLayout(["Saved Filters:", self.filterScriptList]),
@@ -157,6 +159,8 @@ class μStorage(μToggler):
 
     self.btnRefresh.clicked.connect(lambda : self.requestRefreshStorage(False))
     self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
+    self.btnUse.clicked.connect(self.requestUse)
+    self.btnUse.ctrlClicked.connect(lambda : self.requestUse(True))
     self.btnSell.clicked.connect(self.requestSell)
     self.btnSell.ctrlClicked.connect(lambda : self.requestSell(True, True))
     self.btnSell.clicked.connect(self.requestSell)
@@ -201,7 +205,7 @@ class μStorage(μToggler):
     allSplitters = newVSplitter([self.table, filtersContainer])
     allSplitters.setSizes([800,100])
    
-    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnStore, self.btnTrade, self.btnSell, self.btnDissolve, self.btnFeedJewel, self.btnSort])]))
+    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnUse, self.btnStore, self.btnSell, self.btnDissolve, self.btnTrade, self.btnSort])]))
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setStatus(self, bridge, newStatus):
@@ -271,6 +275,7 @@ class μStorage(μToggler):
     if True:
       self.btnRefresh.setEnabled(True)
       self.btnDissolve.setEnabled(True)
+      self.btnUse.setEnabled(True)
       self.btnSell.setEnabled(True)
       self.btnTrade.setEnabled(False)
       self.btnStore.setEnabled(True)
@@ -421,6 +426,43 @@ class μStorage(μToggler):
         if item.isSelected() and not self.table.isRowHidden(item.row()):
           selectedItems[item.owner().lower()].append(item)
     return selectedItems
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def requestUse(self, confirm=False):
+    # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
+    selectedItems = self.getSelectedIDs()
+    if not selectedItems: return
+    packets = {}
+    bridges : μMilvian = self.daemon.getBridges()
+    for c in selectedItems.keys():
+      inData  = struct.pack('<?',True)  # sendStatus flag, requests frequent status update always for now
+      inData += struct.pack('<?',confirm)
+      inData += struct.pack('<I',3)     # number of retries
+      inData += struct.pack('<I',len(selectedItems[c]))
+      for item in list(selectedItems[c]):
+        inData += struct.pack('<Q',item._id)
+      p = μMilvianPacket(packetCommand.useItems, bridges[c], inData)
+      packets[c] = p
+      self.setStatus(bridges[c], P_STATUS_BUSY_USE)
+      bridges[c].send(packets[c])
+      p.χigResponse.connect(lambda data, p=p: self.useItemUpdate(p, data))
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def useItemUpdate(self, packet : μMilvianPacket, rawData : bytes):
+    packet.status = packetStatus(rawData[4:8])
+    packet.outData = rawData[12:]
+    if packet.status == packetStatus.success:
+      μPrint.info(f"[cStorage] Finished using requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      packet.χigResponse.disconnect()
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
+    elif packet.status == packetStatus.error:
+      μPrint.error(f"[cStorage] Error using items for {C_SILVER}{packet.bridge.charName}</font>")
+      packet.χigResponse.disconnect()
+      self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
+    else:
+      used = packet.outData[0]
+      iID = struct.unpack('<Q', packet.outData[1:9])[0]
+      μPrint.info(f"[cStorage] {"used" if used else "failed to use"} {C_ORANGE}{iID}</font>")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestDissolve(self, force=False):

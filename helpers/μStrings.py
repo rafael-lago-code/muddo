@@ -212,7 +212,9 @@ class μString(str):
   def __contains__(self, sub): return contains(self, sub) 
   def expand(self): return expandRepeaters(self)
   def fullExpansion(self): return fullExpansion(self)
-  def split(self, sep : str = None, strip: str = " "): return splitGroups(self, sep, strip)
+  def split(self, sep: str = None, maxsplit_or_strip=" ") -> list:
+    if isinstance(maxsplit_or_strip, int): return [μString(s) for s in str.split(self, sep, maxsplit_or_strip)]
+    return splitGroups(self, sep, maxsplit_or_strip)
   def replace(self, key: str, translation: str): return replaceAlias(self, key, translation)
   def guess(self): return guess(self)
   def dictionary(self, delim : str = ",", strip: str = " "): return dictionary(self, delim, strip)
