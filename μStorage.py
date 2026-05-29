@@ -40,7 +40,7 @@ from helpers.μStrings import *
 import time, struct, mmap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-   from μMacrosDaemon import μMacrosDaemon
+   from μMilvianBridge import μMilvianBridge
    from μMilvian import μMilvian
 
 
@@ -54,7 +54,7 @@ class μStorage(μToggler):
   sigPurgeStale  = pyqtSignal(str)
   sigSetStatus = pyqtSignal(object,int)
   widgetID = "StorageManager"
-  daemon : μMacrosDaemon = None
+  daemon : μMilvianBridge = None
   status : dict = {}
   allFilterScripts : dict = {}
 
@@ -283,7 +283,7 @@ class μStorage(μToggler):
       self.btnSort.setEnabled(False)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def initialize(self, daemon : μMacrosDaemon):
+  def initialize(self, daemon : μMilvianBridge):
     super().initialize()
     self.daemon = daemon
     self.table.staleData = {}

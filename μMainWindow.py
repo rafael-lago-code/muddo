@@ -28,6 +28,7 @@ from μDungeonHelper import μDungeonHelper
 from μProcess import μProcessManager
 from μStorage import μStorage
 from μDDO import μDDO
+from μStrategy import μStrategy
 from μToolbar import μToolbar
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
@@ -64,6 +65,7 @@ class μMainWindow(QMainWindow):
     self.dh = μDungeonHelper(self)
     self.storageManager = μStorage(self)
     self.toolbar = μToolbar(self)
+    self.strategy = μStrategy(self)
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
@@ -77,7 +79,7 @@ class μMainWindow(QMainWindow):
     self.summary = QWidget()
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)
-    lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.btnLaunch,
+    lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.strategy.toggler, self.btnLaunch,
                               self.summary, self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler,
                               self.macros.toggler, self.settings.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
 
@@ -96,7 +98,7 @@ class μMainWindow(QMainWindow):
     self.setCentralWidget(newVFrame([lButtonsBar]))
 
     self._docks = [self.credentials, self.settings, self.macros, self.processManager,
-                   self.storageManager, self.patch, self.console]
+                   self.storageManager, self.patch, self.console, self.strategy]
     for dock in self._docks:
       self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
       dock.setFloating(True)
@@ -119,6 +121,7 @@ class μMainWindow(QMainWindow):
     self.settings.initialize()
     if μSettings.profile is None:
       self.console.abort("No valid profile loaded!")
+    μStrategy.restoreSession()
     self.credentials.initialize()
     self.macros.initialize()
     self.patch.initialize()
@@ -126,10 +129,25 @@ class μMainWindow(QMainWindow):
     μMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
     μToolbar.setup()
+    self._applyStrategyVisibility(μSettings.profile)
+    μSettings.widget.sigProfileChanged.connect(lambda profile, _: self._applyStrategyVisibility(profile))
     # cToolbar.TESTITEMS()
 
   #----------------------------------------------------------------------------------------------------------
-  # This will queue everything; once a user is done queuing, it will emit 
+  def _applyStrategyVisibility(self, profile):
+    enabled = profile.plugins.useStrategy()
+    self.strategy.toggler.setVisible(enabled)
+    if not enabled: self.strategy.setVisible(False)
+    try: profile.plugins._useStrategy.stateChanged.disconnect(self._onStrategyToggled)
+    except: pass
+    profile.plugins._useStrategy.stateChanged.connect(self._onStrategyToggled)
+
+  def _onStrategyToggled(self, enabled):
+    self.strategy.toggler.setVisible(enabled)
+    if not enabled: self.strategy.setVisible(False)
+
+  #----------------------------------------------------------------------------------------------------------
+  # This will queue everything; once a user is done queuing, it will emit
   # sigQueuedUserDone. This will cause self.launchUser() to be triggered
   # for each user individually
   def launchAll(self):

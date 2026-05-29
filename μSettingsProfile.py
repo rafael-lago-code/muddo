@@ -198,18 +198,28 @@ class dPlugins(dSection):
   def __init__(self, state):
     self._dhExec           = QLineEdit()
     self._milvianSHMPath   = QLineEdit()                          # not implemented
+    self._strategyPath     = QLineEdit()
     self._useDH            = μBoxCheck("enable Dungeon Helper")
     self._useMilvian       = μBoxCheck("enable Milvian Bridge")   # not implemented
+    self._useStrategy      = μBoxCheck("enable Strategy")
     self.btnDHExec         = μOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually select DungeonHelper executable")
     self.btnMilvianSHMPath = μOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually set path for Milvian Bridges")
+    self.btnStrategyPath   = μOrbSmall(icon=P_ICON_OPENFOLDER, tooltip="Manually set path for Strategy (and directives)")
+    self._strategyFrameSize = QSpinBox()
+    self._strategyFrameSize.setValue(36) # default values
+    self._strategyPath.setText(P_DEFAULT_CONFIGDIR+os.sep+"strategy/") # default values
 
     self._useMilvian.setEnabled(False)
     self._milvianSHMPath.setEnabled(False)
     self.btnMilvianSHMPath.setEnabled(False)
-    # self._useMilvian.stateChanged.connect(self._milvianSHMPath.setEnabled)
-    # self._useMilvian.stateChanged.connect(self.btnMilvianSHMPath.setEnabled)
     self._useDH.stateChanged.connect(self._dhExec.setEnabled)
     self._useDH.stateChanged.connect(self.btnDHExec.setEnabled)
+    self._useStrategy.stateChanged.connect(self._strategyPath.setEnabled)
+    self._useStrategy.stateChanged.connect(self.btnStrategyPath.setEnabled)
+    self._useStrategy.stateChanged.connect(self._strategyFrameSize.setEnabled)
+    self._strategyPath.setEnabled(False)
+    self._strategyFrameSize.setEnabled(False)
+    self.btnStrategyPath.setEnabled(False)
     super().__init__(state)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -257,10 +267,11 @@ class dToolbar(dSection):
 class dSession(dSection):
   name = "session"
   def __init__(self, state):
-    self.world       = ""
-    self.accounts    = []
-    self.macroSets   = []
+    self.world              = ""
+    self.accounts           = []
+    self.macroSets          = []
     self.windowsPreferences = {}
+    self.strategyDirective  = ""
     super().__init__(state)
   
   # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -279,6 +290,13 @@ class dSession(dSection):
   def setMacroSets(self, macroSets : list):
     self.macroSets = macroSets
     self._state.setValue("session/macroSets", ", ".join(macroSets))
+    self._state.sync()
+
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setStrategyDirective(self, name : str):
+    self.strategyDirective = name
+    self._state.setValue("session/strategyDirective", name)
     self._state.sync()
 
   # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -339,8 +357,10 @@ class μSettingsProfile(QWidget):
     gbxr.setLayout(gxr)
 
     gplugins = μGridLayout()
-    gplugins.appendRow([self.plugins._useDH,      "Dungeon Helper executable:", self.plugins._dhExec,         self.plugins.btnDHExec])
-    gplugins.appendRow([self.plugins._useMilvian, "Milvian SHM Path:",          self.plugins._milvianSHMPath, self.plugins.btnMilvianSHMPath])
+    gplugins.appendRow([self.plugins._useDH,       "Dungeon Helper executable:", self.plugins._dhExec,         self.plugins.btnDHExec])
+    gplugins.appendRow([self.plugins._useMilvian,  "Milvian SHM Path:",          self.plugins._milvianSHMPath, self.plugins.btnMilvianSHMPath])
+    gplugins.appendRow([self.plugins._useStrategy, "Strategy Path:",             self.plugins._strategyPath,   self.plugins.btnStrategyPath])
+    gplugins.appendRow(["Party frame radius:", self.plugins._strategyFrameSize])
 
     gtoolbar = μGridLayout()
     gtoolbar.appendRow(["Number of Rows:", self.toolbar._macroNRows, "Number of Columns:", self.toolbar._macroNCols])
@@ -378,6 +398,7 @@ class μSettingsProfile(QWidget):
     self.launcher.btnGameExec.clicked.connect(     lambda x : self.selectDialog(self.launcher._gameFullExec,  "DDO executable", False))
     self.plugins.btnDHExec.clicked.connect(        lambda x : self.selectDialog(self.plugins._dhExec,         "Dungeon Helper executable", False))
     self.plugins.btnMilvianSHMPath.clicked.connect(lambda x : self.selectDialog(self.plugins._milvianSHMPath, "Milvians SHM path", True))
+    self.plugins.btnStrategyPath.clicked.connect(  lambda x : self.selectDialog(self.plugins._strategyPath,   "Strategy directives path", True))
 
     self.launcher.btnProtonExec.ctrlClicked.connect(   lambda x : self.autoDialog(self.launcher._protonExec,    "Steam Proton executable", False))
     self.launcher.btnCompatData.ctrlClicked.connect(   lambda x : self.autoDialog(self.launcher._compatData,    "Steam Proton COMPAT_DATA path", True))
@@ -410,7 +431,8 @@ class μSettingsProfile(QWidget):
         else:
           μPrint.error(f"[cProfile] widget \"{wname}\" (section \"{sname}\") does not exist.")
 
-      self.session.world = self._state.value("session/world",       "")
+      self.session.world             = self._state.value("session/world",             "")
+      self.session.strategyDirective = self._state.value("session/strategyDirective", "")
       accounts  = self._state.value("session/accounts",  "")
       macroSets = self._state.value("session/macroSets", "")
       self.session.accounts  = [a.strip() for a in accounts.split(",")  if a.strip()] if isinstance(accounts,  str) else accounts

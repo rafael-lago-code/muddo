@@ -154,6 +154,7 @@ def replaceAlias(text: str, key: str, translation: str) -> str:
 #    globmatch
 #    Match s against a glob pattern or tuple of patterns. * matches any substring.
 def globmatch(s: str, pattern, case: bool = False) -> bool:
+  if pattern is None: return s is None
   if isinstance(pattern, (list, tuple)): return any(globmatch(s, p, case) for p in pattern)
   regex = re.escape(str(pattern)).replace(r'\*', '.*')
   flags = re.DOTALL | (0 if case else re.IGNORECASE)
@@ -199,8 +200,9 @@ def normalize(text) -> str:
   return μString(" ".join(str(text).split()))
 
 
+
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖  S T R I N G 
+#   ❖  S T R I N G
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μString(str):
   def __new__(cls, value):

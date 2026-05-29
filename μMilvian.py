@@ -19,7 +19,7 @@
 #
 import sys, mmap, time, struct
 import os, threading, json, re, random
-from helpers.μMilvianPacket import μMilvianPacket, cPacker, cPhonyPacket, packetCommand, packetStatus, packetSignal
+from helpers.μMilvianPacket import μMilvianPacket, cPacker, μPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
 from helpers.μPrint import μPrint
 from helpers.χDispatcher import χSignal
@@ -42,7 +42,7 @@ P_RESPONSE_READER_POS    = 0
 #   🮿  P A R S E   C O M M A N D 
 #
 #    Module-level helpers: build packets from strings/lists without sending.
-#    Used by cMilvian.execute() and internally by the list/ordered-actor builders.
+#    Used by μMilvian.execute() and internally by the list/ordered-actor builders.
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def parseCommand(cmd: str, bridge) -> μMilvianPacket:
   # Parses a command string into a packet. Handles comma-separated lists and brace expansion. Does not send.
@@ -102,8 +102,8 @@ def _parseOrdered(cmd: str, bridge) -> μMilvianPacket:
   # Parses an ordered(...) string into an orderedActors packet. Does not send.
   fields = [s.strip('"') for s in splitGroups(cmd.strip()[8:-1], ',')]
   if len(fields) < 3:
-    μPrint.error(f"[cMilvian] malformed ordered() command: {cmd!r}")
-    return cPhonyPacket
+    μPrint.error(f"[μMilvian] malformed ordered() command: {cmd!r}")
+    return μPhonyPacket
   filterActors  = fields[3] if len(fields) > 3 else ""
   filterTargets = fields[4] if len(fields) > 4 else ""
   return _buildOrdered(bridge, fields[0], fields[1], fields[2], filterActors, filterTargets)
@@ -120,6 +120,7 @@ def _parseOrdered(cmd: str, bridge) -> μMilvianPacket:
 #      → filename=/home/.../strategy/blabla.strategy  args="flag1, flag2, flag3"
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPacket:
+  from μStrategy import μStrategy
   if isinstance(cmd, str):
     idx = cmd.index('(')
     content = μString.dictionary(cmd[idx+1:-1].strip())
@@ -147,6 +148,7 @@ def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPack
   args = ', '.join(f'{k.strip()}={str(v).strip()}' if (v is not True and v is not None) else k.strip() for k, v in content.items())
   inData  = cPacker.packString(directives)
   inData += cPacker.packString(args)
+  μStrategy.updateFromMacro(bridge.charName, cmd)
   return μMilvianPacket(command, bridge, inData)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -186,7 +188,7 @@ class μMilvian():
     from μSettings import μSettings
     shmPath = μSettings.plugins.milvianSHMPath() or P_DEFAULT_SHM_DIR
     dhPath  = os.path.dirname(μSettings.plugins.dhExec())
-    μPrint.debug(f"[cMilvian.setup] shmPath={shmPath!r} | dhPath={dhPath!r}")
+    μPrint.debug(f"[μMilvian] shmPath={shmPath!r} | dhPath={dhPath!r}")
     cls.configPath = dhPath
     cls.setBridgePath(shmPath)
     cls.getInputActions(dhPath)
@@ -251,7 +253,7 @@ class μMilvian():
     charNameFromPath  = os.path.basename(bridgePath)
 
     if not os.path.exists(self.pathRequest) or not os.path.exists(self.pathResponse):
-      μPrint.error(f"[cMilvian] missing request/response in {bridgePath!r}")
+      μPrint.error(f"[μMilvian] missing request/response in {bridgePath!r}")
       return
 
     self.responseDaemonStopSignal = threading.Event()
@@ -262,20 +264,20 @@ class μMilvian():
 
     packet = self.query(packetCommand.querycharname)
     if not packet.wait(1.0):
-      μPrint.error(f"[cMilvian] timeout waiting for charName in {bridgePath!r}. Bridge dead?")
+      μPrint.error(f"[μMilvian] timeout waiting for charName in {bridgePath!r}. Bridge dead?")
       μPrint.error(f" ~~~~  {packet}")
       return
 
     if packet.status != packetStatus.success:
-      μPrint.error(f"[cMilvian] status {packet.status} querying charName in {bridgePath!r}")
+      μPrint.error(f"[μMilvian] status {packet.status} querying charName in {bridgePath!r}")
       return
 
     self.charName = packet.outData if isinstance(packet.outData, str) else packet.outData.decode('utf-8', errors='replace')
     self.charName = self.charName.split()[0]
     if self.charName.lower() != charNameFromPath:
-      μPrint.warning(f"[cMilvian] charName mismatch: got \"{self.charName}\", dir is \"{charNameFromPath}\"")
+      μPrint.warning(f"[μMilvian] charName mismatch: got \"{self.charName}\", dir is \"{charNameFromPath}\"")
     self._lastAlive = True
-    μPrint.info(f"[cMilvian] bridge \"{C_SILVER}{self.charName}</font>\" live at {bridgePath!r}")
+    μPrint.info(f"[μMilvian] bridge \"{C_SILVER}{self.charName}</font>\" live at {bridgePath!r}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def close(self):
@@ -299,10 +301,10 @@ class μMilvian():
 
           lenMessage = struct.unpack('<I', μMilvian.readCircularBuffer(mmResponse, readerPos, 4))[0]
           if lenMessage == 0:
-            μPrint.warning(f"[cMilvian] received message with length=0! Ignoring...")
+            μPrint.warning(f"[μMilvian] received message with length=0! Ignoring...")
             continue
           if not (lenMessage == 8 or lenMessage > 12):
-            μPrint.error(f"[cMilvian] received message with length={lenMessage}! Expected 8 or >12.")
+            μPrint.error(f"[μMilvian] received message with length={lenMessage}! Expected 8 or >12.")
             return False
 
           rawData = μMilvian.readCircularBuffer(mmResponse, readerPos+4, lenMessage)
@@ -337,7 +339,7 @@ class μMilvian():
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseResponse(self, packet: μMilvianPacket):
-    μPrint.debug(f"[cMilvian.parseResponse]:\n{packet}")
+    μPrint.debug(f"[μMilvian.parseResponse]:\n{packet}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseData(self, rawData: bytes):
@@ -355,11 +357,11 @@ class μMilvian():
     packet.status = packetStatus(rawData[4:8])
     packet.outData    = rawData[12:] if len(rawData) > 12 else None
     packet.outMessage = [packet.status.name, packet.outData.decode('utf-8', errors='replace') if packet.outData else None]
-    μPrint.info(f"[cMilvian.parseData] Unhandled packet: {packet}")
+    μPrint.info(f"[μMilvian.parseData] Unhandled packet: {packet}")
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  #   ❖  Milvian Commands
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  Milvian Commands
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def debug(self, subcmd: str = "selected") -> μMilvianPacket:
     return self.send(μMilvianPacket(packetCommand.debug, self, cPacker.pack(subcmd)))
 
@@ -383,9 +385,10 @@ class μMilvian():
 
   def orderedActors(self, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
     return self.send(_buildOrdered(self, actors, targets, action, filterActors, filterTargets))
-
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def execute(self, cmd) -> μMilvianPacket:
-    # Sends any command: a string, a list of strings, or a cMilvianPacket.
+    # Sends any command: a string, a list of strings, or a μMilvianPacket.
     cmd = μMilvianMeta.resolve(cmd)
     if isinstance(cmd, μMilvianPacket):
       return self.send(cmd)
@@ -395,7 +398,7 @@ class μMilvian():
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def send(self, packet: μMilvianPacket) -> μMilvianPacket:
-    if not self.isAlive(): return cPhonyPacket
+    if not self.isAlive(): return μPhonyPacket
     self.knownPackets[packet.id] = packet
     packet.χigResponse.fate(lambda data, p=packet: p.parseRawData(data))
     message = packet.pack()
@@ -414,15 +417,15 @@ class μMilvian():
     newStatus = os.path.exists(self.pathRequest)
     if self._lastAlive != newStatus and self.charName is not None:
       if not newStatus:
-        μPrint.warning(f"[cMilvian] bridge for \"{self.charName}\" ({self.pathRequest}) is dead!")
+        μPrint.warning(f"[μMilvian] bridge for \"{self.charName}\" ({self.pathRequest}) is dead!")
       else:
-        μPrint.warning(f"[cMilvian] bridge for \"{self.charName}\" ({self.pathRequest}) is back online")
+        μPrint.warning(f"[μMilvian] bridge for \"{self.charName}\" ({self.pathRequest}) is back online")
     self._lastAlive = newStatus
     return newStatus
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clearResponses(self):
-    μPrint.info(f"[*] cMilvian: clearing {self.pathResponse}")
+    μPrint.info(f"[*] μMilvian: clearing {self.pathResponse}")
     with open(self.pathResponse, 'r+b') as fdSHMO:
       shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
       shmO.seek(0)
@@ -430,6 +433,27 @@ class μMilvian():
       shmO.flush()
       os.fsync(fdSHMO.fileno())
       shmO.close()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def unpackPartyInfo(packet) -> dict | None:
+    if packet is None or packet.status != packetStatus.success: return None
+    data = packet.outData
+    if not data: return None
+    pos = 0
+    member_count = struct.unpack_from('<B', data, pos)[0]; pos += 1
+    names = []
+    for _ in range(member_count):
+      name_len = struct.unpack_from('<H', data, pos)[0]; pos += 2
+      names.append(data[pos:pos+name_len].decode('utf-8')); pos += name_len
+    leader_index = struct.unpack_from('<B', data, pos)[0]; pos += 1
+    pet_count    = struct.unpack_from('<B', data, pos)[0]; pos += 1
+    pet_indices  = set(struct.unpack_from(f'<{pet_count}B', data, pos))
+    return {
+      'members':      [μString(n) for n in names],
+      'leaderName':    μString(names[leader_index]) if leader_index != 0xFF and leader_index < len(names) else None,
+      'pets':         [μString(names[i]) for i in pet_indices if i < len(names)],
+    }
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -460,11 +484,11 @@ class μMilvian():
         if isinstance(m, μMilvian) and m.charName:
           characters[m.charName.lower()] = m
         elif purgeUnknown:
-          μPrint.info(f"[cMilvian] {os.path.basename(d)!r} has no live bridge, purging...")
+          μPrint.info(f"[μMilvian] {os.path.basename(d)!r} has no live bridge, purging...")
           try:
             import shutil; shutil.rmtree(d)
           except Exception as e:
-            μPrint.warning(f"[cMilvian] purge failed: {e}")
+            μPrint.warning(f"[μMilvian] purge failed: {e}")
         del runningThreads[d]
       if runningThreads: time.sleep(0.05)
     μMilvianMeta.setBridges(characters)
@@ -489,6 +513,23 @@ class μMilvianMeta:
   @classmethod
   def setBridges(cls, bridges):
     cls.realBridges = bridges
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def getBridges(cls, purgeUnknown=False) -> dict[str, μMilvian]:
+    if not cls.realBridges:
+      μMilvian.scanBridges(purgeUnknown=purgeUnknown)
+    if not cls.realBridges:
+      μPrint.warning("[μMilvianMeta] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
+      return {}
+    return cls.realBridges
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def closeBridges(cls):
+    if cls.realBridges:
+      for bridge in cls.realBridges.values(): bridge.close()
+    cls.realBridges = {}
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -517,6 +558,7 @@ class μMilvianMeta:
     if target == "focus": return μMilvianMeta.getFocused()
     return μMilvianMeta.getNamed(target)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getAll(cls, exclude: set = None) -> list:
     if not cls.realBridges: return []
@@ -536,11 +578,11 @@ class μMilvianMeta:
 
 
 
-  # def execute(self, cmd) -> cMilvianPacket:
+  # def execute(self, cmd) -> μMilvianPacket:
   #   if bridge := self.pick() is None: return cPhonyPacket
   #   return bridge.execute(cmd)
 
-  # def send(self, packet: cMilvianPacket) -> cMilvianPacket:
+  # def send(self, packet: μMilvianPacket) -> μMilvianPacket:
   #   if bridge := self.pick() is None: return cPhonyPacket
   #   return bridge.send(packet)
 

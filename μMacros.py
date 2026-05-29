@@ -34,21 +34,21 @@ from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt
 import glob, re, os, random
 from typing import TYPE_CHECKING
-from μMacrosDaemon import μMacrosDaemon
+from μMilvianBridge import μMilvianBridge
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
 
 # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 def printConsolidatedDict(trigger, consolidated):
-  μPrint.debug(f" [*] ── {μPrint.fill(f"Consolidated: {trigger}  ", 62, "─")}")
+  μPrint.debug(f"     ├─ {μPrint.fill(f"Consolidated: {trigger}  ", 67, "─")}┘")
   prevName = ""
   for actor, c in consolidated.items():
     if (prevName != c.name.normalize()[:-1]):
       prevName = c.name.normalize()[:-1]
-      μPrint.debug(f"  ○   Macro \"{c.name.normalize()[:-1]}\"")
-    μPrint.debug(f"      {μPrint.fill(f"{actor}", 15)} │ {c.actions.normalize()[:-1]}")
-  μPrint.debug(f"     ─────────────────┴─────────────────────────────────────────────────────")
+      μPrint.debug(f"     │ Macro \"{c.name.normalize()[:-1]}\"")
+    μPrint.debug(  f"     │ {μPrint.fill(f"{actor}", 14)} │ {c.actions.normalize()[:-1]}")
+  μPrint.debug(    f"     ├────────────────┴────────────────────────────────────────────────────┐")
 
 # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 # Can be used for actors or actions
@@ -203,7 +203,7 @@ class μMacroRegistry:
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   @classmethod
   def consolidateTrigger(cls, trigger : str) -> dict:
-    if trigger not in cls.triggers: return {}
+    if trigger == "none" or trigger not in cls.triggers: return {}
     consolidated = {}
     for e in (e for e in cls.triggers[trigger] if e.active):
       cls.consolidateEntry(e, consolidated)
@@ -416,7 +416,7 @@ class μMacros(μToggler):
     self.toActivate = None
     self.main = main
 
-    self.daemon = μMacrosDaemon(self.main)
+    self.daemon = μMilvianBridge(self.main)
 
     self.btnAddSet      = μOrbSmall(icon=P_ICON_NEWDOC, tooltip="Create a new set of shortcuts")
     self.btnRemoveSet   = μOrbSmall(icon=P_ICON_TRASH, tooltip="Delete currently selected set - this action cannot be undone!")
@@ -530,7 +530,6 @@ class μMacros(μToggler):
     cset.entries = [self.table.item(row, 1) for row in range(self.table.rowCount()) if self.table.item(row, 1)]
     cset.save()
 
-
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def initialize(self):
     super().initialize()
@@ -547,9 +546,7 @@ class μMacros(μToggler):
       self.setActiveSets(self.toActivate)
       self.toActivate = None
     self._ensureSetListSelection()
-
-    print(μMacroRegistry.__str__())
-    for t in μMacroRegistry.triggers: μMacroRegistry.consolidateTrigger(t)
+    # for t in μMacroRegistry.triggers: μMacroRegistry.consolidateTrigger(t)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateProfile(self, prof : μSettingsProfile, last : str):
@@ -698,7 +695,8 @@ class μMacros(μToggler):
   def playMacro(self):
     action = self.actionEditor.toPlainText().strip()
     if not action: return
-    bridges = self.daemon.getBridges()
+    from μMilvian import μMilvianMeta
+    bridges = μMilvianMeta.getBridges()
     if not bridges: return
 
     class _Temp:

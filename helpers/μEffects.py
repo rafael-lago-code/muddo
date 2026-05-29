@@ -18,8 +18,9 @@
 #
 #
 import math
-from PyQt6.QtGui import QPixmap, QColor, qGray, QImage
-from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPixmap, QColor, qGray, QImage, QPainter
+from PyQt6.QtCore import Qt, QRectF
+from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem, QGraphicsBlurEffect
 from helpers.μImageFactory import *
 
 P_EFFECT_NONE = 0
@@ -31,6 +32,7 @@ P_EFFECT_SEPI = 5
 P_EFFECT_INVT = 6
 P_EFFECT_OPAC = 7
 P_EFFECT_BCON = 8
+P_EFFECT_DSHD = 9
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  E F F E C T   -   N O N E
@@ -122,7 +124,23 @@ class cBrightContrast(cNone):
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   🮿  
+#   ❖  E F F E C T   -   D R O P   S H A D O W
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class cDropShadow(cNone):
+  def __init__(self, dx: int = 4, dy: int = 4, radius: float = 4.0,
+               color: QColor = None, shadow_opacity: float = 0.6, pre=cNone()):
+    self.pre = pre
+    self.dx = dx
+    self.dy = dy
+    self.radius = radius
+    self.color = color
+    self.shadow_opacity = shadow_opacity
+
+  def apply(self, target):
+    return dropShadow(self.pre.apply(target), self.dx, self.dy, self.radius, self.color, self.shadow_opacity)
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def greyscale(target):
   return desaturate(target, 1.0)
@@ -176,44 +194,23 @@ def opacity(target, amount: float):
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def blur(target, radius: float):
-  if isinstance(target, QPixmap):
-    return QPixmap.fromImage(blur(target.toImage(), radius))
-  r = max(1, int(round(radius)))
-  sigma = radius / 2.0
-  k = 2 * r + 1
-  raw = [math.exp(-(i - r) ** 2 / (2 * sigma * sigma)) for i in range(k)]
-  total = sum(raw)
-  kernel = [v / total for v in raw]
+  as_image = isinstance(target, QImage)
+  pix = QPixmap.fromImage(target) if as_image else target
 
-  target = target.convertToFormat(QImage.Format.Format_ARGB32)
-  w, h = target.width(), target.height()
+  scene = QGraphicsScene()
+  item = QGraphicsPixmapItem(pix)
+  effect = QGraphicsBlurEffect()
+  effect.setBlurRadius(radius)
+  item.setGraphicsEffect(effect)
+  scene.addItem(item)
 
-  tmp = QImage(w, h, QImage.Format.Format_ARGB32)
-  for y in range(h):
-    for x in range(w):
-      rv = gv = bv = av = 0.0
-      for i, kv in enumerate(kernel):
-        sx = max(0, min(w - 1, x + i - r))
-        c = target.pixelColor(sx, y)
-        rv += c.red()   * kv
-        gv += c.green() * kv
-        bv += c.blue()  * kv
-        av += c.alpha() * kv
-      tmp.setPixelColor(x, y, QColor(int(rv), int(gv), int(bv), int(av)))
+  result = QImage(pix.size(), QImage.Format.Format_ARGB32)
+  result.fill(Qt.GlobalColor.transparent)
+  painter = QPainter(result)
+  scene.render(painter, source=QRectF(0, 0, pix.width(), pix.height()))
+  painter.end()
 
-  result = QImage(w, h, QImage.Format.Format_ARGB32)
-  for y in range(h):
-    for x in range(w):
-      rv = gv = bv = av = 0.0
-      for i, kv in enumerate(kernel):
-        sy = max(0, min(h - 1, y + i - r))
-        c = tmp.pixelColor(x, sy)
-        rv += c.red()   * kv
-        gv += c.green() * kv
-        bv += c.blue()  * kv
-        av += c.alpha() * kv
-      result.setPixelColor(x, y, QColor(int(rv), int(gv), int(bv), int(av)))
-  return result
+  return result if as_image else QPixmap.fromImage(result)
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def brightContrast(target, brightness: float, contrast: float):
@@ -228,3 +225,33 @@ def brightContrast(target, brightness: float, contrast: float):
       bl = max(0, min(255, int((color.blue()  - 128) * contrast + 128 + b)))
       target.setPixelColor(x, y, QColor(r, g, bl, color.alpha()))
   return target
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+def dropShadow(target, dx: int = 4, dy: int = 4, radius: float = 4.0,
+               color: QColor = None, shadow_opacity: float = 0.6):
+  if isinstance(target, QPixmap):
+    return QPixmap.fromImage(dropShadow(target.toImage(), dx, dy, radius, color, shadow_opacity))
+  if color is None:
+    color = QColor(0, 0, 0)
+
+  target = target.convertToFormat(QImage.Format.Format_ARGB32)
+  w, h = target.width(), target.height()
+  sr, sg, sb = color.red(), color.green(), color.blue()
+
+  # Fill shadow colour, mask by target alpha via DestinationIn
+  shadow_pix = QPixmap(w, h)
+  shadow_pix.fill(QColor(sr, sg, sb, int(255 * shadow_opacity)))
+  mask_painter = QPainter(shadow_pix)
+  mask_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationIn)
+  mask_painter.drawImage(0, 0, target)
+  mask_painter.end()
+
+  shadow = blur(shadow_pix.toImage(), radius)
+
+  result = QImage(w, h, QImage.Format.Format_ARGB32)
+  result.fill(Qt.GlobalColor.transparent)
+  painter = QPainter(result)
+  painter.drawImage(dx, dy, shadow)
+  painter.drawImage(0, 0, target)
+  painter.end()
+  return result

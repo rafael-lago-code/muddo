@@ -13,7 +13,7 @@ Because **Milvian** is designed to be lightweight and not intrusive, it does **n
 
 There are two options for that:
  - **"Quick" Refresh - Left Click**: just gets whatever information the client currently has about items in the inventory. This will return "something" for all items, though names might be vague, like "arrow" or "robe", enchantments/effects will not be listed, types might be incomplete, e.g. "armor" instead of "armor [medium]" or missing icons. This is normal. The local game client only has data about items that have been "examined", i.e. you hovered the item and it displayed all of its information.
- - **"Thorough" Refresh - Ctrl+Left Click**: goes item by item in your inventory and simulates an "examine" input. You will see the examination pop up going over all items while you do this. This will collect a lot more data about all items.
+ - **"Thorough" Refresh - Ctrl+Click**: goes item by item in your inventory and simulates an "examine" input. You will see the examination pop up going over all items while you do this. This will collect a lot more data about all items.
 
 You can perform a thorough refresh after a quick refresh, and it should automagically replace all items by their more detailed version.
 

@@ -46,10 +46,7 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - enable macro(*) macros
       - vizualize keyboard with its macros
   - Strategy
-    - detect party leader
     - implement "save" reserved word for strateg() command
-    - implement "followDialogue"
-      - already working, but needs to follow closeDialogue too
     - implement "followPortal"
       - already working, but needs to follow closePortal too
     - fix and test further "closeExplorerJournals"
@@ -57,8 +54,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - test Sargeant behaviour
     - Nice to have:
       - improve "followJump"
-        - currently jump detection relies on δZ
-          - for local leader: use "canjump" flag instead, no δZ shenenigans. Keep δZ for nonlocal      
         - requires the user to manually set jump shortcut to "space" (even if default is space, it needs to be manually set)
       - implement "followMount"
         - currently detects but fails to send the "mount" input (cannot find the hotkey for it!)

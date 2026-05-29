@@ -1,0 +1,19 @@
+{
+  "strategy":            "μBasicStrategy",
+  "captain":             "leader",
+  "commander":           "leader",
+  "stopDistance":        1.5,
+  "refreshInterval":     50,
+  "followMount":         true,
+  "followRecall":        true,
+  "acceptParty":         true,
+  "acceptRess":          true,
+  "acceptQuest":         true,
+  "closeExplorerJournal": true,
+  "followJump":          true,
+  "followSelect":        true,
+  "followAttack":        true,
+  "followPortal":        true,
+  "followDirection":     true,
+  "autonomyTime":        2.0
+}

@@ -23,6 +23,7 @@ from PyQt6.QtGui import QPainter, QPixmap, QColor, QFont, QMouseEvent, QShortcut
 from PyQt6.QtCore import QSize, Qt, pyqtSignal, QPoint, QEvent
 from PyQt6.QtWidgets import QMenu, QWidget
 from helpers import μEffects
+import threading
 
 P_STATUS_NORMAL=0
 P_STATUS_HOVERD=1
@@ -86,7 +87,7 @@ class μTheme_OrbRedMedium():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setIconEffect(self, iconEffect):
     self.iconEffect = {}
-    self.iconEffect[P_STATUS_NORMAL] = μEffects.cNone()
+    self.iconEffect[P_STATUS_NORMAL] = μEffects.cDropShadow(3,3,6, shadow_opacity=0.6)
     self.iconEffect[P_STATUS_HOVERD] = iconEffect
     self.iconEffect[P_STATUS_COVERD] = μEffects.cNone()
     self.iconEffect[P_STATUS_LCLICK] = iconEffect
@@ -234,6 +235,7 @@ class μOrb(QPushButton):
     self.setEnabled(enabled)
     self.textRendered = None
     self.iconRendered = None
+    self.iconEffectCache = {}
     self.menu = QMenu(title, self)
     
     ctrlTrigger = QShortcut(QKeySequence(Qt.Key.Key_Control), self)
@@ -253,6 +255,7 @@ class μOrb(QPushButton):
   # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setIcon(self, a0):
     self.iconRendered = None
+    self.iconEffectCache = {}
     super().setIcon(a0)
   
   # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -314,12 +317,15 @@ class μOrb(QPushButton):
                                       Qt.AspectRatioMode.KeepAspectRatio,
                                       Qt.TransformationMode.SmoothTransformation)
 
+    if self._current_state not in self.iconEffectCache:
+      iconEffect = self.theme.iconEffect.get(self._current_state, μEffects.cNone())
+      self.iconEffectCache[self._current_state] = iconEffect.apply(self.iconRendered)
+
     # Centers the icon respecting iconSize()
     r = QtCore.QRect(int((self.theme.orbSize.width()  - self.theme.iconSize.width()) / 2.0),
                      int((self.theme.orbSize.height() - self.theme.iconSize.height()) / 2.0),
                           self.theme.iconSize.width(), self.theme.iconSize.height())
-    iconEffect = self.theme.iconEffect.get(self._current_state, μEffects.cNone())
-    painter.drawPixmap(r, iconEffect.apply(self.iconRendered))
+    painter.drawPixmap(r, self.iconEffectCache[self._current_state])
     
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -600,8 +606,58 @@ class μBoxCheck(QWidget):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setChecked(self, a0 : bool):
+    self.box.setChecked(a0)
     if a0:
       self.box.setIcon(getIcon(P_ICON_SMPLCHECK))
     else:
       self.box.setIcon(QIcon())
-    self.box.setChecked(a0)
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  O R B   T A S K
+#
+#   μOrb that runs execute() in a background thread when clicked.
+#   Stays in checked state while running; normal clicks blocked during execution.
+#   Ctrl+click and right-click pass through normally.
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μOrbTask(μOrb):
+  sigTaskFinished = pyqtSignal()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.setCheckable(True)
+    self._running = False
+    self.sigTaskFinished.connect(self._onFinished)
+    self.clicked.connect(self._start)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def execute(self):
+    pass
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _start(self):
+    if self._running: return
+    self._running = True
+    self.setChecked(True)
+    threading.Thread(target=self._run, daemon=True).start()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _run(self):
+    try:
+      self.execute()
+    finally:
+      self.sigTaskFinished.emit()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _onFinished(self):
+    self._running = False
+    self.setChecked(False)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def mousePressEvent(self, event):
+    if (self._running
+        and event.button() == Qt.MouseButton.LeftButton
+        and event.modifiers() == Qt.KeyboardModifier.NoModifier):
+      return
+    super().mousePressEvent(event)

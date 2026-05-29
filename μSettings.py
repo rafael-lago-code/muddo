@@ -133,10 +133,10 @@ class μSettings(μToggler):
     profileLbl = QLabel("Profile: ")
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
 
-    self.btnNew = μOrbSmall(icon=P_ICON_DUPDOC, tooltip="Duplicate current settings and profile into a new one.<br>You can rename it directly from the ComboBox after creating it.")
+    self.btnDuplicateProfile = μOrbSmall(icon=P_ICON_DUPDOC, tooltip="Duplicate current settings and profile into a new one.<br>You can rename it directly from the ComboBox after creating it.")
     self.btnRemoveProfile = μOrbSmall(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
 
-    self.setLayout(newVLayout([self.hiddenLayer, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnNew,
+    self.setLayout(newVLayout([self.hiddenLayer, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnDuplicateProfile,
                                self.btnRemoveProfile, "__stretch__"]), "__stretch__"]))
     
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -148,7 +148,7 @@ class μSettings(μToggler):
   def initialize(self):
     self.load()
     super().initialize()
-    self.btnNew.clicked.connect(self.duplicateProfile)
+    self.btnDuplicateProfile.clicked.connect(self.duplicateProfile)
     self.btnRemoveProfile.clicked.connect(self.removeProfile)
     self.profileList.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("settings"))
     self.profileMain.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("main"))

@@ -185,7 +185,7 @@ class μMilvianPacket():
       if self.command == packetCommand.querycharname:
         self.outData = self.outData.decode('utf-8')
     else:
-      μPrint.error(f"[cMilvianPacket.parseData] unknown packet received = {self})")
+      μPrint.error(f"[μMilvianPacket.parseData] unknown packet received = {self})")
       return
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ class μMilvianPacket():
     while self.status == packetStatus.waiting:
       if timeout and timer>timeout:
         # cMilvian.printDebug(f"[cMilvian:Debug] timeout ({timeout}) in wait! {self.command}[{int.from_bytes(self.id, byteorder='little', signed=False)}], pathO={self.pathSHM}")
-        μPrint.info(f"[cMilvianPacket:Debug] timeout ({timeout}) in wait! {self.command}[{int.from_bytes(self.id, byteorder='little', signed=False)}], pathO={self.bridge.pathResponse}")
+        μPrint.info(f"[μMilvianPacket:Debug] timeout ({timeout}) in wait! {self.command}[{int.from_bytes(self.id, byteorder='little', signed=False)}], pathO={self.bridge.pathResponse}")
         return False
       else:
         self.checkResponse()
@@ -216,7 +216,7 @@ class μMilvianPacket():
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  P H O N Y  P A C K E T 
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class cPhonyPacket:
+class μPhonyPacket:
   command : packetCommand = packetCommand.none
   status  : packetStatus  = packetStatus.unknown
   id      = b''
@@ -230,6 +230,6 @@ class cPhonyPacket:
   def parseRawData(self, rawData: bytes): pass
   def checkResponse(self) -> bool: return False
   def wait(self, timeout=None) -> bool: return False  
-  def __str__(self) -> str: return '[cPhonyPacket]'
+  def __str__(self) -> str: return '[μPhonyPacket]'
   
   

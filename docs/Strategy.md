@@ -57,7 +57,7 @@ Special values:
 
 | Value | Meaning |
 |---|---|
-| `"leader"` | Party leader. ⚠️ Not yet reliably detected; resolves to null currently. |
+| `"leader"` | Party leader. Resolved at call time, not updated if leader changes |
 | `"none"` | Disables following entirely for that role. |
 | `"self"` | Resolves to the character's own name at runtime. Useful in `all:` macros. |
 | `"focus"` | Resolves to the character name of the currently focused game instance |
