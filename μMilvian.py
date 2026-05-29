@@ -148,8 +148,10 @@ def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPack
   args = ', '.join(f'{k.strip()}={str(v).strip()}' if (v is not True and v is not None) else k.strip() for k, v in content.items())
   inData  = cPacker.packString(directives)
   inData += cPacker.packString(args)
-  μStrategy.updateFromMacro(bridge.charName, cmd)
-  return μMilvianPacket(command, bridge, inData)
+  packet = μMilvianPacket(command, bridge, inData)
+  char_name = bridge.charName
+  packet.χigResponse.connect(lambda _=None, n=char_name: μStrategy.refreshFromStatus(n))
+  return packet
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  B U I L D   O R D E R E D

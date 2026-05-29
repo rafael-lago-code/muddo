@@ -18,7 +18,7 @@
 #
 #
 from PyQt6.QtWidgets import QTextEdit, QTabWidget, QComboBox, QSplitter
-from PyQt6.QtCore import pyqtSignal
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QMetaObject, Qt
 from PyQt6.QtGui import QColor, QTextOption, QKeySequence, QShortcut
 from helpers import μEffects
 from helpers.μImageFactory import *
@@ -201,8 +201,8 @@ class μStrategy(μToggler):
                             radius=radius)
     self.board.setEdgeStyle(width=6, arrow_size=24)
     self.btnRefresh.execute = μStrategy.refreshPartyInfo
-    self.sigPartyRefreshed.connect(self.updateNetwork)
-    self.sigFromMacro.connect(self.updateNetwork)
+    self.sigPartyRefreshed.connect(self.updateNetwork, Qt.ConnectionType.QueuedConnection)
+    self.sigFromMacro.connect(self.updateNetwork, Qt.ConnectionType.QueuedConnection)
     self.btnEditDirectives.clicked.connect(lambda : self.directivesEditor.setVisible(not self.directivesEditor.isVisible()))
     self.btnDuplicateDirectives.clicked.connect(self.duplicateDirective)
     self.btnRemoveDirectives.clicked.connect(self.removeDirective)
@@ -312,6 +312,7 @@ class μStrategy(μToggler):
       μPrint.error(f"[μStrategy] remove failed: {e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @pyqtSlot()
   def updateNetwork(self):
     if not μStrategy.partyMembers: return
     captains  = μStrategy.partyCaptains or set()
@@ -324,7 +325,7 @@ class μStrategy(μToggler):
     sortedMembers = []
     members = list(μStrategy.partyMembers)
     petMembers = []
-    for name in [μStrategy.consensus.get('commander'), μStrategy.consensus.get('captain'), μStrategy.partyLeader]:
+    for name in [μStrategy.consensus.get('commander'), μStrategy.partyLeader]:
       if name and name in members:
         members.remove(name)
         sortedMembers.append(name)
@@ -340,8 +341,10 @@ class μStrategy(μToggler):
     if petMembers: sortedMembers += sorted(petMembers)
 
     self.board.clear()
+    allNodes = {}
     for name in sortZigZag(sortedMembers):
       n = μPartyNode(name=name.capitalize(), allowOutgoing=name not in pets)
+      allNodes[name] = n
       self.board.add(n)  # applies nodeStyle (sets _radius) before decorations are sized
 
       if name == leader:      n.addDecoration(μStrategy.getDecoration('partyLeader'))
@@ -352,6 +355,11 @@ class μStrategy(μToggler):
       elif commander and name == commander:                      n.addDecoration(μStrategy.getDecoration('commander'))
       elif name in captains and name in local:                   n.addDecoration(μStrategy.getDecoration('captain'))
       elif name in captains:                                     n.addDecoration(μStrategy.getDecoration('sergeant'))
+    
+    for name, node in allNodes.items():
+      captain = μStrategy.directives.get(name, {}).get('captain', '')
+      if captain and captain in allNodes:
+        μStrategy._widget.board.connectNodes(node, allNodes[captain])
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setVisible(self, value : bool):
@@ -378,6 +386,7 @@ class μStrategy(μToggler):
       μStrategy._widget.populateDirectivesCombo()
       idx = cls._widget.directiveList.findText(saved)
       if idx >= 0: cls._widget.directiveList.setCurrentIndex(idx)
+    cls.refreshAllFromStatus()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -467,7 +476,45 @@ class μStrategy(μToggler):
         break
 
     if cls._widget: cls._widget.sigPartyRefreshed.emit()
+    cls.refreshAllFromStatus()
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def refreshFromStatus(cls, char_name: str):
+    from helpers.μStatusReader import μStatusReader
+    print(f"[DEBUG] refreshFromStatus called for {char_name!r}, path={μStatusReader.filePath(char_name)!r}")
+    with μStatusReader(char_name) as r:
+      print(f"[DEBUG] isOpen={r.isOpen} hasStrategyData={r.hasStrategyData if r.isOpen else 'N/A'}")
+      if not r.isOpen or not r.hasStrategyData: return
+      cls.directives[char_name.lower()] = μDict({
+        'captain':              r.captain.lower(),
+        'commander':            r.commander.lower(),
+        'followMount':          r.followMount,
+        'followRecall':         r.followRecall,
+        'acceptParty':          r.acceptParty,
+        'acceptRess':           r.acceptRess,
+        'acceptQuest':          r.acceptQuest,
+        'closeExplorerJournal': r.closeExplorerJournal,
+        'followJump':           r.followJump,
+        'followSelect':         r.followSelect,
+        'followAttack':         r.followAttack,
+        'followPortal':         r.followPortal,
+        'followDirection':      r.followDirection,
+        'followDialogue':       r.followDialogue,
+        'stopDistance':         r.stopDistance,
+        'autonomyTime':         r.autonomyTime,
+        'refreshInterval':      r.refreshInterval,
+      })
+    cls.updateConsensus()
+    if cls._widget:
+      cls._widget.sigFromMacro.emit()
+      QMetaObject.invokeMethod(cls._widget, 'updateNetwork', Qt.ConnectionType.QueuedConnection)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def refreshAllFromStatus(cls):
+    for name in μMilvianMeta.getBridges():
+      cls.refreshFromStatus(name)
 
   # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
   #   🞋  U P D A T E   D I R E C T I V E S
@@ -548,7 +595,9 @@ class μStrategy(μToggler):
   def updateFromMacro(cls, source, text: str):
     cls.updateDirectives(source, text=text)
     cls.updateConsensus()   #  This is currently being called too many times, i.e. once per party member. Not critical but not elegant
-    if cls._widget: cls._widget.sigFromMacro.emit()
+    if cls._widget:
+      cls._widget.updateNetwork()
+      cls._widget.sigFromMacro.emit()
 
   
   # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
