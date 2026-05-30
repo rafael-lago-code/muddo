@@ -17,21 +17,22 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QComboBox, QSplitter
+from PyQt6.QtWidgets import QComboBox, QSplitter, QLineEdit, QLabel, QWidget, QSizePolicy
 from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QColor, QTextOption, QKeySequence, QShortcut
 from helpers import μEffects
 from helpers.μImageFactory import *
 from helpers.μStrings import μString
 from helpers.μDict import μDict
+from widgets.μGrid import μGridLayout
 from μMilvian import μMilvian, μMilvianMeta
 from helpers.μPrint import μPrint
 from helpers.μMilvianPacket import μMilvianPacket, cPacker, μPhonyPacket, packetCommand, packetStatus, packetSignal
-from widgets.μNetwork import μNetwork, μNode
+from widgets.μNetwork import *
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrb, μBoxCheck, μOrbSmall, μOrbTask
 from widgets.μCheckCombo import μCheckCombo
-from widgets.μText import μTextEdit, μFontMono
+from widgets.μText import μFontDisplay, μTextEdit, μFontMono
 import glob
 import json
 import math
@@ -78,15 +79,60 @@ class μPartyNode(μNode):
 
   _DIAG = 1.0 / math.sqrt(2)
 
+  @staticmethod
+  def dataPath() -> str:
+    from μSettings import μSettings
+    plugins = getattr(μSettings, 'plugins', None)
+    base = plugins.strategyPath().rstrip("/\\") if plugins else P_DEFAULT_CONFIGDIR + os.sep + "strategy"
+    return os.path.join(base, 'partyData.json')
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def dataLoad() -> dict:
+    try:
+      with open(μPartyNode.dataPath(), 'r') as f:
+        return json.load(f)
+    except Exception:
+      return {}
+    
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def dataSave(data: dict):
+    path = μPartyNode.dataPath()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, 'w') as f:
+      json.dump(data, f, indent=2)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def dataGet(name: str) -> dict:
+    return μPartyNode.dataLoad().get(name, {})
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def dataSet(name: str, entry: dict):
+    data = μPartyNode.dataLoad()
+    data[name] = entry
+    μPartyNode.dataSave(data)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, name: str, parent=None, bg : QPixmap = None, allowOutgoing: bool = True):
-    super().__init__(label=name.capitalize(), parent=parent, bg=bg, allowOutgoing=allowOutgoing)
+    data  = μPartyNode.dataLoad()
+    entry = data.get(name, {})
+    if name not in data:
+      data[name] = {'nickname': name.capitalize()}
+      μPartyNode.dataSave(data)
+    label = entry.get('nickname', name.capitalize())
+    icon  = entry.get('icon_path')
+    super().__init__(label=label, parent=parent, bg=bg, allowOutgoing=allowOutgoing)
     self.name = name
     self.decorations: list[tuple[QPixmap, str]] = []
+    if icon and os.path.exists(icon):
+      self.setBg(QPixmap(icon))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addDecoration(self, image: QPixmap, position: str, size: int = 36):
-    scaled = image.scaled(size, size, Qt.AspectRatioMode.IgnoreAspectRatio,
-                          Qt.TransformationMode.SmoothTransformation)
+    scaled = image.scaled(size, size, Qt.AspectRatioMode.IgnoreAspectRatio, Qt.TransformationMode.SmoothTransformation)
     self.decorations.append((scaled, position))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -118,6 +164,97 @@ class μPartyNode(μNode):
     for dec, pos in self.decorations:
       x, y = self._decorationXY(dec, pos)
       painter.drawPixmap(x, y, dec)
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  N O D E   P A N E L
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μPartyNodePanel(QWidget):
+
+  def __init__(self, parent=None):
+    super().__init__(parent)
+    self._node     = None
+    self._iconPath = None
+
+    self.imgLabel = QLabel()
+    self.imgLabel.setFixedSize(80, 80)
+    self.imgLabel.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    self.imgLabel.setStyleSheet("background-color: black;")
+
+    self.nameEdit  = QLineEdit()
+    self.nameEdit.setEnabled(False)
+    self.nickEdit  = QLineEdit()
+    self.nickEdit.setPlaceholderText("Nickname")
+
+    self.btnSave     = μOrbSmall(icon=P_ICON_SAVE,  tooltip="Save")
+    self.btnEditIcon = μOrbSmall(icon=P_ICON_IMAGE,  tooltip="Edit Image")
+    self.btnClose    = μOrbSmall(icon=P_ICON_CLOSE, tooltip="Close")
+
+    self.btnSave.clicked.connect(self._save)
+    self.btnEditIcon.clicked.connect(self._editIcon)
+    self.btnClose.clicked.connect(self._close)
+
+    g = μGridLayout()
+
+    g.appendRow(["Key:",      ">", self.nameEdit])
+    g.appendRow(["Nickname:", ">", self.nickEdit])
+    self.setLayout(newVLayout(["Image:", newHLayout(["__stretch__", self.imgLabel, "__stretch__"]), g,
+                               newHLayout([self.btnSave, self.btnEditIcon, self.btnClose]), "__stretch__"]))
+    # self.setFixedWidth(160)
+    self.setVisible(False)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def openFor(self, node):
+    self._node = node
+    self.nameEdit.setText(node.name.capitalize())
+    self._entry  = {}
+    self._iconPath = None
+    self.nickEdit.setText(node.label or node.name.capitalize())
+    if node.bg:
+      px = node.bg.scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio,
+                          Qt.TransformationMode.SmoothTransformation)
+      self.imgLabel.setPixmap(px)
+    else:
+      self.imgLabel.clear()
+    self.setVisible(True)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _updateImage(self):
+    if self._iconPath and os.path.exists(self._iconPath):
+      px = QPixmap(self._iconPath).scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio,
+                                          Qt.TransformationMode.SmoothTransformation)
+    else:
+      px = QPixmap(80, 80)
+      px.fill(Qt.GlobalColor.transparent)
+    self.imgLabel.setPixmap(px)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _editIcon(self):
+    from widgets.μIconSelectDialog import μIconSelectDialog
+    dlg = μIconSelectDialog(self)
+    if dlg.exec():
+      path = dlg.selectedPath()
+      if path:
+        self._iconPath = path
+        self._updateImage()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _save(self):
+    if not self._node: return
+    entry = μPartyNode.dataGet(self._node.name)
+    entry['nickname'] = self.nickEdit.text().strip() or self._node.name.capitalize()
+    if self._iconPath:
+      entry['icon_path'] = self._iconPath
+    μPartyNode.dataSet(self._node.name, entry)
+    self._node.label = entry['nickname']
+    if self._iconPath:
+      self._node.setBg(QPixmap(self._iconPath))
+    if μStrategy._widget: μStrategy._widget.board.update()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _close(self):
+    self._node = None
+    self.setVisible(False)
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -174,6 +311,7 @@ class μStrategy(μToggler):
     self.directivesEditor.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     self.directivesEditor.setWordWrapMode(QTextOption.WrapMode.NoWrap)
     self.directivesEditor.setFont(μFontMono())
+    self.directivesEditor.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
     self.btnEditDirectives      = μOrbSmall(icon=P_ICON_EDIT,   tooltip="Show/hide directives editor")
     self.btnDuplicateDirectives = μOrbSmall(icon=P_ICON_DUPDOC, tooltip="Duplicate current directive")
     self.btnRemoveDirectives    = μOrbSmall(icon=P_ICON_TRASH,  tooltip="Delete current directive")
@@ -181,12 +319,7 @@ class μStrategy(μToggler):
     self.directiveList.currentTextChanged.connect(self._saveDirectiveToSession)
     self.directiveList.currentTextChanged.connect(self.load)
 
-    from μSettings import μSettings
-    plugins = getattr(μSettings, 'plugins', None)
-    radius = plugins.strategyFrameSize() if plugins else 36
-    self.board.setNodeStyle(fg=getPixmap("circular_frame_fg").scaledToWidth(80, Qt.TransformationMode.SmoothTransformation),
-                            radius=radius, color_receives=QColor(0,0,0,0),color_incomings=QColor(0,0,0,0))
-    self.board.setEdgeStyle(width=6, arrow_size=24)
+    self.board.setEdgeStyle(width=4, arrow_size=20)
     self.btnRefresh.execute = μStrategy.refreshPartyInfo
     self.sigNetworkUpdate.connect(self.updateNetwork)
     self.showPets.stateChanged.connect(self.updateNetwork)
@@ -200,12 +333,15 @@ class μStrategy(μToggler):
     self.btnToggle.clicked.connect(μStrategy.toggleStrategy)
     self.btnToggle.ctrlClicked.connect(μStrategy.pauseStrategy)
     
-    _boardSplitter = QSplitter(Qt.Orientation.Horizontal)
-    _boardSplitter.addWidget(self.board)
-    _boardSplitter.addWidget(self.directivesEditor)
+    self.nodePanel = μPartyNodePanel(self)
+    self.nodePanel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
-    self.setLayout(newVLayout([newHLayout(["__stretch__","Directives:", self.directiveList, self.btnDuplicateDirectives, self.btnRemoveDirectives, self.btnEditDirectives]), _boardSplitter,
-                      newHLayout([self.btnToggle, self.btnRefresh, self.showPets, "__stretch__"])]))
+    _boardSplitter = QSplitter(Qt.Orientation.Horizontal)
+    _boardSplitter.addWidget(newVFrame([self.board, newHLayout([self.btnToggle, self.btnRefresh, self.showPets, "__stretch__"])]))
+    _boardSplitter.addWidget(newVFrame([self.directivesEditor, self.nodePanel]))
+
+    self.setLayout(newVLayout([newHLayout(["__stretch__","Directives:", self.directiveList, self.btnDuplicateDirectives, self.btnRemoveDirectives, self.btnEditDirectives]),
+                      _boardSplitter]))
   
   # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
   #   🞋  W I D G E T / I N S T A N C E   M E T H O D S 
@@ -304,6 +440,9 @@ class μStrategy(μToggler):
   def updateNode(self, node : μPartyNode):
     node.clearDecorations()
     self.board.clearEdges(node, outgoing=True, incoming=False)
+    self.updateStyle()
+    node.setStyle(self.board.nodeStyle)
+
     name = μString(node.name.lower())
     if name == μStrategy.partyLeader:      node.addDecoration(μStrategy.getDecoration('partyLeader'), 'NE')
     if name == μStrategy.partyPets:        node.addDecoration(μStrategy.getDecoration('pet'),         'SW')
@@ -327,8 +466,20 @@ class μStrategy(μToggler):
       μStrategy._widget.board.connectNodes(node, μStrategy.nodes[myCaptain])
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def updateStyle(self):
+    if not μStrategy.partyMembers: return
+    from μSettings import μSettings
+    plugins = getattr(μSettings, 'plugins', None)
+    radius = plugins.strategyFrameSize() if plugins else 36
+    self.board.setNodeStyle(fg=getPixmap("circular_frame_fg").scaledToWidth(80, Qt.TransformationMode.SmoothTransformation),
+                            radius=radius, innerRadius=int(radius * 0.75),
+                            color_receives=QColor(0,0,0,0), color_incomings=QColor(0,0,0,0),
+                            label=LabelStyle(position='bottom', shadow=True, font=μFontDisplay()))
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateNetwork(self):
     if not μStrategy.partyMembers: return
+    self.updateStyle()
 
     sortedMembers = []
     members = list(μStrategy.partyMembers)
@@ -358,19 +509,16 @@ class μStrategy(μToggler):
         node = μPartyNode(name=name, allowOutgoing=name not in μStrategy.partyPets)
         node.sigConnected.connect(lambda target, src=node: μStrategy.updateCaptain(src, target))
         node.sigDisconnected.connect(lambda src=node: μStrategy.updateCaptain(src, None))
-        node.setStyle(self.board.nodeStyle)
+        node.sigDoubleClicked.connect(lambda n=node: self.nodePanel.openFor(n))
         μStrategy.nodes[name] = node
-      self.board.nodes.append(μStrategy.nodes[name])
+      n = μStrategy.nodes[name]
+      self.board.nodes.append(n)
     self.board._nodeCount = len(self.board.nodes)
     self.board.recomputePositions()
 
     for node in μStrategy.nodes.values(): self.updateNode(node)
     self.board.update()
     
-    # # for name, node in allNodes.items():
-    # #   captain = μStrategy.directives.get(name, {}).get('captain', '')
-    # #   if captain and captain in allNodes:
-    # #     μStrategy._widget.board.connectNodes(node, allNodes[captain])
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setVisible(self, value : bool):
@@ -386,6 +534,7 @@ class μStrategy(μToggler):
     plugins = getattr(μSettings, 'plugins', None)
     if plugins: return plugins.strategyPath().rstrip("/\\")
     return P_DEFAULT_CONFIGDIR + os.sep + "strategy"
+
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -482,7 +631,7 @@ class μStrategy(μToggler):
         μPrint.info(f"[μStrategy] \"{C_SILVER}{name.capitalize()}</font>\" reported its party {"with mismatches!" if not match else ""}")
       time.sleep(0.05)
       timeout += 50
-      if timeout > 1000:
+      if timeout > 2000:
         μPrint.warning(f"[μStrategy] refreshPartyInfo timeout — no response from: {list(packets.keys())}")
         break
 
@@ -534,7 +683,7 @@ class μStrategy(μToggler):
     for a in μMilvianMeta.getBridges():
       if a not in cls.directives: cls.directives[a] = μDict()
       cls.directives[a].update(parsed)
-      μStrategy.printDirective(cls.directives[a], a)
+      # μStrategy.printDirective(cls.directives[a], a)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -562,7 +711,7 @@ class μStrategy(μToggler):
     if cls.consensus['captain']: cls.partyCaptains.add(cls.consensus['captain'])
     if cls.consensus['commander']: cls.partyCommander = cls.consensus['commander']
 
-    μStrategy.printDirective(cls.consensus, "consensus")
+    # μStrategy.printDirective(cls.consensus, "consensus")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod

@@ -217,9 +217,6 @@ class dPlugins(dSection):
     self._useStrategy.stateChanged.connect(self._strategyPath.setEnabled)
     self._useStrategy.stateChanged.connect(self.btnStrategyPath.setEnabled)
     self._useStrategy.stateChanged.connect(self._strategyFrameSize.setEnabled)
-    self._strategyPath.setEnabled(False)
-    self._strategyFrameSize.setEnabled(False)
-    self.btnStrategyPath.setEnabled(False)
     super().__init__(state)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂

@@ -14,8 +14,24 @@ RECT_SELECT_COLOR = QColor(100, 160, 255)
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  S T Y L E S
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class LabelStyle:
+  font           = None
+  position       = 'center'   # 'center' | 'top' | 'bottom'
+  color          = QColor(255, 255, 255)
+  shadow         = False
+  shadow_color   = QColor(0, 0, 0)
+  shadow_opacity = 0.8
+  shadow_dx      = 2
+  shadow_dy      = 2
+
+  def __init__(self, **kwargs):
+    for k, v in kwargs.items():
+      setattr(self, k, v)
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 class NodeStyle:
   radius               = 22
+  innerRadius          = None
   width                = None
   height               = None
   fg                   = None
@@ -27,6 +43,7 @@ class NodeStyle:
   color_incoming       = QColor( 70, 130, 210)
   color_highlight      = QColor(255, 160,  40)
   color_selected       = QColor(255, 220,  50)
+  label                = None   # LabelStyle | None → uses text_color, center, default font
 
   def __init__(self, **kwargs):
     for k, v in kwargs.items():
@@ -116,7 +133,8 @@ class μNode(QWidget):
     if self.bg is None:
       self._preparedBG = None
     elif self._shape == 'circle':
-      self._preparedBG = μNode.cropCircle(self.bg, self._radius)
+      r = self.style.innerRadius if self.style.innerRadius is not None else self._radius
+      self._preparedBG = μNode.cropCircle(self.bg, r)
     else:
       self._preparedBG = self.bg.scaled(self._width, self._height,
         Qt.AspectRatioMode.KeepAspectRatio,
@@ -145,9 +163,11 @@ class μNode(QWidget):
     path.addEllipse(0.0, 0.0, float(diameter), float(diameter))
     p.setClipPath(path)
 
-    x = (diameter - image.width()) / 2
-    y = (diameter - image.height()) / 2
-    p.drawPixmap(int(x), int(y), image)
+    scaled = image.scaled(diameter, diameter, Qt.AspectRatioMode.KeepAspectRatioByExpanding,
+                          Qt.TransformationMode.SmoothTransformation)
+    x = (diameter - scaled.width()) / 2
+    y = (diameter - scaled.height()) / 2
+    p.drawPixmap(int(x), int(y), scaled)
     p.end()
     return result
 
@@ -212,14 +232,38 @@ class μNode(QWidget):
         painter.setBrush(QBrush(colour))
       painter.drawRect(rect)
 
-    painter.setPen(QPen(s.text_color))
-    text_rect = QRectF(
-      self.center.x() - self._width / 2,
-      self.center.y() - self._height / 2,
-      self._width, self._height,
-    )
     if self.label:
-      painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, self.label)
+      self._drawLabel(painter)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _drawLabel(self, painter: QPainter):
+    s  = self.style
+    ls = s.label if s.label is not None else LabelStyle(color=s.text_color)
+    cx, cy, r = self.center.x(), self.center.y(), self._radius
+    w = max(self._width * 2, 120)
+    h = 24
+
+    if ls.position == 'top':
+      rect = QRectF(cx - w / 2, cy - r + h/2, w, h)
+      flags = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom
+    elif ls.position == 'bottom':
+      rect = QRectF(cx - w / 2, cy + r - h/2, w, h)
+      flags = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop
+    else:
+      rect  = QRectF(cx - self._width / 2, cy - self._height / 2, self._width, self._height)
+      flags = Qt.AlignmentFlag.AlignCenter
+
+    if ls.font:
+      painter.setFont(ls.font)
+
+    if ls.shadow:
+      sc = QColor(ls.shadow_color)
+      sc.setAlpha(int(255 * ls.shadow_opacity))
+      painter.setPen(sc)
+      painter.drawText(rect.translated(ls.shadow_dx, ls.shadow_dy), flags, self.label)
+
+    painter.setPen(ls.color)
+    painter.drawText(rect, flags, self.label)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def containsPoint(self, pos: QPointF) -> bool:
@@ -287,8 +331,10 @@ class μEdge:
     start = self.source.edgeBoundaryPoint(QPointF(dx, dy))
     end   = self.target.edgeBoundaryPoint(QPointF(-dx, -dy))
 
+    mid = QPointF(end.x() - ux * s.arrow_size * 0.5,
+                  end.y() - uy * s.arrow_size * 0.5)
     painter.setPen(QPen(s.color, s.width))
-    painter.drawLine(start, end)
+    painter.drawLine(start, mid)
 
     ax = end.x() - ux * s.arrow_size
     ay = end.y() - uy * s.arrow_size
