@@ -382,6 +382,10 @@ class μNetwork(QWidget):
     self.update()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def getSelected(self) -> list[μNode]:
+    return [n for n in self.nodes if n.selected]
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getNodeAt(self, pos: QPointF) -> μNode | None:
     for node in self.nodes:
       if node.containsPoint(pos):

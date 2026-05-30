@@ -34,6 +34,7 @@ from widgets.μCheckCombo import μCheckCombo
 from widgets.μText import μTextEdit, μFontMono
 import glob
 import json
+import math
 import shutil
 import sys, time
 from collections import Counter
@@ -50,6 +51,8 @@ P_DECORATION_COMMANDER      = "decoration_commander"
 P_DECORATION_WARNING        = "decoration_warning"
 P_DECORATION_ERROR          = "decoration_error"
 P_DECORATION_MAJORCOMMANDER = "decoration_majorcommander"
+P_DECORATION_PAUSED         = "decoration_paused"
+P_DECORATION_RESUMED        = "decoration_resumed"
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -73,28 +76,48 @@ def sortZigZag(members: list) -> list:
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μPartyNode(μNode):
 
+  _DIAG = 1.0 / math.sqrt(2)
+
   def __init__(self, name: str, parent=None, bg : QPixmap = None, allowOutgoing: bool = True):
     super().__init__(label=name.capitalize(), parent=parent, bg=bg, allowOutgoing=allowOutgoing)
     self.name = name
-    self.decorations: list[QPixmap] = []
+    self.decorations: list[tuple[QPixmap, str]] = []
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def addDecoration(self, image: QPixmap):
-    d = self._radius * 2
-    self.decorations.append(image.scaled(d, d, Qt.AspectRatioMode.IgnoreAspectRatio,
-                                         Qt.TransformationMode.SmoothTransformation))
+  def addDecoration(self, image: QPixmap, position: str, size: int = 36):
+    scaled = image.scaled(size, size, Qt.AspectRatioMode.IgnoreAspectRatio,
+                          Qt.TransformationMode.SmoothTransformation)
+    self.decorations.append((scaled, position))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clearDecorations(self):
     self.decorations.clear()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _decorationXY(self, dec: QPixmap, pos: str) -> tuple[int, int]:
+    cx, cy, r = self.center.x(), self.center.y(), self._radius
+    d = dec.width()
+    h = dec.height()
+    diag = r * μPartyNode._DIAG
+    coords = {
+      'N':  (cx - d/2,        cy - r),
+      'S':  (cx - d/2,        cy + r - h),
+      'W':  (cx - r,          cy - h/2),
+      'E':  (cx + r - d,      cy - h/2),
+      'NE': (cx + diag - d/2, cy - diag - h/2),
+      'NW': (cx - diag - d/2, cy - diag - h/2),
+      'SE': (cx + diag - d/2, cy + diag - h/2),
+      'SW': (cx - diag - d/2, cy + diag - h/2),
+    }
+    x, y = coords.get(pos, (cx - d/2, cy - h/2))
+    return int(x), int(y)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def draw(self, edges, is_dragging: bool, painter: QPainter):
     super().draw(edges, is_dragging, painter)
-    for dec in self.decorations:
-      dx = int(self.center.x() - dec.width()  / 2)
-      dy = int(self.center.y() - dec.height() / 2)
-      painter.drawPixmap(dx, dy, dec)
+    for dec, pos in self.decorations:
+      x, y = self._decorationXY(dec, pos)
+      painter.drawPixmap(x, y, dec)
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -134,7 +157,7 @@ class μStrategy(μToggler):
     μStrategy._widget = self
     self.isDebugging = True
     self.logFileName = filename
-    self.btnToggle = μOrb(icon=P_ICON_PLAY, title="Start", tooltip="Toggle each individual Strategy on/off.<br><b><i>Ctrl+click</b></i> to pause all instead.")
+    self.btnToggle = μOrb(icon=P_ICON_TOGGLE, title="Toggle", tooltip="Toggle each individual Strategy on/off.<br><b><i>Ctrl+click</b></i> to pause all instead.")
     self.btnRefresh = μOrbTask(icon=P_ICON_REFRESH, title="Refresh", tooltip="Refresh party info")
 
     self.showPets = μBoxCheck(title="Show Pets")
@@ -182,7 +205,7 @@ class μStrategy(μToggler):
     _boardSplitter.addWidget(self.directivesEditor)
 
     self.setLayout(newVLayout([newHLayout(["__stretch__","Directives:", self.directiveList, self.btnDuplicateDirectives, self.btnRemoveDirectives, self.btnEditDirectives]), _boardSplitter,
-                      newHLayout([self.btnToggle, "__stretch__", self.btnRefresh, self.showPets])]))
+                      newHLayout([self.btnToggle, self.btnRefresh, self.showPets, "__stretch__"])]))
   
   # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
   #   🞋  W I D G E T / I N S T A N C E   M E T H O D S 
@@ -282,18 +305,22 @@ class μStrategy(μToggler):
     node.clearDecorations()
     self.board.clearEdges(node, outgoing=True, incoming=False)
     name = μString(node.name.lower())
-    if name == μStrategy.partyLeader:      node.addDecoration(μStrategy.getDecoration('partyLeader'))
-    if name == μStrategy.partyPets:        node.addDecoration(μStrategy.getDecoration('pet'))
-    elif name != μStrategy.partyLocal:     node.addDecoration(μStrategy.getDecoration('remote'))
+    if name == μStrategy.partyLeader:      node.addDecoration(μStrategy.getDecoration('partyLeader'), 'NE')
+    if name == μStrategy.partyPets:        node.addDecoration(μStrategy.getDecoration('pet'),         'SW')
+    elif name != μStrategy.partyLocal:     node.addDecoration(μStrategy.getDecoration('remote'),      'SW')
 
     if μStrategy.partyCommander and name == μStrategy.partyCommander and name == μStrategy.partyCaptains:
-      node.addDecoration(μStrategy.getDecoration('majorcommander'))
+      node.addDecoration(μStrategy.getDecoration('majorcommander'), 'NW')
     elif μStrategy.partyCommander and name == μStrategy.partyCommander:
-      node.addDecoration(μStrategy.getDecoration('commander'))
+      node.addDecoration(μStrategy.getDecoration('commander'),      'NW')
     elif name == μStrategy.partyCaptains and name == μStrategy.partyLocal:
-      node.addDecoration(μStrategy.getDecoration('captain'))
+      node.addDecoration(μStrategy.getDecoration('captain'),        'NW')
     elif name == μStrategy.partyCaptains:
-      node.addDecoration(μStrategy.getDecoration('sergeant'))
+      node.addDecoration(μStrategy.getDecoration('sergeant'),       'NW')
+
+    running = μStrategy.directives.get(node.name, {}).get('strategyRunning', False)
+    if not running and name != μStrategy.partyCommander and name != μStrategy.partyPets:
+      node.addDecoration(μStrategy.getDecoration('paused'), 'E')
 
     myCaptain = μStrategy.directives.get(name, {}).get('captain', '')
     if myCaptain and myCaptain in μStrategy.nodes.keys():
@@ -486,6 +513,7 @@ class μStrategy(μToggler):
         'stopDistance':         r.stopDistance,
         'autonomyTime':         r.autonomyTime,
         'refreshInterval':      r.refreshInterval,
+        'strategyRunning':      r.strategyRunning,
       })
     cls.updateConsensus()
     if cls._widget: cls._widget.sigNetworkUpdate.emit()
@@ -538,27 +566,17 @@ class μStrategy(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def toggleStrategy(cls):
+  def toggleStrategy(cls, value="resume|pause"):
     bridges = μMilvianMeta.getBridges()
-    cmd = f"strategy({cls._widget.directiveList.currentText()}, toggle, state)"
-    for b in bridges.values():
-      b.execute(cmd)
+    selected = {n.name for n in μStrategy._widget.board.getSelected()} or set(μStrategy.nodes.keys())
+    cmd = f"strategy({cls._widget.directiveList.currentText()}, toggle, state={value})"
+    for name, b in bridges.items():
+      if name in selected: b.execute(cmd)
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def resumeStrategy(cls):
-    bridges = μMilvianMeta.getBridges()
-    cmd = f"strategy({cls._widget.directiveList.currentText()}, set, resume)"
-    for b in bridges.values():
-      b.execute(cmd)
-  
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def resumeStrategy(cls): μStrategy.toggleStrategy("resume")
   @classmethod
-  def pauseStrategy(cls):
-    bridges = μMilvianMeta.getBridges()
-    cmd = f"strategy({cls._widget.directiveList.currentText()}, set, pause)"
-    for b in bridges.values():
-      b.execute(cmd)
+  def pauseStrategy(cls):  μStrategy.toggleStrategy("pause")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod

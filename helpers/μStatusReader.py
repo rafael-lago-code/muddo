@@ -57,6 +57,7 @@ OFF_STRAT_AUTONOMY_TIME     = 4116  # float
 OFF_STRAT_REFRESH_INTERVAL  = 4120  # int32
 OFF_STRAT_CAPTAIN           = 4124  # 32 bytes UTF-8
 OFF_STRAT_COMMANDER         = 4156  # 32 bytes UTF-8
+OFF_STRAT_RUNNING           = 4188  # byte (0=stopped, 1=running)
 NAME_SIZE                   = 32
 
 
@@ -177,3 +178,5 @@ class μStatusReader:
   def captain(self)               -> str:   return self._str(OFF_STRAT_CAPTAIN)
   @property
   def commander(self)             -> str:   return self._str(OFF_STRAT_COMMANDER)
+  @property
+  def strategyRunning(self)       -> bool:  return self._b(OFF_STRAT_RUNNING)
