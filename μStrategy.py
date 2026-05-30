@@ -17,12 +17,12 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QTextEdit, QTabWidget, QComboBox, QSplitter
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, QMetaObject, Qt
+from PyQt6.QtWidgets import QComboBox, QSplitter
+from PyQt6.QtCore import pyqtSignal, Qt
 from PyQt6.QtGui import QColor, QTextOption, QKeySequence, QShortcut
 from helpers import μEffects
 from helpers.μImageFactory import *
-from helpers.μStrings import splitGroups, guess, μString
+from helpers.μStrings import μString
 from helpers.μDict import μDict
 from μMilvian import μMilvian, μMilvianMeta
 from helpers.μPrint import μPrint
@@ -31,8 +31,7 @@ from widgets.μNetwork import μNetwork, μNode
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrb, μBoxCheck, μOrbSmall, μOrbTask
 from widgets.μCheckCombo import μCheckCombo
-from widgets.μTextEdit import μTextEdit, μFontMono
-from datetime import datetime
+from widgets.μText import μTextEdit, μFontMono
 import glob
 import json
 import shutil
@@ -56,20 +55,6 @@ P_DECORATION_MAJORCOMMANDER = "decoration_majorcommander"
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-def guessValue(text: str):
-  s = str(text).strip()
-  if '|' in s: return s
-  return guess(s)
-
-# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def actorCommand(text: str) -> tuple[str, str]:
-  s = str(text).strip()
-  if ':' in s:
-    actor, cmd = s.split(':', 1)
-    return actor.strip(), cmd.strip()
-  return 'all', s
-
-# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def sortZigZag(members: list) -> list:
   n = len(members)
   if n == 0: return []
@@ -82,36 +67,15 @@ def sortZigZag(members: list) -> list:
       result[hi] = members[i]; i += 1; hi -= 1
   return result
 
-# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def strategyArgs(text: str) -> dict:
-  out = {'_directive': '', '_action': 'toggle', '_state': None}
-  for p in splitGroups(str(text), ','):
-    p = str(p).strip()
-    if not p: continue
-    if '=' in p:
-      k, v = p.split('=', 1)
-      k, v = k.strip(), v.strip()
-      if   k == 'directives': out['_directive'] = v
-      elif k == 'action':     out['_action']    = v
-      elif k == 'state':      out['_state']     = v
-      else:                   out[k]            = guessValue(v)
-    elif p.startswith('!'):   out[p[1:]]        = False
-    elif p == 'toggle':       out['_action']    = 'toggle'
-    elif p == 'set':          out['_action']    = 'set'
-    elif p == 'resume':       out['_state']     = 'resume'
-    elif p == 'pause':        out['_state']     = 'pause'
-    elif not out['_directive']: out['_directive'] = p
-    else:                       out[p]          = True
-  return out
-
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  N O D E
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μPartyNode(μNode):
 
-  def __init__(self, name: str = None, parent=None, bg : QPixmap = None, allowOutgoing: bool = True):
-    super().__init__(label=name, parent=parent, bg=bg, allowOutgoing=allowOutgoing)
+  def __init__(self, name: str, parent=None, bg : QPixmap = None, allowOutgoing: bool = True):
+    super().__init__(label=name.capitalize(), parent=parent, bg=bg, allowOutgoing=allowOutgoing)
+    self.name = name
     self.decorations: list[QPixmap] = []
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -144,13 +108,13 @@ class μStrategy(μToggler):
   widgetID = "Strategy"
   converter = None
   _widget   = None
-  sigPartyRefreshed = pyqtSignal()
-  sigFromMacro      = pyqtSignal()
+  sigNetworkUpdate = pyqtSignal()
 
   decorationsCache = {}
 
   directives: μDict = μDict()   # {actor: μDict{key: value}}
   consensus:  μDict = μDict()   # {key: value}  — majority across actors; written only by updateConsensus()
+  nodes     : μDict = μDict()   # {name: μPartyNode}
   _defaults:  dict  = None      # loaded once from docs/default.directives
 
   # metaBridges = {}  # reserved for future meta-bridge support
@@ -170,12 +134,13 @@ class μStrategy(μToggler):
     μStrategy._widget = self
     self.isDebugging = True
     self.logFileName = filename
-    self.btnToggle = μOrb(icon=P_ICON_PLAY, title="Start", tooltip="Toggle Strategy on/off")
+    self.btnToggle = μOrb(icon=P_ICON_PLAY, title="Start", tooltip="Toggle each individual Strategy on/off.<br><b><i>Ctrl+click</b></i> to pause all instead.")
     self.btnRefresh = μOrbTask(icon=P_ICON_REFRESH, title="Refresh", tooltip="Refresh party info")
 
     self.showPets = μBoxCheck(title="Show Pets")
     self.directiveList = QComboBox()
     self.directiveList.setEditable(True)
+    self.directiveList.setMinimumWidth(200)
     self.board = μNetwork(self)
     self.board.setMinimumWidth(450)
 
@@ -186,10 +151,9 @@ class μStrategy(μToggler):
     self.directivesEditor.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
     self.directivesEditor.setWordWrapMode(QTextOption.WrapMode.NoWrap)
     self.directivesEditor.setFont(μFontMono())
-    self.btnEditDirectives      = μOrb(icon=P_ICON_EDIT, title="Edit", tooltip="Show/hide directives editor")
+    self.btnEditDirectives      = μOrbSmall(icon=P_ICON_EDIT,   tooltip="Show/hide directives editor")
     self.btnDuplicateDirectives = μOrbSmall(icon=P_ICON_DUPDOC, tooltip="Duplicate current directive")
     self.btnRemoveDirectives    = μOrbSmall(icon=P_ICON_TRASH,  tooltip="Delete current directive")
-
 
     self.directiveList.currentTextChanged.connect(self._saveDirectiveToSession)
     self.directiveList.currentTextChanged.connect(self.load)
@@ -198,11 +162,11 @@ class μStrategy(μToggler):
     plugins = getattr(μSettings, 'plugins', None)
     radius = plugins.strategyFrameSize() if plugins else 36
     self.board.setNodeStyle(fg=getPixmap("circular_frame_fg").scaledToWidth(80, Qt.TransformationMode.SmoothTransformation),
-                            radius=radius)
+                            radius=radius, color_receives=QColor(0,0,0,0),color_incomings=QColor(0,0,0,0))
     self.board.setEdgeStyle(width=6, arrow_size=24)
     self.btnRefresh.execute = μStrategy.refreshPartyInfo
-    self.sigPartyRefreshed.connect(self.updateNetwork, Qt.ConnectionType.QueuedConnection)
-    self.sigFromMacro.connect(self.updateNetwork, Qt.ConnectionType.QueuedConnection)
+    self.sigNetworkUpdate.connect(self.updateNetwork)
+    self.showPets.stateChanged.connect(self.updateNetwork)
     self.btnEditDirectives.clicked.connect(lambda : self.directivesEditor.setVisible(not self.directivesEditor.isVisible()))
     self.btnDuplicateDirectives.clicked.connect(self.duplicateDirective)
     self.btnRemoveDirectives.clicked.connect(self.removeDirective)
@@ -210,13 +174,15 @@ class μStrategy(μToggler):
     self.directiveList.lineEdit().editingFinished.connect(self.renameDirective)
     QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self.saveDirective)
 
+    self.btnToggle.clicked.connect(μStrategy.toggleStrategy)
+    self.btnToggle.ctrlClicked.connect(μStrategy.pauseStrategy)
+    
     _boardSplitter = QSplitter(Qt.Orientation.Horizontal)
-    _boardSplitter.addWidget(self.directivesEditor)
     _boardSplitter.addWidget(self.board)
+    _boardSplitter.addWidget(self.directivesEditor)
 
-    self.setLayout(newVLayout([newHLayout(["Directives:", self.directiveList, self.btnDuplicateDirectives, self.btnRemoveDirectives]), _boardSplitter,
-                      newHLayout([self.btnEditDirectives,
-                                  "__stretch__", self.btnToggle, self.btnRefresh, self.showPets])]))
+    self.setLayout(newVLayout([newHLayout(["__stretch__","Directives:", self.directiveList, self.btnDuplicateDirectives, self.btnRemoveDirectives, self.btnEditDirectives]), _boardSplitter,
+                      newHLayout([self.btnToggle, "__stretch__", self.btnRefresh, self.showPets])]))
   
   # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
   #   🞋  W I D G E T / I N S T A N C E   M E T H O D S 
@@ -312,20 +278,35 @@ class μStrategy(μToggler):
       μPrint.error(f"[μStrategy] remove failed: {e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @pyqtSlot()
+  def updateNode(self, node : μPartyNode):
+    node.clearDecorations()
+    self.board.clearEdges(node, outgoing=True, incoming=False)
+    name = μString(node.name.lower())
+    if name == μStrategy.partyLeader:      node.addDecoration(μStrategy.getDecoration('partyLeader'))
+    if name == μStrategy.partyPets:        node.addDecoration(μStrategy.getDecoration('pet'))
+    elif name != μStrategy.partyLocal:     node.addDecoration(μStrategy.getDecoration('remote'))
+
+    if μStrategy.partyCommander and name == μStrategy.partyCommander and name == μStrategy.partyCaptains:
+      node.addDecoration(μStrategy.getDecoration('majorcommander'))
+    elif μStrategy.partyCommander and name == μStrategy.partyCommander:
+      node.addDecoration(μStrategy.getDecoration('commander'))
+    elif name == μStrategy.partyCaptains and name == μStrategy.partyLocal:
+      node.addDecoration(μStrategy.getDecoration('captain'))
+    elif name == μStrategy.partyCaptains:
+      node.addDecoration(μStrategy.getDecoration('sergeant'))
+
+    myCaptain = μStrategy.directives.get(name, {}).get('captain', '')
+    if myCaptain and myCaptain in μStrategy.nodes.keys():
+      μStrategy._widget.board.connectNodes(node, μStrategy.nodes[myCaptain])
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateNetwork(self):
     if not μStrategy.partyMembers: return
-    captains  = μStrategy.partyCaptains or set()
-    local     = μStrategy.partyLocal    or set()
-    pets      = μStrategy.partyPets     or set()
-    commander = μStrategy.partyCommander
-    leader    = μStrategy.partyLeader
 
-    P_CLASS_IMG="/home/holysword/.config/muDDO/icons/classes/45px-"
     sortedMembers = []
     members = list(μStrategy.partyMembers)
     petMembers = []
-    for name in [μStrategy.consensus.get('commander'), μStrategy.partyLeader]:
+    for name in [μStrategy.consensus.get('commander')]: # might add some other later
       if name and name in members:
         members.remove(name)
         sortedMembers.append(name)
@@ -338,28 +319,31 @@ class μStrategy(μToggler):
         members.remove(p)
         petMembers.append(p)
     sortedMembers += sorted(members)
-    if petMembers: sortedMembers += sorted(petMembers)
+    if self.showPets.isChecked() and petMembers: sortedMembers += sorted(petMembers)
+
+    for name in set(μStrategy.nodes.keys()) - set(sortedMembers):
+      del μStrategy.nodes[name]
 
     self.board.clear()
-    allNodes = {}
+
     for name in sortZigZag(sortedMembers):
-      n = μPartyNode(name=name.capitalize(), allowOutgoing=name not in pets)
-      allNodes[name] = n
-      self.board.add(n)  # applies nodeStyle (sets _radius) before decorations are sized
+      if name not in μStrategy.nodes:
+        node = μPartyNode(name=name, allowOutgoing=name not in μStrategy.partyPets)
+        node.sigConnected.connect(lambda target, src=node: μStrategy.updateCaptain(src, target))
+        node.sigDisconnected.connect(lambda src=node: μStrategy.updateCaptain(src, None))
+        node.setStyle(self.board.nodeStyle)
+        μStrategy.nodes[name] = node
+      self.board.nodes.append(μStrategy.nodes[name])
+    self.board._nodeCount = len(self.board.nodes)
+    self.board.recomputePositions()
 
-      if name == leader:      n.addDecoration(μStrategy.getDecoration('partyLeader'))
-      if name in pets:        n.addDecoration(μStrategy.getDecoration('pet'))
-      elif name not in local: n.addDecoration(μStrategy.getDecoration('remote'))
-
-      if   commander and name == commander and name in captains: n.addDecoration(μStrategy.getDecoration('majorcommander'))
-      elif commander and name == commander:                      n.addDecoration(μStrategy.getDecoration('commander'))
-      elif name in captains and name in local:                   n.addDecoration(μStrategy.getDecoration('captain'))
-      elif name in captains:                                     n.addDecoration(μStrategy.getDecoration('sergeant'))
+    for node in μStrategy.nodes.values(): self.updateNode(node)
+    self.board.update()
     
-    for name, node in allNodes.items():
-      captain = μStrategy.directives.get(name, {}).get('captain', '')
-      if captain and captain in allNodes:
-        μStrategy._widget.board.connectNodes(node, allNodes[captain])
+    # # for name, node in allNodes.items():
+    # #   captain = μStrategy.directives.get(name, {}).get('captain', '')
+    # #   if captain and captain in allNodes:
+    # #     μStrategy._widget.board.connectNodes(node, allNodes[captain])
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setVisible(self, value : bool):
@@ -420,7 +404,7 @@ class μStrategy(μToggler):
   def getDecoration(cls, name):
     if name in cls.decorationsCache: return cls.decorationsCache[name]
     pmap = getPixmap("decoration_"+name)
-    pmap = μEffects.dropShadow(pmap,3,3,3,shadow_opacity=0.7)
+    pmap = μEffects.dropShadow(pmap,3,3,3,opacity=0.7)
     cls.decorationsCache[name] = pmap
     return pmap
 
@@ -475,16 +459,14 @@ class μStrategy(μToggler):
         μPrint.warning(f"[μStrategy] refreshPartyInfo timeout — no response from: {list(packets.keys())}")
         break
 
-    if cls._widget: cls._widget.sigPartyRefreshed.emit()
+    if cls._widget: cls._widget.sigNetworkUpdate.emit()
     cls.refreshAllFromStatus()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def refreshFromStatus(cls, char_name: str):
     from helpers.μStatusReader import μStatusReader
-    print(f"[DEBUG] refreshFromStatus called for {char_name!r}, path={μStatusReader.filePath(char_name)!r}")
     with μStatusReader(char_name) as r:
-      print(f"[DEBUG] isOpen={r.isOpen} hasStrategyData={r.hasStrategyData if r.isOpen else 'N/A'}")
       if not r.isOpen or not r.hasStrategyData: return
       cls.directives[char_name.lower()] = μDict({
         'captain':              r.captain.lower(),
@@ -506,9 +488,7 @@ class μStrategy(μToggler):
         'refreshInterval':      r.refreshInterval,
       })
     cls.updateConsensus()
-    if cls._widget:
-      cls._widget.sigFromMacro.emit()
-      QMetaObject.invokeMethod(cls._widget, 'updateNetwork', Qt.ConnectionType.QueuedConnection)
+    if cls._widget: cls._widget.sigNetworkUpdate.emit()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -518,49 +498,15 @@ class μStrategy(μToggler):
 
   # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
   #   🞋  U P D A T E   D I R E C T I V E S
-  #      
-  #     Parse text (macro) or filename (JSON) and merge result into cls.directives.
-  #     Toggle semantics: pipe-separated options cycle from current value; bare booleans flip
   # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
   @classmethod
-  def updateDirectives(cls, source: str = None, text: str = None, filename: str = None):
-    if text is not None:
-      parsed = cls.parseFromMacro(text)
-    elif filename is not None:
-      parsed = cls.parseFromJson(filename)
-    else:
-      return
-
-    parsed.pop('_actor',     None)
-    action = parsed.pop('_action',    'set')
-    parsed.pop('_directive', None)
-    parsed.pop('_state',     None)
-
-    targets = [source] if source else list(μMilvianMeta.getBridges().keys())
-
-    for a in targets:
+  def updateDirectives(cls, filename: str):
+    parsed = cls.parseFromJson(filename)
+    if not parsed: return
+    for a in μMilvianMeta.getBridges():
       if a not in cls.directives: cls.directives[a] = μDict()
-      current = cls.directives[a]
-
-      for key, value in parsed.items():
-        raw = str(value) if value is not None else ''
-        has_pipe = '|' in raw
-
-        if action == 'set':
-          new_val = cls._coerce(raw.split('|')[0]) if has_pipe else value
-          current[key] = new_val
-
-        else:  # toggle
-          if has_pipe:
-            options  = [cls._coerce(x.strip()) for x in raw.split('|')]
-            cur_val  = current.get(key)
-            try:    idx = options.index(cur_val)
-            except: idx = -1
-            current[key] = options[(idx + 1) % len(options)]
-          else:
-            cur_val      = current.get(key, True)
-            current[key] = not bool(cur_val)
-      μStrategy.printDirective(current, a)
+      cls.directives[a].update(parsed)
+      μStrategy.printDirective(cls.directives[a], a)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -592,21 +538,39 @@ class μStrategy(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def updateFromMacro(cls, source, text: str):
-    cls.updateDirectives(source, text=text)
-    cls.updateConsensus()   #  This is currently being called too many times, i.e. once per party member. Not critical but not elegant
-    if cls._widget:
-      cls._widget.updateNetwork()
-      cls._widget.sigFromMacro.emit()
+  def toggleStrategy(cls):
+    bridges = μMilvianMeta.getBridges()
+    cmd = f"strategy({cls._widget.directiveList.currentText()}, toggle, state)"
+    for b in bridges.values():
+      b.execute(cmd)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def resumeStrategy(cls):
+    bridges = μMilvianMeta.getBridges()
+    cmd = f"strategy({cls._widget.directiveList.currentText()}, set, resume)"
+    for b in bridges.values():
+      b.execute(cmd)
   
-  # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-  #   🞋  P A R S E   F R O M   M A C R O   A N D   F R O M   J S O N
-  #      
-  #     Parse 'actor: strategy(directive, action, key=val, ...)' text.
-  #     Returns {_actor, _action, _directive, [_state], key: value, ...}.
-  #     Values may be pipe-separated strings ('a|b') — toggle semantics preserved."""
-  # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def pauseStrategy(cls):
+    bridges = μMilvianMeta.getBridges()
+    cmd = f"strategy({cls._widget.directiveList.currentText()}, set, pause)"
+    for b in bridges.values():
+      b.execute(cmd)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def updateCaptain(cls, nodeFrom : μPartyNode, nodeTo : μPartyNode = None):
+    targetCaptain = nodeTo.name if nodeTo is not None else "none"
+    if cls.directives.get(nodeFrom.name, {}).get('captain') == targetCaptain: return
+    bridges = μMilvianMeta.getBridges()
+    if nodeFrom.name not in bridges: return
+    cmd = f"strategy({cls._widget.directiveList.currentText()}, set, captain={targetCaptain})"
+    bridges[nodeFrom.name].execute(cmd)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def parseFromJson(cls, filename: str) -> dict:
     result = μDict()
@@ -616,65 +580,7 @@ class μStrategy(μToggler):
       result.update({k: v for k, v in data.items() if k != 'directives'})
     except Exception as e:
       μPrint.error(f"[μStrategy] parseFromJson failed: {e}")
-    result['_actor']     = 'all'
-    result['_action']    = 'set'
-    result['_directive'] = filename
     return result
-
-  # 🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-  @classmethod
-  def parseFromMacro(cls, text: str) -> dict:
-    text = text.strip()
-    actor = 'all'
-    if ':' in text:
-      actor, text = text.split(':', 1)
-      actor = actor.strip().lower()
-      text  = text.strip()
-
-    if text.lower().startswith('strategy(') and text.endswith(')'):
-      content_str = text[9:-1].strip()
-    else:
-      content_str = text
-
-    content_str = ' '.join(content_str.split())
-    content = μString(content_str).dictionary()
-
-    action = 'toggle'
-    if 'toggle' in content: del content['toggle']; action = 'toggle'
-    if 'set'    in content: del content['set'];    action = 'set'
-
-    state = None
-    if 'resume' in content: del content['resume']; state = 'resume'
-    if 'pause'  in content: del content['pause'];  state = 'pause'
-
-    directive = ''
-    if 'directives' in content:
-      directive = str(content.pop('directives'))
-    else:
-      tokens = μString(content_str).split(',')
-      if tokens:
-        first = str(tokens[0]).strip()
-        if first and '=' not in first and first not in ('set', 'toggle', 'resume', 'pause'):
-          directive = first
-          content.pop(first, None)
-
-    result = {'_actor': actor, '_action': action, '_directive': directive}
-    if state: result['_state'] = state
-    result.update(content)
-    return result
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def _coerce(value):
-    """Convert a string to int/float/bool if possible, else return as str."""
-    if not isinstance(value, str): return value
-    try:    return int(value)
-    except: pass
-    try:    return float(value)
-    except: pass
-    if value.lower() == 'true':  return True
-    if value.lower() == 'false': return False
-    return value
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
@@ -682,15 +588,7 @@ class μStrategy(μToggler):
     if not d:
       μPrint.debug(f"[μStrategy] {label or 'directive'}: (empty)")
       return
-    meta_keys = {'_actor', '_action', '_state', '_directive'}
-    meta  = {k: v for k, v in d.items() if k in meta_keys}
-    flags = {k: v for k, v in d.items() if k not in meta_keys}
-    header = label or meta.get('_directive') or 'directive'
-    actor  = meta.get('_actor', '')
-    action = meta.get('_action', '')
-    state  = meta.get('_state', '')
-    tag    = ' | '.join(filter(None, [actor, action, state]))
-    μPrint.debug(f"[μStrategy] ┌─ {header}{f'  [{tag}]' if tag else ''}")
-    for k, v in flags.items():
+    μPrint.debug(f"[μStrategy] ┌─ {label or 'directive'}")
+    for k, v in d.items():
       μPrint.debug(f"[μStrategy] │  {k:<24} = {v}")
     μPrint.debug(f"[μStrategy] └{'─'*40}")

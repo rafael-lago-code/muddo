@@ -18,7 +18,7 @@
 #
 #
 
-from PyQt6.QtWidgets import QTextEdit
+from PyQt6.QtWidgets import QTextEdit, QLabel, QGraphicsDropShadowEffect
 from PyQt6.QtCore import pyqtSignal, QEvent, Qt, QRegularExpression
 from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 
@@ -36,18 +36,32 @@ class μFontMono(QFont):
     self.setPointSize(size)
     self.setWeight(weight)
 
-  # def createMonospaceFont(size: int = 12, weight: int = QFont.Weight.Normal) -> QFont:
-  #     font = QFont()
-      
-  #     # Try common monospace fonts in order of preference
-  #     font.setFamily("Consolas, Courier New, DejaVu Sans Mono, monospace")
-      
-  #     font.setStyleHint(QFont.StyleHint.Monospace)      # Important fallback
-  #     font.setFixedPitch(True)                          # Forces fixed width
-  #     font.setPointSize(size)
-  #     font.setWeight(weight)
-      
-  #     return font
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  F O N T   D I S P L A Y 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μFontDisplay(QFont):
+
+  def __init__(self, size : int = 12, weight: int = QFont.Weight.Bold):
+    super().__init__()
+    self.setFamily("Linux Libertine Capitals")
+    self.setPointSize(size)
+    self.setWeight(weight)
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  D I S P L A Y   L A B E L
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μDisplayLabel(QLabel):
+
+  def __init__(self, text: str = "", size: int = 12, weight: int = QFont.Weight.Bold, parent=None):
+    super().__init__(text, parent)
+    self.setFont(μFontDisplay(size, weight))
+    shadow = QGraphicsDropShadowEffect(self)
+    shadow.setBlurRadius(6)
+    shadow.setOffset(2, 2)
+    shadow.setColor(QColor(0, 0, 0, 160))
+    self.setGraphicsEffect(shadow)
+
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  J S O N   H I G H L I G H T E R

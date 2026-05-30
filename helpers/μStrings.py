@@ -155,7 +155,7 @@ def replaceAlias(text: str, key: str, translation: str) -> str:
 #    Match s against a glob pattern or tuple of patterns. * matches any substring.
 def globmatch(s: str, pattern, case: bool = False) -> bool:
   if pattern is None: return s is None
-  if isinstance(pattern, (list, tuple)): return any(globmatch(s, p, case) for p in pattern)
+  if isinstance(pattern, (list, tuple, set)): return any(globmatch(s, p, case) for p in pattern)
   regex = re.escape(str(pattern)).replace(r'\*', '.*')
   flags = re.DOTALL | (0 if case else re.IGNORECASE)
   return bool(re.fullmatch(regex, str(s), flags=flags))
@@ -198,7 +198,6 @@ def fullExpansion(text) -> str:
 #    removes double spaces and newlines from string
 def normalize(text) -> str:
   return μString(" ".join(str(text).split()))
-
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂

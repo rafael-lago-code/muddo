@@ -227,10 +227,9 @@ def brightContrast(target, brightness: float, contrast: float):
   return target
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def dropShadow(target, dx: int = 4, dy: int = 4, radius: float = 4.0,
-               color: QColor = None, shadow_opacity: float = 0.6):
+def dropShadow(target, dx: int = 3, dy: int = 3, radius: float = 3.0, color: QColor = None, opacity: float = 0.6):
   if isinstance(target, QPixmap):
-    return QPixmap.fromImage(dropShadow(target.toImage(), dx, dy, radius, color, shadow_opacity))
+    return QPixmap.fromImage(dropShadow(target.toImage(), dx, dy, radius, color, opacity))
   if color is None:
     color = QColor(0, 0, 0)
 
@@ -240,7 +239,7 @@ def dropShadow(target, dx: int = 4, dy: int = 4, radius: float = 4.0,
 
   # Fill shadow colour, mask by target alpha via DestinationIn
   shadow_pix = QPixmap(w, h)
-  shadow_pix.fill(QColor(sr, sg, sb, int(255 * shadow_opacity)))
+  shadow_pix.fill(QColor(sr, sg, sb, int(255 * opacity)))
   mask_painter = QPainter(shadow_pix)
   mask_painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_DestinationIn)
   mask_painter.drawImage(0, 0, target)

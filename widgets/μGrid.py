@@ -191,13 +191,15 @@ class μGrid(QWidget):
 class μGridLayout(QGridLayout):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def __init__(self):
+  def __init__(self, customFont = None):
     super().__init__()
 
     self.firstRow = 0
     self.firstColumn = 0
     self.lastRow = 0
     self.lastColumn = 0
+    self.customFont = customFont
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def appendRow(self, items):
     if not isinstance(items,list): items = [items]
@@ -209,7 +211,7 @@ class μGridLayout(QGridLayout):
         ncols += 1
         continue
       elif isinstance(i,str):
-        self.addWidget(QLabel(i), r, c, 1, ncols)
+        self.addWidget(self.getLabel(i), r, c, 1, ncols)
       elif isinstance(i,QLayout):
         self.addLayout(i, r, c, 1, ncols)
       elif i is not None:
@@ -217,3 +219,9 @@ class μGridLayout(QGridLayout):
       c+=ncols
       ncols=1
     self.lastRow += 1
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def getLabel(self, text):
+    tmp = QLabel(text)
+    if self.customFont: tmp.setFont(self.customFont)
+    return tmp

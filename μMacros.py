@@ -29,10 +29,10 @@ from μSettings import μSettings
 from μSettingsProfile import μSettingsProfile
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
-from widgets.μTextEdit import μTextEdit
-from PyQt6.QtGui import QIcon, QShortcut, QKeySequence
+from widgets.μText import μTextEdit
+from PyQt6.QtGui import QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt
-import glob, re, os, random
+import glob, os
 from typing import TYPE_CHECKING
 from μMilvianBridge import μMilvianBridge
 if TYPE_CHECKING:

@@ -356,6 +356,12 @@ class μNetwork(QWidget):
   def resetEdges(self):
     self.edges.clear()
 
+  def clearEdges(self, node: μNode, outgoing: bool = True, incoming: bool = False):
+    self.edges = [e for e in self.edges
+                  if not (outgoing and e.source is node)
+                  and not (incoming and e.target is node)]
+    self.update()
+
   def connectNodes(self, a: μNode, b: μNode):
     self.edges.append(μEdge(a, b, self.edgeStyle))
     self.update()
@@ -449,8 +455,11 @@ class μNetwork(QWidget):
       if dx * dx + dy * dy > DRAG_THRESHOLD ** 2:
         if self._pressNode is not None:
           self._dragStarted = True
-          edge = self._edgeForSource(self._pressNode)
-          if edge is not None:
+          if self._pressNode.allowOutgoing:
+            edge = self._edgeForSource(self._pressNode)
+            if edge is None:
+              edge = μEdge(self._pressNode, None, self.edgeStyle)
+              self.edges.append(edge)
             self._dragEdge = edge
             self._dragCurrentPos = pos
         else:

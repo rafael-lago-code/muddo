@@ -30,10 +30,12 @@ from μStorage import μStorage
 from μDDO import μDDO
 from μStrategy import μStrategy
 from μToolbar import μToolbar
+from widgets.μGrid import μGridLayout
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from helpers.χHelper import χHelper
+from widgets.μText import μDisplayLabel
 
 class μMainWindow(QMainWindow):
   P_POS_X = 100
@@ -70,12 +72,10 @@ class μMainWindow(QMainWindow):
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
 
-    g = QGridLayout()
-    g.addWidget(self.credentials.loginSummary,0,0,1,3)
-    g.addWidget(newRQLabel("World: "),1,0,1,1)
-    g.addWidget(newRQLabel("Profile: "),2,0,1,1)
-    g.addWidget(self.credentials.listWorlds,1,1,1,2)
-    g.addWidget(self.settings.profileMain,2,1,1,2)
+    g = μGridLayout()
+    g.appendRow(['>', '>', self.credentials.loginSummary])
+    g.appendRow([μDisplayLabel("World:"),   '>', self.credentials.listWorlds])
+    g.appendRow([μDisplayLabel("Profile:"), '>', self.settings.profileMain])
     self.summary = QWidget()
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)

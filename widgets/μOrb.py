@@ -20,9 +20,10 @@
 from helpers.μImageFactory import *
 from PyQt6.QtWidgets import QPushButton, QSizePolicy, QToolTip, QApplication
 from PyQt6.QtGui import QPainter, QPixmap, QColor, QFont, QMouseEvent, QShortcut, QKeySequence
-from PyQt6.QtCore import QSize, Qt, pyqtSignal, QPoint, QEvent
+from PyQt6.QtCore import QSize, Qt, pyqtSignal, QEvent, QPoint
 from PyQt6.QtWidgets import QMenu, QWidget
 from helpers import μEffects
+from widgets.μText import μFontDisplay
 import threading
 
 P_STATUS_NORMAL=0
@@ -49,7 +50,7 @@ class μTheme_OrbRedMedium():
   _instance = None
   orbSize = QtCore.QSize(80,80)
   iconSize = QtCore.QSize(40,40)
-  font = QFont("Linux Libertine Capitals", 12, QFont.Weight.Bold, False)
+  font = μFontDisplay()
 
   def __new__(self):
     if self._instance is None:
@@ -341,20 +342,18 @@ class μOrb(QPushButton):
       aFlags = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom
 
       textRect = self.rect().adjusted(5, 0, -5, 0)
-      textColour = QColor(255, 255, 255) 
-      shadowColour = QColor(0, 0, 0, 200)  # Semi-black
+      textColour   = QColor(255, 255, 255)
+      shadowColour = QColor(0, 0, 0, 200)
       shadowOffset = QPoint(4, 4)
-
-      outlineColour = QColor(50, 50, 50, 75)  # Semi-black
+      outlineColour = QColor(50, 50, 50, 75)
       textPainter.setPen(outlineColour)
-      for dx in range(-2,3):
-        for dy in range(-2,3):
+      for dx in range(-2, 3):
+        for dy in range(-2, 3):
           textPainter.drawText(QtCore.QRect(textRect.x()+dx, textRect.y()+dy,
-                                        textRect.width(), textRect.height()), aFlags, text)
-      
+                                            textRect.width(), textRect.height()), aFlags, text)
       textPainter.setPen(shadowColour)
       textPainter.drawText(textRect.translated(shadowOffset), aFlags, text)
-      textPainter.setPen(textColour)      
+      textPainter.setPen(textColour)
       textPainter.drawText(textRect, aFlags, text)
       textPainter.end()
     textEffect = self.theme.textEffect.get(self._current_state, μEffects.cNone())

@@ -30,6 +30,7 @@ from μWorlds import cWorldList
 from μServerInfo import μServerInfo
 from helpers.μPrint import μPrint
 from widgets.μFloating import μToggler
+from widgets.μText import μDisplayLabel
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
 import json
@@ -56,7 +57,7 @@ class cCredentials(μToggler):
     self.serverInfo = None
 
     self.listAccounts = QListWidget()
-    self.loginSummary = QLabel()
+    self.loginSummary = μDisplayLabel()
     self.loginSummary.setAlignment(Qt.AlignmentFlag.AlignCenter)
     self.listWorlds = cWorldList(main)
     self.username = QLineEdit()

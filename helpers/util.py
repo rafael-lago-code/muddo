@@ -92,50 +92,52 @@ def newHLine():
   return hline
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newHLayout(objects : list) -> QHBoxLayout:
-  return stackToLayout(QHBoxLayout(),objects)
+def newHLayout(objects : list, font=None) -> QHBoxLayout:
+  return stackToLayout(QHBoxLayout(), objects, font)
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newVLayout(objects : list) -> QVBoxLayout:
-  return stackToLayout(QVBoxLayout(),objects)
+def newVLayout(objects : list, font=None) -> QVBoxLayout:
+  return stackToLayout(QVBoxLayout(), objects, font)
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newHFrame(objects : list) -> QHBoxLayout:
+def newHFrame(objects : list, font=None) -> QHBoxLayout:
   f = QFrame()
-  f.setLayout(stackToLayout(QHBoxLayout(),objects))
+  f.setLayout(stackToLayout(QHBoxLayout(), objects, font))
   return f
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newVFrame(objects : list) -> QHBoxLayout:
+def newVFrame(objects : list, font=None) -> QHBoxLayout:
   f = QFrame()
-  f.setLayout(stackToLayout(QVBoxLayout(),objects))
+  f.setLayout(stackToLayout(QVBoxLayout(), objects, font))
   return f
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newVSplitter(objects : list) -> QSplitter:
+def newVSplitter(objects : list, font=None) -> QSplitter:
   f = QSplitter(Qt.Orientation.Vertical)
-  appendWidget(f, objects)
+  appendWidget(f, objects, font)
   return f
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newHSplitter(objects : list) -> QSplitter:
+def newHSplitter(objects : list, font=None) -> QSplitter:
   f = QSplitter(Qt.Orientation.Horizontal)
-  appendWidget(f, objects)
+  appendWidget(f, objects, font)
   return f
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def appendWidget(container, objects : list) -> QLayout:
+def appendWidget(container, objects : list, font=None) -> QLayout:
   for v in objects:
-    if isinstance(v,str):
-      container.addWidget(QLabel(v))
+    if isinstance(v, str):
+      lbl = QLabel(v)
+      if font: lbl.setFont(font)
+      container.addWidget(lbl)
     else:
       container.addWidget(v)
   return container
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def stackToLayout(layout : QLayout, objects : list) -> QLayout:
+def stackToLayout(layout : QLayout, objects : list, font=None) -> QLayout:
   for v in objects:
-    if isinstance(v,str):
+    if isinstance(v, str):
       if v == "__stretch__":
         layout.addStretch()
       elif v == "__separator__" or v == "__line__":
@@ -148,8 +150,10 @@ def stackToLayout(layout : QLayout, objects : list) -> QLayout:
         t.setFrameShadow(QFrame.Shadow.Sunken)
         layout.addWidget(t)
       else:
-        layout.addWidget(QLabel(v))
-    elif issubclass(v.__class__,QLayout):
+        lbl = QLabel(v)
+        if font: lbl.setFont(font)
+        layout.addWidget(lbl)
+    elif issubclass(v.__class__, QLayout):
       layout.addLayout(v)
     else:
       layout.addWidget(v)

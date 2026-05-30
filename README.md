@@ -41,10 +41,12 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
         - example usecase: cast Flame Arrow, change gear, cast initial buffs at the beginning of each dungeon
       - revamp the macros parsing (i.e. "consolidation") because it is super messy and difficult to debug now
         - use μString to simplify things (a lot)
+    - enable macro(*) macros
+    - enable menu macros
     - UI improvements
-      - enable menu macros
-      - enable macro(*) macros
       - vizualize keyboard with its macros
+  - Milvian
+    - Bug: if you log in a different characters with Milvian Plugin on, it doesn't update the bridge path
   - Strategy
     - implement "save" reserved word for strateg() command
     - implement "followPortal"
