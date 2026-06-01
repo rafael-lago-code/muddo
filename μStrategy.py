@@ -34,7 +34,7 @@ from widgets.μOrb import μOrb, μBoxCheck, μOrbSmall, μOrbTask
 from widgets.μCheckCombo import μCheckCombo
 from widgets.μText import μFontDisplay, μTextEdit, μFontMono
 import glob
-import json
+import yaml
 import math
 import shutil
 import sys, time
@@ -80,55 +80,43 @@ class μPartyNode(μNode):
   _DIAG = 1.0 / math.sqrt(2)
 
   @staticmethod
-  def dataPath() -> str:
-    from μSettings import μSettings
-    plugins = getattr(μSettings, 'plugins', None)
-    base = plugins.strategyPath().rstrip("/\\") if plugins else P_DEFAULT_CONFIGDIR + os.sep + "strategy"
-    return os.path.join(base, 'partyData.json')
-  
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def dataLoad() -> dict:
-    try:
-      with open(μPartyNode.dataPath(), 'r') as f:
-        return json.load(f)
-    except Exception:
-      return {}
-    
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def dataSave(data: dict):
-    path = μPartyNode.dataPath()
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, 'w') as f:
-      json.dump(data, f, indent=2)
+  def _db():
+    from μMilvian import μMilvianMeta
+    return μMilvianMeta.partyPreferences
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def dataGet(name: str) -> dict:
-    return μPartyNode.dataLoad().get(name, {})
-  
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+    return μPartyNode._db().get(name, {})
+
   @staticmethod
-  def dataSet(name: str, entry: dict):
-    data = μPartyNode.dataLoad()
-    data[name] = entry
-    μPartyNode.dataSave(data)
+  def dataSet(name: str, field: str, value):
+    db = μPartyNode._db()
+    db.set(f"{name}/{field}", value)
+    db.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def __init__(self, name: str, parent=None, bg : QPixmap = None, allowOutgoing: bool = True):
-    data  = μPartyNode.dataLoad()
-    entry = data.get(name, {})
-    if name not in data:
-      data[name] = {'nickname': name.capitalize()}
-      μPartyNode.dataSave(data)
-    label = entry.get('nickname', name.capitalize())
-    icon  = entry.get('icon_path')
-    super().__init__(label=label, parent=parent, bg=bg, allowOutgoing=allowOutgoing)
-    self.name = name
+  def __init__(self, key: str, parent=None, bg : QPixmap = None, allowOutgoing: bool = True):
+    super().__init__(label="", parent=parent, bg=bg, allowOutgoing=allowOutgoing)
+    self.key   = key
+    self.owner = None
+    self.setLabel()
+    entry = μDict(μPartyNode.dataGet(self.id))
+    self.label = entry['nickname'] or self.label
+    icon = entry['icon_path']
     self.decorations: list[tuple[QPixmap, str]] = []
     if icon and os.path.exists(icon):
       self.setBg(QPixmap(icon))
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setLabel(self):
+    if ":" in self.key:  # pet — key is "owner:id"
+      self.id    = '#' + self.key.split(':')[1].lower()
+      self.owner = self.key.split(':')[0].lower()
+      self.label = self.key
+    else:
+      self.id    = self.key.lower()
+      self.owner = None
+      self.label = self.key.capitalize()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addDecoration(self, image: QPixmap, position: str, size: int = 36):
@@ -184,18 +172,20 @@ class μPartyNodePanel(QWidget):
     self.nameEdit  = QLineEdit()
     self.nameEdit.setEnabled(False)
     self.nickEdit  = QLineEdit()
+    self.nickEdit.setMinimumWidth(120)
     self.nickEdit.setPlaceholderText("Nickname")
 
     self.btnSave     = μOrbSmall(icon=P_ICON_SAVE,  tooltip="Save")
     self.btnEditIcon = μOrbSmall(icon=P_ICON_IMAGE,  tooltip="Edit Image")
     self.btnClose    = μOrbSmall(icon=P_ICON_CLOSE, tooltip="Close")
 
-    self.btnSave.clicked.connect(self._save)
-    self.btnEditIcon.clicked.connect(self._editIcon)
-    self.btnClose.clicked.connect(self._close)
+    self.btnSave.clicked.connect(self.save)
+    self.btnEditIcon.clicked.connect(self.editIcon)
+    self.btnClose.clicked.connect(self.close)
+
+    self.nickEdit.editingFinished.connect(self.save)
 
     g = μGridLayout()
-
     g.appendRow(["Key:",      ">", self.nameEdit])
     g.appendRow(["Nickname:", ">", self.nickEdit])
     self.setLayout(newVLayout(["Image:", newHLayout(["__stretch__", self.imgLabel, "__stretch__"]), g,
@@ -206,10 +196,11 @@ class μPartyNodePanel(QWidget):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def openFor(self, node):
     self._node = node
-    self.nameEdit.setText(node.name.capitalize())
-    self._entry  = {}
+    self.nameEdit.setText(node.key)
     self._iconPath = None
-    self.nickEdit.setText(node.label or node.name.capitalize())
+    nick = node.label or node.key
+    self.nickEdit.setText(nick)
+    self._originalNick = nick
     if node.bg:
       px = node.bg.scaled(80, 80, Qt.AspectRatioMode.KeepAspectRatio,
                           Qt.TransformationMode.SmoothTransformation)
@@ -229,7 +220,7 @@ class μPartyNodePanel(QWidget):
     self.imgLabel.setPixmap(px)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def _editIcon(self):
+  def editIcon(self):
     from widgets.μIconSelectDialog import μIconSelectDialog
     dlg = μIconSelectDialog(self)
     if dlg.exec():
@@ -237,22 +228,26 @@ class μPartyNodePanel(QWidget):
       if path:
         self._iconPath = path
         self._updateImage()
+        self.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def _save(self):
+  def save(self):
     if not self._node: return
-    entry = μPartyNode.dataGet(self._node.name)
-    entry['nickname'] = self.nickEdit.text().strip() or self._node.name.capitalize()
-    if self._iconPath:
-      entry['icon_path'] = self._iconPath
-    μPartyNode.dataSet(self._node.name, entry)
-    self._node.label = entry['nickname']
-    if self._iconPath:
+    nickChanged = self.nickEdit.text().strip() != self._originalNick
+    iconChanged = bool(self._iconPath)
+    if not nickChanged and not iconChanged: return
+    if nickChanged:
+      nick = self.nickEdit.text().strip() or self._originalNick
+      μPartyNode.dataSet(self._node.id, 'nickname', nick)
+      self._node.label   = nick
+      self._originalNick = nick
+    if iconChanged:
+      μPartyNode.dataSet(self._node.id, 'icon_path', self._iconPath)
       self._node.setBg(QPixmap(self._iconPath))
     if μStrategy._widget: μStrategy._widget.board.update()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def _close(self):
+  def close(self):
     self._node = None
     self.setVisible(False)
 
@@ -281,7 +276,6 @@ class μStrategy(μToggler):
 
   partyLeader = None
   partyMembers = None
-  partyPets = None
   partyLocal = None
   partyCaptains = None
   partyCommander = None
@@ -304,7 +298,7 @@ class μStrategy(μToggler):
     self.board = μNetwork(self)
     self.board.setMinimumWidth(450)
 
-    self.directivesEditor = μTextEdit(syntax='json')
+    self.directivesEditor = μTextEdit(syntax='yaml')
     self.directivesEditor.setMinimumWidth(250)
     self.directivesEditor.setVisible(False)
     self.directivesEditor.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
@@ -319,7 +313,7 @@ class μStrategy(μToggler):
     self.directiveList.currentTextChanged.connect(self._saveDirectiveToSession)
     self.directiveList.currentTextChanged.connect(self.load)
 
-    self.board.setEdgeStyle(width=4, arrow_size=20)
+    self.board.setEdgeStyle(width=4, arrow_size=20, color=QColor(200, 60, 60))
     self.btnRefresh.execute = μStrategy.refreshPartyInfo
     self.sigNetworkUpdate.connect(self.updateNetwork)
     self.showPets.stateChanged.connect(self.updateNetwork)
@@ -368,7 +362,7 @@ class μStrategy(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self, name: str = None):
     path = self.directivePath(name)
-    parsed = μStrategy.parseFromJson(path)
+    parsed = μStrategy.parseDirectives(path)
     if parsed:
       μStrategy.directives.clear()
       μStrategy.updateDirectives(filename=path)
@@ -443,10 +437,10 @@ class μStrategy(μToggler):
     self.updateStyle()
     node.setStyle(self.board.nodeStyle)
 
-    name = μString(node.name.lower())
-    if name == μStrategy.partyLeader:      node.addDecoration(μStrategy.getDecoration('partyLeader'), 'NE')
-    if name == μStrategy.partyPets:        node.addDecoration(μStrategy.getDecoration('pet'),         'SW')
-    elif name != μStrategy.partyLocal:     node.addDecoration(μStrategy.getDecoration('remote'),      'SW')
+    name = μString(node.key.lower())
+    if name == μStrategy.partyLeader:  node.addDecoration(μStrategy.getDecoration('partyLeader'), 'NE')
+    if μStrategy.isPet(name):          node.addDecoration(μStrategy.getDecoration('pet'),         'SW')
+    elif name != μStrategy.partyLocal: node.addDecoration(μStrategy.getDecoration('remote'),      'SW')
 
     if μStrategy.partyCommander and name == μStrategy.partyCommander and name == μStrategy.partyCaptains:
       node.addDecoration(μStrategy.getDecoration('majorcommander'), 'NW')
@@ -457,13 +451,16 @@ class μStrategy(μToggler):
     elif name == μStrategy.partyCaptains:
       node.addDecoration(μStrategy.getDecoration('sergeant'),       'NW')
 
-    running = μStrategy.directives.get(node.name, {}).get('strategyRunning', False)
-    if not running and name != μStrategy.partyCommander and name != μStrategy.partyPets:
+    running = μStrategy.directives.get(node.id, {}).get('strategyRunning', False)
+    if not running and name != μStrategy.partyCommander and not μStrategy.isPet(name) and name == μStrategy.partyLocal:
       node.addDecoration(μStrategy.getDecoration('paused'), 'E')
 
     myCaptain = μStrategy.directives.get(name, {}).get('captain', '')
-    if myCaptain and myCaptain in μStrategy.nodes.keys():
+    if myCaptain and myCaptain in μStrategy.nodes:
       μStrategy._widget.board.connectNodes(node, μStrategy.nodes[myCaptain])
+
+    if node.owner and node.owner in μStrategy.nodes:
+      μStrategy._widget.board.connectNodes(node, μStrategy.nodes[node.owner], EdgeStyle(dashed=True))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateStyle(self):
@@ -487,31 +484,31 @@ class μStrategy(μToggler):
     for name in [μStrategy.consensus.get('commander')]: # might add some other later
       if name and name in members:
         members.remove(name)
-        sortedMembers.append(name)
+        if μStrategy.isPet(name): petMembers.append(name)
+        else: sortedMembers.append(name)
     for p in sorted(μStrategy.partyLocal):
       if p in members:
         members.remove(p)
         sortedMembers.append(p)
-    for p in sorted(μStrategy.partyPets):
-      if p in members:
-        members.remove(p)
-        petMembers.append(p)
     sortedMembers += sorted(members)
     if self.showPets.isChecked() and petMembers: sortedMembers += sorted(petMembers)
 
-    for name in set(μStrategy.nodes.keys()) - set(sortedMembers):
-      del μStrategy.nodes[name]
+    def toId(n): return ('#' + n.split(':')[1].lower()) if ':' in n else n.lower()
+    sorted_ids = {toId(n) for n in sortedMembers}
+    for nid in set(μStrategy.nodes.keys()) - sorted_ids:
+      del μStrategy.nodes[nid]
 
     self.board.clear()
 
     for name in sortZigZag(sortedMembers):
-      if name not in μStrategy.nodes:
-        node = μPartyNode(name=name, allowOutgoing=name not in μStrategy.partyPets)
+      nid = toId(name)
+      if nid not in μStrategy.nodes:
+        node = μPartyNode(key=name, allowOutgoing=not μStrategy.isPet(name) and name in μStrategy.partyLocal)
         node.sigConnected.connect(lambda target, src=node: μStrategy.updateCaptain(src, target))
         node.sigDisconnected.connect(lambda src=node: μStrategy.updateCaptain(src, None))
         node.sigDoubleClicked.connect(lambda n=node: self.nodePanel.openFor(n))
-        μStrategy.nodes[name] = node
-      n = μStrategy.nodes[name]
+        μStrategy.nodes[nid] = node
+      n = μStrategy.nodes[nid]
       self.board.nodes.append(n)
     self.board._nodeCount = len(self.board.nodes)
     self.board.recomputePositions()
@@ -535,6 +532,9 @@ class μStrategy(μToggler):
     if plugins: return plugins.strategyPath().rstrip("/\\")
     return P_DEFAULT_CONFIGDIR + os.sep + "strategy"
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def isPet(cls, name): return ":" in name or name.startswith("#")
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -554,7 +554,6 @@ class μStrategy(μToggler):
     match = True
     leader  = μString(data['leaderName'].lower()) if data['leaderName'] else None
     members = {μString(m.lower()) for m in data['members']}
-    pets    = {μString(m.lower()) for m in data['pets']}
 
     if cls.partyLeader is None: cls.partyLeader = leader
     if cls.partyLeader != leader:
@@ -563,11 +562,6 @@ class μStrategy(μToggler):
     if cls.partyMembers is None: cls.partyMembers = members
     if cls.partyMembers != members:
       cls.partyMembers = cls.partyMembers | members
-      match = False
-
-    if cls.partyPets is None: cls.partyPets = pets
-    if cls.partyPets != pets:
-      cls.partyPets = cls.partyPets | pets
       match = False
 
     if cls.partyLocal is None: cls.partyLocal = set()
@@ -588,11 +582,9 @@ class μStrategy(μToggler):
   @classmethod
   def clearNetwork(cls):
     if cls.partyMembers: cls.partyMembers.clear()
-    if cls.partyPets: cls.partyPets.clear()
     if cls.partyLocal: cls.partyLocal.clear()
     if cls.partyCaptains: cls.partyCaptains.clear()
     cls.partyMembers = None
-    cls.partyPets = None
     cls.partyLocal = None
     cls.partyCaptains = None
     cls.partyLeader = None
@@ -605,7 +597,7 @@ class μStrategy(μToggler):
     if cls._defaults is None:
       path = os.path.join(P_MUDDO_DIR, 'docs', 'default.directives')
       with open(path, 'r') as f:
-        cls._defaults = json.load(f)
+        cls._defaults = yaml.safe_load(f)
     return cls._defaults
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -678,7 +670,7 @@ class μStrategy(μToggler):
   # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
   @classmethod
   def updateDirectives(cls, filename: str):
-    parsed = cls.parseFromJson(filename)
+    parsed = cls.parseDirectives(filename)
     if not parsed: return
     for a in μMilvianMeta.getBridges():
       if a not in cls.directives: cls.directives[a] = μDict()
@@ -717,7 +709,7 @@ class μStrategy(μToggler):
   @classmethod
   def toggleStrategy(cls, value="resume|pause"):
     bridges = μMilvianMeta.getBridges()
-    selected = {n.name for n in μStrategy._widget.board.getSelected()} or set(μStrategy.nodes.keys())
+    selected = {n.id for n in μStrategy._widget.board.getSelected()} or set(μStrategy.nodes.keys())
     cmd = f"strategy({cls._widget.directiveList.currentText()}, toggle, state={value})"
     for name, b in bridges.items():
       if name in selected: b.execute(cmd)
@@ -730,23 +722,23 @@ class μStrategy(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def updateCaptain(cls, nodeFrom : μPartyNode, nodeTo : μPartyNode = None):
-    targetCaptain = nodeTo.name if nodeTo is not None else "none"
-    if cls.directives.get(nodeFrom.name, {}).get('captain') == targetCaptain: return
+    targetCaptain = nodeTo.id if nodeTo is not None else "none"
+    if cls.directives.get(nodeFrom.id, {}).get('captain') == targetCaptain: return
     bridges = μMilvianMeta.getBridges()
-    if nodeFrom.name not in bridges: return
+    if nodeFrom.id not in bridges: return
     cmd = f"strategy({cls._widget.directiveList.currentText()}, set, captain={targetCaptain})"
-    bridges[nodeFrom.name].execute(cmd)
+    bridges[nodeFrom.id].execute(cmd)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def parseFromJson(cls, filename: str) -> dict:
+  def parseDirectives(cls, filename: str) -> dict:
     result = μDict()
     try:
       with open(filename, 'r') as f:
-        data = json.load(f)
+        data = yaml.safe_load(f)
       result.update({k: v for k, v in data.items() if k != 'directives'})
     except Exception as e:
-      μPrint.error(f"[μStrategy] parseFromJson failed: {e}")
+      μPrint.error(f"[μStrategy] parseDirectives failed: {e}")
     return result
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

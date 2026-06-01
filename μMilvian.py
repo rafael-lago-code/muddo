@@ -28,6 +28,8 @@ from helpers.util import P_DEFAULT_SHM_DIR
 from helpers.μStrings import *
 from helpers.μStrings import μString
 from helpers.χHelper import χHelper
+from helpers.μYAML import μYAML
+from helpers.util import P_DEFAULT_CONFIGDIR
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
   from μSettings import μSettings
@@ -69,9 +71,12 @@ def parseCommand(cmd: str, bridge) -> μMilvianPacket:
   if cmd == 'strategy(*)': return _parseStrategy(cmd, bridge)
   if cmd == 'debug(*)':    return μMilvianPacket(packetCommand.debug, bridge, cPacker.pack(cmd[6:-1]))
   if cmd == 'ordered(*)':  return _parseOrdered(cmd, bridge)
-  if cmd == 'enterportal': return μMilvianPacket(packetCommand.enterPortal, bridge)
+  if cmd == 'confirmdialog(*)':
+    args     = cmd[14:-1].split(',', 1)
+    dlg_name = args[0].strip()
+    dlg_byte = int(args[1].strip()) if len(args) > 1 else 1
+    return μMilvianPacket(packetCommand.confirmDialog, bridge, cPacker.packString(dlg_name) + struct.pack('<B', dlg_byte))
   if cmd == 'select(*)':   return μMilvianPacket(packetCommand.selectEntity, bridge, cPacker.packString(cmd[7:-1]))
-  if cmd == 'closeexplorerjournal': return μMilvianPacket(packetCommand.closeExplorerJournal, bridge)
   if cmd in μMilvian.inputActions:
     inData = μMilvian.inputActions[cmd] + struct.pack('<I', 10000)
     return μMilvianPacket(packetCommand.inputaction, bridge, inData)
@@ -274,10 +279,19 @@ class μMilvian():
       μPrint.error(f"[μMilvian] status {packet.status} querying charName in {bridgePath!r}")
       return
 
-    self.charName = packet.outData if isinstance(packet.outData, str) else packet.outData.decode('utf-8', errors='replace')
-    self.charName = self.charName.split()[0]
+    data = packet.outData
+    pos  = 0
+    name_len       = struct.unpack_from('<H', data, pos)[0]; pos += 2
+    self.charName  = data[pos:pos+name_len].decode('utf-8', errors='replace').split()[0]; pos += name_len
+    self.charId    = struct.unpack_from('<Q', data, pos)[0] if len(data) >= pos + 8 else 0
+
     if self.charName.lower() != charNameFromPath:
       μPrint.warning(f"[μMilvian] charName mismatch: got \"{self.charName}\", dir is \"{charNameFromPath}\"")
+    if self.charId:
+      db = μMilvianMeta.partyPreferences
+      if not db.lookup('charId', self.charId):
+        db.set(f"{self.charName.lower()}/charId", self.charId)
+        db.save()
     self._lastAlive = True
     μPrint.info(f"[μMilvian] bridge \"{C_SILVER}{self.charName}</font>\" live at {bridgePath!r}")
 
@@ -509,7 +523,8 @@ class μPhonyMilvian:
 #   ❖  M I L V I A N   M E T A
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMilvianMeta:
-  realBridges = None
+  realBridges      = None
+  partyPreferences = μYAML(os.path.join(P_DEFAULT_CONFIGDIR, 'partyPreferences.yaml'))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -535,11 +550,18 @@ class μMilvianMeta:
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
+  def normalize(cls, name: str) -> str:
+    if name.isdigit():
+      return μMilvianMeta.partyPreferences.lookup('charId', int(name)) or name
+    return name
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
   def getFocused(cls) -> μMilvian:
     if cls.realBridges is None: return μPhonyMilvian()
     title = χHelper.getWindowTitle(χHelper.getFocusedWindow())
     if not title: return μPhonyMilvian()
-    target = title.split()[0].lower()
+    target = cls.normalize(title.split()[0]).lower()
     return cls.realBridges.get(target, μPhonyMilvian())
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -572,8 +594,12 @@ class μMilvianMeta:
     out = []
     it = (cmd,) if isinstance(cmd, str) else cmd
     for c in it:
-      if hasKeyword(c,"focus"): c = c.replace('focus', f.charName) if (f := cls.getFocused()) else c
-      if hasKeyword(c,"any"):  c = c.replace('any',  f.charName) if (f := cls.getAny())     else c
+      if hasKeyword(c,"focus"):
+        f = cls.getFocused()
+        if f and f.charName: c = c.replace('focus', f.charName)
+      if hasKeyword(c,"any"):
+        f = cls.getAny()
+        if f and f.charName: c = c.replace('any', f.charName)
       out.append(c)
     return out[0] if isinstance(cmd,str) else out
     

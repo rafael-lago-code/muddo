@@ -33,6 +33,7 @@ from widgets.μText import μTextEdit
 from PyQt6.QtGui import QShortcut, QKeySequence
 from PyQt6.QtCore import QSize, Qt
 import glob, os
+from helpers.μYAML import μYAML
 from typing import TYPE_CHECKING
 from μMilvianBridge import μMilvianBridge
 if TYPE_CHECKING:
@@ -168,21 +169,14 @@ class μMacroRegistry:
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def loadAliases(cls):
-    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
-    try:
-      with open(filename, "r") as f:
-        cls.aliases = json.load(f)
-    except Exception as e:
-      μPrint.error(f"[μMacroRegistry] error loading aliases: {e}")
+    cls.aliases = μYAML(P_DEFAULT_MACRODIR + os.sep + "aliases.yaml").raw
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def saveAliases(cls):
-    filename = P_DEFAULT_MACRODIR + os.sep + "aliases.json"
-    try:
-      json.dump(cls.aliases, open(filename, 'w'), cls=muJSONEncoder)
-    except Exception as e:
-      μPrint.error(f"[μMacroRegistry] error saving aliases: {e}")
+    db = μYAML(P_DEFAULT_MACRODIR + os.sep + "aliases.yaml")
+    db.raw = cls.aliases
+    db.save()
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  C O N S O L I D A T E   T R I G G E R
@@ -471,7 +465,7 @@ class μMacros(μToggler):
     self.table.setDragDropOverwriteMode(False)
     self.table.setColumnHidden(3, True)
 
-    self.actionEditor = μTextEdit()
+    self.actionEditor = μTextEdit(syntax="macro")
     _asplitter = QSplitter(Qt.Orientation.Horizontal)
     _asplitter.addWidget(self.table)
     _asplitter.addWidget(self.actionEditor)
@@ -601,10 +595,12 @@ class μMacros(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addAlias(self, alias="", action=""):
+    self.aliasTable.setSortingEnabled(False)
     pos = self.aliasTable.rowCount()
     self.aliasTable.insertRow(pos)
     self.aliasTable.setItem(pos, 0, QTableWidgetItem(alias))
     self.aliasTable.setItem(pos, 1, QTableWidgetItem(action))
+    self.aliasTable.setSortingEnabled(True)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeAlias(self):

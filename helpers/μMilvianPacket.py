@@ -59,11 +59,10 @@ class packetCommand(Enum):
   pauseStrategy  = struct.pack('<I', 41)
   resumeStrategy = struct.pack('<I', 42)
   toggleStrategy = struct.pack('<I', 43)
-  enterPortal          = struct.pack('<I', 44)
-  closeExplorerJournal = struct.pack('<I', 45)
   toggleFlag           = struct.pack('<I', 46)
   selectEntity         = struct.pack('<I', 47)
   overrideStrategy     = struct.pack('<I', 48)
+  confirmDialog        = struct.pack('<I', 49)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)
 
@@ -181,10 +180,7 @@ class μMilvianPacket():
       self.outData = rawData[12:]
     else:
       self.outData = None
-    if isinstance(self.command, packetCommand):
-      if self.command == packetCommand.querycharname:
-        self.outData = self.outData.decode('utf-8')
-    else:
+    if not isinstance(self.command, packetCommand):
       μPrint.error(f"[μMilvianPacket.parseData] unknown packet received = {self})")
       return
 

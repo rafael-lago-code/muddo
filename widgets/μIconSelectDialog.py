@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-import os, json, urllib.request
+import os, yaml, urllib.request
 from PyQt6.QtWidgets import (QDialog, QFileDialog, QInputDialog,
                               QLabel, QLineEdit, QListWidget, QListWidgetItem,
                               QMessageBox, QPushButton, QSizePolicy, QTabWidget,
@@ -33,7 +33,7 @@ from widgets.μOrb import μOrbSmall
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 P_USER_ICONS_DIR  = P_DEFAULT_CONFIGDIR + "/icons"
 P_BUILTIN_ICONS_DIR = P_MUDDO_DIR + "/images/custom-icons"
-P_RECENT_FILE     = P_DEFAULT_CONFIGDIR + "/recent_icons.json"
+P_RECENT_FILE     = P_DEFAULT_CONFIGDIR + "/recentIcons.yaml"
 P_ICON_EXTENSIONS = {".svg", ".png", ".jpg", ".jpeg"}
 P_PREVIEW_SIZE    = QSize(64, 64)
 P_THUMB_SIZE      = QSize(24, 24)
@@ -53,7 +53,7 @@ def scanIcons(directory: str) -> list[str]:
 def loadRecent() -> list[str]:
   try:
     with open(P_RECENT_FILE) as f:
-      paths = json.load(f)
+      paths = yaml.safe_load(f) or []
     return [p for p in paths if os.path.isfile(p)][:P_RECENT_MAX]
   except Exception:
     return []
@@ -67,7 +67,7 @@ def saveRecent(path: str):
   try:
     os.makedirs(P_DEFAULT_CONFIGDIR, exist_ok=True)
     with open(P_RECENT_FILE, "w") as f:
-      json.dump(recent, f)
+      yaml.dump(recent, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
   except Exception as e:
     μPrint.error("[cIconSelectDialog] could not save recent icons", e)
 

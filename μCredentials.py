@@ -33,7 +33,7 @@ from widgets.μFloating import μToggler
 from widgets.μText import μDisplayLabel
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
-import json
+from helpers.μYAML import μYAML
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -191,24 +191,15 @@ class cCredentials(μToggler):
   #----------------------------------------------------------------------------------------------------------
   def saveAccounts(self):
     try:
-      os.mkdir(P_DEFAULT_CONFIGDIR)
-    except: pass
-    accFileName = P_DEFAULT_CONFIGDIR+"/accounts.json"
-
-    try:
-      json.dump(self.accounts, open(accFileName,"w"), separators=(', ',': '), indent=2)
+      db = μYAML(P_DEFAULT_CONFIGDIR+"/accounts.yaml")
+      db.raw = self.accounts
+      db.save()
     except Exception as e:
-      μPrint.error(f"cLogin.save: could not create {accFileName} to store credentials!",e)
-  
+      μPrint.error(f"cLogin.save: could not create accounts.yaml to store credentials!", e)
+
   #----------------------------------------------------------------------------------------------------------
   def loadAccounts(self):
-    accFileName = P_DEFAULT_CONFIGDIR+"/accounts.json"
-
-    if os.path.exists(accFileName):
-      with open(accFileName,"r") as f:
-        self.accounts = json.load(f)
-    else:
-      self.accounts = {}
+    self.accounts = μYAML(P_DEFAULT_CONFIGDIR+"/accounts.yaml").raw
     
     for a in self.accounts.keys():
       self.listAccounts.addItem(QListWidgetItem(getIcon(P_ICON_LOCKCLOSE_RED) if self.accounts[a] == ""\

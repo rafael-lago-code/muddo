@@ -27,7 +27,6 @@ from PyQt6.QtGui import QSyntaxHighlighter, QTextCharFormat, QColor, QFont
 #   🮿  F O N T   C O N S O L E
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μFontMono(QFont):
-
   def __init__(self, size : int = 10, weight: int = QFont.Weight.Normal):
     super().__init__()
     self.setFamily("Consolas, Courier New, DejaVu Sans Mono, monospace")
@@ -66,7 +65,7 @@ class μDisplayLabel(QLabel):
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  J S O N   H I G H L I G H T E R
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class JsonHighlighter(QSyntaxHighlighter):
+class jsonHighlighter(QSyntaxHighlighter):
 
   def __init__(self, parent=None):
     super().__init__(parent)
@@ -108,6 +107,182 @@ class JsonHighlighter(QSyntaxHighlighter):
     self._applyRegex(r'\b(true|false|null)\b',  text, self.formats["bool"])
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  Y A M L   H I G H L I G H T E R
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class yamlHighlighter(QSyntaxHighlighter):
+
+  def __init__(self, parent=None):
+    super().__init__(parent)
+
+    self.formats = {}
+
+    keyFormat = QTextCharFormat()
+    keyFormat.setForeground(QColor("#569cd6"))
+    keyFormat.setFontWeight(QFont.Weight.Bold)
+    self.formats["key"] = keyFormat
+
+    stringFormat = QTextCharFormat()
+    stringFormat.setForeground(QColor("#ce9178"))
+    self.formats["string"] = stringFormat
+
+    numberFormat = QTextCharFormat()
+    numberFormat.setForeground(QColor("#b5cea8"))
+    self.formats["number"] = numberFormat
+
+    boolFormat = QTextCharFormat()
+    boolFormat.setForeground(QColor("#c586c0"))
+    self.formats["bool"] = boolFormat
+
+    commentFormat = QTextCharFormat()
+    commentFormat.setForeground(QColor("#6a9955"))
+    commentFormat.setFontItalic(True)
+    self.formats["comment"] = commentFormat
+
+    anchorFormat = QTextCharFormat()
+    anchorFormat.setForeground(QColor("#dcdcaa"))
+    self.formats["anchor"] = anchorFormat
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _applyRegex(self, pattern: str, text: str, fmt, group: int = 0):
+    it = QRegularExpression(pattern).globalMatch(text)
+    while it.hasNext():
+      m = it.next()
+      start  = m.capturedStart(group)
+      length = m.capturedLength(group)
+      self.setFormat(start, length, fmt)
+
+  def highlightBlock(self, text: str):
+    self._applyRegex(r'(?m)^\s*([\w\-\.]+)\s*:(?:\s|$)', text, self.formats["key"],    group=1)
+    self._applyRegex(r'"(?:[^"\\]|\\.)*"',                text, self.formats["string"])
+    self._applyRegex(r"'[^']*'",                          text, self.formats["string"])
+    self._applyRegex(r'\b-?\d+(?:\.\d+)?\b',              text, self.formats["number"])
+    self._applyRegex(r'\b(true|false|null|yes|no|~)\b',   text, self.formats["bool"])
+    self._applyRegex(r'[&\*]\w+',                         text, self.formats["anchor"])
+    self._applyRegex(r'#.*$',                             text, self.formats["comment"])
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  F I L T E R   H I G H L I G H T E R
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class filterHighlighter(QSyntaxHighlighter):
+
+  def __init__(self, parent=None):
+    super().__init__(parent)
+
+    self.formats = {}
+
+    fieldFormat = QTextCharFormat()
+    fieldFormat.setForeground(QColor("#569cd6"))
+    fieldFormat.setFontWeight(QFont.Weight.Bold)
+    self.formats["field"] = fieldFormat
+
+    logicFormat = QTextCharFormat()
+    logicFormat.setForeground(QColor("#c586c0"))
+    logicFormat.setFontWeight(QFont.Weight.Bold)
+    self.formats["logic"] = logicFormat
+
+    cmpFormat = QTextCharFormat()
+    cmpFormat.setForeground(QColor("#d4d4d4"))
+    self.formats["cmp"] = cmpFormat
+
+    funcFormat = QTextCharFormat()
+    funcFormat.setForeground(QColor("#dcdcaa"))
+    self.formats["func"] = funcFormat
+
+    stringFormat = QTextCharFormat()
+    stringFormat.setForeground(QColor("#ce9178"))
+    self.formats["string"] = stringFormat
+
+    numberFormat = QTextCharFormat()
+    numberFormat.setForeground(QColor("#b5cea8"))
+    self.formats["number"] = numberFormat
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _applyRegex(self, pattern: str, text: str, fmt, group: int = 0):
+    it = QRegularExpression(pattern, QRegularExpression.PatternOption.CaseInsensitiveOption).globalMatch(text)
+    while it.hasNext():
+      m = it.next()
+      self.setFormat(m.capturedStart(group), m.capturedLength(group), fmt)
+
+  def highlightBlock(self, text: str):
+    self._applyRegex(r'\b(name|description|owner|type|equipsto|augments|qualifier|nAugs)\b', text, self.formats["field"])
+    self._applyRegex(r'\b(isEquipped|isBound|isLocked)\b',                                   text, self.formats["field"])
+    self._applyRegex(r'\b(and|or|not)\b',                                                    text, self.formats["logic"])
+    self._applyRegex(r'(==|!=|<=|>=|<|>)',                                                   text, self.formats["cmp"])
+    self._applyRegex(r'\b(len|infile)\b(?=\s*\()',                                           text, self.formats["func"])
+    self._applyRegex(r'"[^"]*"',                                                             text, self.formats["string"])
+    self._applyRegex(r'\b-?\d+(?:\.\d+)?\b',                                                text, self.formats["number"])
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  M A C R O   H I G H L I G H T E R
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class macroHighlighter(QSyntaxHighlighter):
+
+  def __init__(self, parent=None):
+    super().__init__(parent)
+
+    self.formats = {}
+
+    metaFormat = QTextCharFormat()
+    metaFormat.setForeground(QColor("#c586c0"))
+    metaFormat.setFontWeight(QFont.Weight.Bold)
+    self.formats["meta"] = metaFormat
+
+    shorthandFormat = QTextCharFormat()
+    shorthandFormat.setForeground(QColor("#4ec9b0"))
+    self.formats["shorthand"] = shorthandFormat
+
+    builtinFormat = QTextCharFormat()
+    builtinFormat.setForeground(QColor("#dcdcaa"))
+    self.formats["builtin"] = builtinFormat
+
+    colonFormat = QTextCharFormat()
+    colonFormat.setForeground(QColor("#d4d4d4"))
+    colonFormat.setFontWeight(QFont.Weight.Bold)
+    self.formats["colon"] = colonFormat
+
+    semicolonFormat = QTextCharFormat()
+    semicolonFormat.setForeground(QColor("#808080"))
+    self.formats["semicolon"] = semicolonFormat
+
+    stringFormat = QTextCharFormat()
+    stringFormat.setForeground(QColor("#ce9178"))
+    self.formats["string"] = stringFormat
+
+    numberFormat = QTextCharFormat()
+    numberFormat.setForeground(QColor("#b5cea8"))
+    self.formats["number"] = numberFormat
+
+    hpspFormat = QTextCharFormat()
+    hpspFormat.setForeground(QColor("#b5cea8"))
+    hpspFormat.setFontWeight(QFont.Weight.Bold)
+    self.formats["hpsp"] = hpspFormat
+
+    braceFormat = QTextCharFormat()
+    braceFormat.setForeground(QColor("#9cdcfe"))
+    self.formats["brace"] = braceFormat
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _applyRegex(self, pattern: str, text: str, fmt, group: int = 0):
+    it = QRegularExpression(pattern, QRegularExpression.PatternOption.CaseInsensitiveOption).globalMatch(text)
+    while it.hasNext():
+      m = it.next()
+      self.setFormat(m.capturedStart(group), m.capturedLength(group), fmt)
+
+  def highlightBlock(self, text: str):
+    self._applyRegex(r'"[^"]*"',                                                                                                          text, self.formats["string"])
+    self._applyRegex(r'\b(HP|SP)[<>]=?\d*\.?\d+',                                                                                        text, self.formats["hpsp"])
+    self._applyRegex(r'\{[^}]+\}',                                                                                                        text, self.formats["brace"])
+    self._applyRegex(r'\b(all|self|focus|any|none|etal)\b',                                                                               text, self.formats["meta"])
+    self._applyRegex(r'\bb\d+k\d+\b|\btp[mp]\d+\b',                                                                                      text, self.formats["shorthand"])
+    self._applyRegex(r'\b(ordered|strategy|sleep|chat|select|enterPortal|closeExplorerJournal|confirmDialog|debug|lootall|interact|macro)\b(?=\s*[,(]|$)', text, self.formats["builtin"])
+    self._applyRegex(r'(?<=\w)\s*(:)(?!\s*/)',                                                                                            text, self.formats["colon"],     group=1)
+    self._applyRegex(r';',                                                                                                                text, self.formats["semicolon"])
+    self._applyRegex(r'\b-?\d+(?:\.\d+)?\b',                                                                                             text, self.formats["number"])
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  T E X T   E D I T
 #
 #   QTextEdit with an editingFinished signal, emitted on focus out.
@@ -130,5 +305,8 @@ class μTextEdit(QTextEdit):
   def setSyntax(self, syntax: str):
     self.syntax = syntax.lower()
     # if self.highlighter: self.highlighter.setDocument(None)
-    if self.syntax == "json": self.highlighter = JsonHighlighter(self.document())
+    if   self.syntax == "json":   self.highlighter = jsonHighlighter(self.document())
+    elif self.syntax == "yaml":   self.highlighter = yamlHighlighter(self.document())
+    elif self.syntax == "filter": self.highlighter = filterHighlighter(self.document())
+    elif self.syntax == "macro":  self.highlighter = macroHighlighter(self.document())
     else: self.highlighter = None

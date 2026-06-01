@@ -56,6 +56,7 @@ class EdgeStyle:
   color          = QColor(100, 100, 100)
   dragging_color = QColor(255, 120,   0)
   dragging_width = 2.5
+  dashed         = False
 
   def __init__(self, **kwargs):
     for k, v in kwargs.items():
@@ -81,6 +82,7 @@ class μNode(QWidget):
     self.hovered = False
     self.selected = False
     self.center: QPointF = center
+    self.layout_center: QPointF = None
     self.allowOutgoing = allowOutgoing
     self.allowIncoming = allowIncoming
     self.style = style if style is not None else NodeStyle()
@@ -333,7 +335,9 @@ class μEdge:
 
     mid = QPointF(end.x() - ux * s.arrow_size * 0.5,
                   end.y() - uy * s.arrow_size * 0.5)
-    painter.setPen(QPen(s.color, s.width))
+    pen = QPen(s.color, s.width)
+    if s.dashed: pen.setStyle(Qt.PenStyle.DashLine)
+    painter.setPen(pen)
     painter.drawLine(start, mid)
 
     ax = end.x() - ux * s.arrow_size
@@ -394,9 +398,11 @@ class μNetwork(QWidget):
     cx = self.width() / 2
     cy = self.height() / 2
     ring_radius = min(cx, cy) - self.nodeStyle.radius - 30
+    ring_center = QPointF(cx, cy)
     for i, node in enumerate(self.nodes):
       angle = -math.pi / 2 + 2 * math.pi * i / n
       node.center = QPointF(cx + ring_radius * math.cos(angle), cy + ring_radius * math.sin(angle))
+      node.layout_center = ring_center
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def resetEdges(self):
@@ -408,8 +414,8 @@ class μNetwork(QWidget):
                   and not (incoming and e.target is node)]
     self.update()
 
-  def connectNodes(self, a: μNode, b: μNode):
-    self.edges.append(μEdge(a, b, self.edgeStyle))
+  def connectNodes(self, a: μNode, b: μNode, style: EdgeStyle = None):
+    self.edges.append(μEdge(a, b, style if style is not None else self.edgeStyle))
     self.update()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

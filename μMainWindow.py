@@ -73,7 +73,7 @@ class μMainWindow(QMainWindow):
     btnQuit.clicked.connect(self.close)
 
     g = μGridLayout()
-    g.appendRow(['>', '>', self.credentials.loginSummary])
+    g.appendRow(['>', '>', '>', self.credentials.loginSummary])
     g.appendRow([μDisplayLabel("World:"),   '>', self.credentials.listWorlds])
     g.appendRow([μDisplayLabel("Profile:"), '>', self.settings.profileMain])
     self.summary = QWidget()

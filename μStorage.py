@@ -28,7 +28,7 @@ from types import SimpleNamespace
 from PyQt6.QtWidgets import QDialog, QGridLayout, QLineEdit, QListWidgetItem, QMenu, QListWidget, QTextEdit
 from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
-from widgets.μOrb import μOrb, μOrbSmall
+from widgets.μOrb import μOrb, μOrbSmall, μOrbTask
 from widgets.μOrb import μBoxCheck
 from helpers.μImageFactory import *
 from widgets.μFloating import μToggler
@@ -37,11 +37,13 @@ from widgets.μItemsTable import *
 from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus, packetSignal
 from helpers.μPrint import μPrint
 from helpers.μStrings import *
+from widgets.μText import μTextEdit
+from μMilvian import *
 import time, struct, mmap
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMilvianBridge import μMilvianBridge
-   from μMilvian import μMilvian
+   
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -68,20 +70,20 @@ class μStorage(μToggler):
     setBGColour(self.table.viewport(), P_DEFAULT_BG)
     
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
-    self.btnRefresh   = μOrb("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
-    self.btnDissolve  = μOrb("Dissolve",    icon=getIcon('cannith_dissolve_lean'),
+    self.btnRefresh   = μOrbTask("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
+    self.btnDissolve  = μOrbTask("Dissolve",    icon=getIcon('cannith_dissolve_lean'),
                              tooltip="Dissolve all selected items. Item Deconstruction UI must be open.")
-    self.btnSell      = μOrb("Sell",        icon=getIcon('cannith_vendor_lean'),
+    self.btnSell      = μOrbTask("Sell",        icon=getIcon('cannith_vendor_lean'),
                              tooltip="Sell all selected items to the currently open vendor UI. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnUse       = μOrb("Use",        icon=getIcon('use_gears'),
+    self.btnUse       = μOrbTask("Use",        icon=getIcon('use_gears'),
                              tooltip="Use selected items. <b><i>Ctrl+Click</i></b> for auto-accepting confirmation dialogues")
-    self.btnStore     = μOrb("Store",       icon=getIcon('cannith_bank_lean'),
+    self.btnStore     = μOrbTask("Store",       icon=getIcon('cannith_bank_lean'),
                              tooltip="Store selected items in the currently open bank/chest. <br><b><i>Ctrl+click</i></b> to send to character bank (guild or shared banks preferred otherwise)")
-    self.btnSort      = μOrb("Sort",       icon=getIcon('sort'),
+    self.btnSort      = μOrbTask("Sort",       icon=getIcon('sort'),
                              tooltip="<b><i>Not Implemented Yet</b></i><br>Sort selected items by type. <br><i><b>Ctrl+Click</b></i> to sort by name<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnFeedJewel = μOrb("Feed\nJewel", icon=getIcon('cannith_feed_jewel'),
+    self.btnFeedJewel = μOrbTask("Feed\nJewel", icon=getIcon('cannith_feed_jewel'),
                              tooltip="<b><i>Not Implemented Yet</b></i><br>Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
-    self.btnTrade     = μOrb("Trade",       icon=getIcon('cannith_trade_lean'),
+    self.btnTrade     = μOrbTask("Trade",       icon=getIcon('cannith_trade_lean'),
                              tooltip="<b><i>Not Implemented Yet</b></i><br>Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
 
     self.filterCB = SimpleNamespace()
@@ -144,7 +146,7 @@ class μStorage(μToggler):
     self.filterBtnReloadScript = μOrbSmall(icon=P_ICON_REFRESH, tooltip="Reload currently selected script from file\nCtrl+Left click to reload all")
     self.filterBtnApplyScript  = μOrbSmall(icon=P_ICON_FILTER, tooltip="Apply current filter.<br><b><i>Shortcut: Ctrl+Enter</b></i>.")
     self.filterBtnHelp         = μOrbSmall(icon=P_ICON_QUESTION, tooltip="Show a comprehensive help on how script work here (lol)")
-    self.filterScriptEdit      = QTextEdit()
+    self.filterScriptEdit      = μTextEdit(syntax="filter")
     filtersContainer = newHSplitter([newHFrame([newVLayout(["Saved Filters:", self.filterScriptList]),
                                   newVFrame(["__stretch__",self.filterBtnApplyScript, self.filterBtnNewScript, self.filterBtnSaveScript,self.filterBtnDelScript, self.filterBtnReloadScript, self.filterBtnHelp, "__stretch__"])]),
                                   newVFrame([self.filterScriptLabel, self.filterScriptEdit]), advFilters])
@@ -395,7 +397,7 @@ class μStorage(μToggler):
     inData += struct.pack('?', printStatus)   # provide status updates
 
     self.table.staleData = {}
-    for bridge in self.daemon.getBridges().values():
+    for bridge in μMilvianMeta.getBridges().values():
       bridge : μMilvian
       try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
       except: pass
@@ -419,7 +421,7 @@ class μStorage(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getSelectedIDs(self) -> list:
-    selectedItems = {b : [] for b in self.daemon.getBridges().keys()}
+    selectedItems = {b : [] for b in μMilvianMeta.getBridges().keys()}
     for item in self.table.selectedItems():
       if item.column()==0:
         item : μItemData
@@ -433,7 +435,7 @@ class μStorage(μToggler):
     selectedItems = self.getSelectedIDs()
     if not selectedItems: return
     packets = {}
-    bridges : μMilvian = self.daemon.getBridges()
+    bridges : μMilvian = μMilvianMeta.getBridges()
     for c in selectedItems.keys():
       inData  = struct.pack('<?',True)  # sendStatus flag, requests frequent status update always for now
       inData += struct.pack('<?',confirm)
@@ -470,7 +472,7 @@ class μStorage(μToggler):
     selectedItems = self.getSelectedIDs()
     if not selectedItems: return
     packets = {}
-    bridges : μMilvian = self.daemon.getBridges()
+    bridges : μMilvian = μMilvianMeta.getBridges()
     for c in selectedItems.keys():
       inData = struct.pack('<?',True)  # sendStatus flag, requests frequent status update always for now
       inData += struct.pack('<I',3)    # number of retries
@@ -506,7 +508,7 @@ class μStorage(μToggler):
     selectedItems = self.getSelectedIDs()
     if not selectedItems: return
     packets = {}
-    bridges : μMilvian = self.daemon.getBridges()
+    bridges : μMilvian = μMilvianMeta.getBridges()
     for c in selectedItems.keys():
       inData = struct.pack('<?',True)     # sendStatus flag, requests frequent status update always for now
       inData += struct.pack('<I',3)       # number of retries
@@ -548,7 +550,7 @@ class μStorage(μToggler):
     selectedItems = self.getSelectedIDs()
     if not selectedItems: return
     packets = {}
-    bridges : μMilvian = self.daemon.getBridges()
+    bridges : μMilvian = μMilvianMeta.getBridges()
     for c in selectedItems.keys():
       inData  = struct.pack('<?',True)     # sendStatus flag, requests frequent status update always for now
       inData += struct.pack('<?',repair)   # repair
