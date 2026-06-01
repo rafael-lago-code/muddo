@@ -20,6 +20,17 @@
 import os
 import yaml
 
+
+def _str_representer(dumper, data):
+    if '\n' in data:
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data, style='|')
+    return dumper.represent_scalar('tag:yaml.org,2002:str', data)
+
+class _BlockDumper(yaml.Dumper):
+    pass
+
+_BlockDumper.add_representer(str, _str_representer)
+
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖ Y A M L 
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
@@ -33,10 +44,16 @@ class μYAML:
         self.raw = yaml.safe_load(f) or {}
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def save(self):
-    os.makedirs(os.path.dirname(self.path), exist_ok=True)
-    with open(self.path, 'w', encoding='utf-8') as f:
-      yaml.dump(self.raw, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+  def save(self, block: bool = False):
+    μYAML.dump(self.raw, self.path, block=block)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def dump(data, path: str, block: bool = False):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    dumper = _BlockDumper if block else yaml.Dumper
+    with open(path, 'w', encoding='utf-8') as f:
+      yaml.dump(data, f, default_flow_style=False, allow_unicode=True, sort_keys=False, Dumper=dumper)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def get(self, path: str, default=None):

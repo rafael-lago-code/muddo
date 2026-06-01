@@ -484,14 +484,14 @@ class μStrategy(μToggler):
     for name in [μStrategy.consensus.get('commander')]: # might add some other later
       if name and name in members:
         members.remove(name)
-        if μStrategy.isPet(name): petMembers.append(name)
-        else: sortedMembers.append(name)
+        sortedMembers.append(name)
     for p in sorted(μStrategy.partyLocal):
       if p in members:
         members.remove(p)
         sortedMembers.append(p)
-    sortedMembers += sorted(members)
-    if self.showPets.isChecked() and petMembers: sortedMembers += sorted(petMembers)
+    petMembers    += [n for n in members if μStrategy.isPet(n)]
+    sortedMembers += sorted(n for n in members if not μStrategy.isPet(n))
+    if self.showPets.isChecked(): sortedMembers += sorted(petMembers)
 
     def toId(n): return ('#' + n.split(':')[1].lower()) if ':' in n else n.lower()
     sorted_ids = {toId(n) for n in sortedMembers}

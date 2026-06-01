@@ -96,9 +96,8 @@ class μMacroRegistry:
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def registerMacro(cls, macro, setName : str):
-    # unparsed list directly from the json file
-    if isinstance(macro, list):
-      newMacro = μMacroEntry(macro[0], macro[1], macro[2], macro[3], setName)
+    if isinstance(macro, dict):
+      newMacro = μMacroEntry(macro.get("icon",""), macro.get("name",""), macro.get("trigger","none"), macro.get("script",""), setName)
       if newMacro.parentSet in cls.sets:
         cls.sets[newMacro.parentSet].append(newMacro)
       else:
@@ -285,7 +284,7 @@ class μMacroEntry(QTableWidgetItem):
     self.active = False
     self.scripts = scripts
 
-  def serialize(self): return [self.icon, self.name, self.trigger, self.scripts]
+  def serialize(self): return {"icon": self.icon, "name": self.name, "trigger": self.trigger, "script": self.scripts}
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setTrigger(self, trigger: str):
@@ -382,14 +381,15 @@ class μMacroSet(QListWidgetItem):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def save(self):
     filename = P_DEFAULT_MACRODIR + os.sep + self.name + P_DEFAULT_MACROEXT
-    json.dump([e.serialize() for e in self.entries], open(filename,'w'), cls=muJSONEncoder)
+    db = μYAML(filename)
+    db.raw = [e.serialize() for e in self.entries]
+    db.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self):
     filename = P_DEFAULT_MACRODIR + os.sep + self.name + P_DEFAULT_MACROEXT
     try:
-      with open(filename,"r") as f:
-        data = json.load(f)
+      data = μYAML(filename).raw or []
     except Exception as e:
       μPrint.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
       data = []
@@ -574,7 +574,7 @@ class μMacros(μToggler):
   def addMacroEntry(self):
     sset = self.setListWidget.selectedItems()
     if not sset: return
-    μMacroRegistry.registerMacro(["", "", "none", ""], sset[0].name)
+    μMacroRegistry.registerMacro({"icon": "", "name": "", "trigger": "none", "script": ""}, sset[0].name)
     sset[0].entries[-1].insertToTable(self.table, self.table.rowCount())
     sset[0].save()
 

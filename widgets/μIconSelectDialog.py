@@ -17,7 +17,8 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-import os, yaml, urllib.request
+import os, urllib.request
+from helpers.μYAML import μYAML
 from PyQt6.QtWidgets import (QDialog, QFileDialog, QInputDialog,
                               QLabel, QLineEdit, QListWidget, QListWidgetItem,
                               QMessageBox, QPushButton, QSizePolicy, QTabWidget,
@@ -52,8 +53,7 @@ def scanIcons(directory: str) -> list[str]:
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def loadRecent() -> list[str]:
   try:
-    with open(P_RECENT_FILE) as f:
-      paths = yaml.safe_load(f) or []
+    paths = μYAML(P_RECENT_FILE).raw or []
     return [p for p in paths if os.path.isfile(p)][:P_RECENT_MAX]
   except Exception:
     return []
@@ -66,8 +66,7 @@ def saveRecent(path: str):
   recent = recent[:P_RECENT_MAX]
   try:
     os.makedirs(P_DEFAULT_CONFIGDIR, exist_ok=True)
-    with open(P_RECENT_FILE, "w") as f:
-      yaml.dump(recent, f, default_flow_style=False, allow_unicode=True, sort_keys=False)
+    μYAML.dump(recent, P_RECENT_FILE)
   except Exception as e:
     μPrint.error("[cIconSelectDialog] could not save recent icons", e)
 

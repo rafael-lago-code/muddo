@@ -159,18 +159,18 @@ class μStorage(μToggler):
     self.filterAugments.changed.connect(self.applyFilters)
     self.filterText.textEdited.connect(self.applyFilters)
 
-    self.btnRefresh.clicked.connect(lambda : self.requestRefreshStorage(False))
-    self.btnRefresh.ctrlClicked.connect(lambda : self.requestRefreshStorage(True))
-    self.btnUse.clicked.connect(self.requestUse)
-    self.btnUse.ctrlClicked.connect(lambda : self.requestUse(True))
-    self.btnSell.clicked.connect(self.requestSell)
-    self.btnSell.ctrlClicked.connect(lambda : self.requestSell(True, True))
-    self.btnSell.clicked.connect(self.requestSell)
-    self.btnDissolve.clicked.connect(self.requestDissolve)
-    self.btnStore.clicked.connect(self.requestStore)
-    self.btnStore.ctrlClicked.connect(lambda : self.requestStore(destUI=3))
-    self.btnFeedJewel.clicked.connect(self.requestFeedJewel)
-    self.btnFeedJewel.ctrlClicked.connect(lambda : self.requestFeedJewel(force=True))
+
+    self.btnRefresh.execute = lambda : self.requestRefreshStorage(False)
+    self.btnRefresh.executeCtrl = lambda : self.requestRefreshStorage(True)
+    self.btnUse.execute = self.requestUse
+    self.btnUse.executeCtrl = lambda : self.requestUse(True)
+    self.btnSell.execute = self.requestSell
+    self.btnSell.executeCtrl = lambda : self.requestSell(True, True)
+    self.btnDissolve.execute = self.requestDissolve
+    self.btnStore.execute = self.requestStore
+    self.btnStore.executeCtrl = lambda : self.requestStore(destUI=3)
+    self.btnFeedJewel.execute = self.requestFeedJewel
+    self.btnFeedJewel.executeCtrl = lambda : self.requestFeedJewel(force=True)
 
     self.btnSort.setEnabled(False)
     self.btnFeedJewel.setEnabled(False)

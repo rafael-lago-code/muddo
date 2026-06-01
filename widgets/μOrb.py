@@ -629,9 +629,13 @@ class μOrbTask(μOrb):
     self._running = False
     self.sigTaskFinished.connect(self._onFinished)
     self.clicked.connect(self._start)
+    self.ctrlClicked.connect(self._startCtrl)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def execute(self):
+    pass
+
+  def executeCtrl(self):
     pass
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -641,10 +645,22 @@ class μOrbTask(μOrb):
     self.setChecked(True)
     threading.Thread(target=self._run, daemon=True).start()
 
+  def _startCtrl(self, _event=None):
+    if self._running: return
+    self._running = True
+    self.setChecked(True)
+    threading.Thread(target=self._runCtrl, daemon=True).start()
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _run(self):
     try:
       self.execute()
+    finally:
+      self.sigTaskFinished.emit()
+
+  def _runCtrl(self):
+    try:
+      self.executeCtrl()
     finally:
       self.sigTaskFinished.emit()
 
@@ -655,8 +671,6 @@ class μOrbTask(μOrb):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def mousePressEvent(self, event):
-    if (self._running
-        and event.button() == Qt.MouseButton.LeftButton
-        and event.modifiers() == Qt.KeyboardModifier.NoModifier):
+    if self._running and event.button() == Qt.MouseButton.LeftButton:
       return
     super().mousePressEvent(event)
