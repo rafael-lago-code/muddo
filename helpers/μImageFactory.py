@@ -80,6 +80,7 @@ P_ICON_GEARHIER  = "gears-hierarchy"
 P_ICON_GEARSTACK = "gears-stack"
 P_ICON_BACKPACK  = "backpack"
 P_ICON_CHEST     = "chest"
+P_ICON_MAP       = "map-icon"
 P_ICON_BLACKSCREEN = "blackscreen"
 
 P_ICON_PLACEHOLDER = "placeholder"

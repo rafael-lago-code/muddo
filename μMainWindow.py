@@ -20,6 +20,7 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QGridLayout
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from μCredentials import cCredentials
+from μMap import μMap
 from μSettings import μSettings
 from μMacros import μMacros
 from μPatch import μPatch
@@ -68,6 +69,7 @@ class μMainWindow(QMainWindow):
     self.storageManager = μStorage(self)
     self.toolbar = μToolbar(self)
     self.strategy = μStrategy(self)
+    self.map = μMap(self)
 
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
@@ -79,7 +81,7 @@ class μMainWindow(QMainWindow):
     self.summary = QWidget()
     self.summary.setMaximumWidth(480)
     self.summary.setLayout(g)
-    lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.strategy.toggler, self.btnLaunch,
+    lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.strategy.toggler, self.map.toggler, self.btnLaunch,
                               self.summary, self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler,
                               self.macros.toggler, self.settings.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
 

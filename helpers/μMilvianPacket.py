@@ -63,6 +63,7 @@ class packetCommand(Enum):
   selectEntity         = struct.pack('<I', 47)
   overrideStrategy     = struct.pack('<I', 48)
   confirmDialog        = struct.pack('<I', 49)
+  drawMap              = struct.pack('<I', 51)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)
 

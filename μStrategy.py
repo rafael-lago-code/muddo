@@ -41,19 +41,19 @@ import sys, time
 from collections import Counter
 
 
-P_DECORATION_PARTYLEADER    = "decoration_partyLeader"
-P_DECORATION_SERGEANT       = "decoration_sergeant"
-P_DECORATION_REMOTE         = "decoration_remote"
-P_DECORATION_DISCONNECTED   = "decoration_disconnected"
-P_DECORATION_CAPTAIN        = "decoration_captain"
-P_DECORATION_PET            = "decoration_pet"
-P_DECORATION_CONNECTED      = "decoration_connected"
-P_DECORATION_COMMANDER      = "decoration_commander"
-P_DECORATION_WARNING        = "decoration_warning"
-P_DECORATION_ERROR          = "decoration_error"
-P_DECORATION_MAJORCOMMANDER = "decoration_majorcommander"
-P_DECORATION_PAUSED         = "decoration_paused"
-P_DECORATION_RESUMED        = "decoration_resumed"
+P_DECORATION_PARTYLEADER    = "decorations/partyLeader"
+P_DECORATION_SERGEANT       = "decorations/sergeant"
+P_DECORATION_REMOTE         = "decorations/remote"
+P_DECORATION_DISCONNECTED   = "decorations/disconnected"
+P_DECORATION_CAPTAIN        = "decorations/captain"
+P_DECORATION_PET            = "decorations/pet"
+P_DECORATION_CONNECTED      = "decorations/connected"
+P_DECORATION_COMMANDER      = "decorations/commander"
+P_DECORATION_WARNING        = "decorations/warning"
+P_DECORATION_ERROR          = "decorations/error"
+P_DECORATION_MAJORCOMMANDER = "decorations/majorcommander"
+P_DECORATION_PAUSED         = "decorations/paused"
+P_DECORATION_RESUMED        = "decorations/resumed"
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -573,7 +573,7 @@ class μStrategy(μToggler):
   @classmethod
   def getDecoration(cls, name):
     if name in cls.decorationsCache: return cls.decorationsCache[name]
-    pmap = getPixmap("decoration_"+name)
+    pmap = getPixmap("decorations/"+name)
     pmap = μEffects.dropShadow(pmap,3,3,3,opacity=0.7)
     cls.decorationsCache[name] = pmap
     return pmap
