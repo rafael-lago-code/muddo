@@ -115,6 +115,7 @@ class μSettings(μToggler):
     cls.plugins   = cls.profiles[name].plugins
     cls.session   = cls.profiles[name].session
     cls.toolbar   = cls.profiles[name].toolbar
+    cls.map       = cls.profiles[name].map
 
     if cls.lastProfile in cls.profiles.keys():
       cls.profiles[cls.lastProfile].setVisible(False)

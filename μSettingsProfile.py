@@ -220,6 +220,30 @@ class dPlugins(dSection):
     super().__init__(state)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  S E C T I O N   -   M A P
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class dMap(dSection):
+  name = "map"
+  def __init__(self, state):
+    self._iconSize = QSpinBox()
+    self._iconShadow = QLineEdit("")
+    self._sourceBridge = QLineEdit("")
+    self._mapZoom = QSpinBox()
+    self._upscale = QSpinBox()
+
+    self._mapZoom.setRange(25,500)
+    self._mapZoom.setSingleStep(10)
+    self._mapZoom.setValue(100)
+    self._mapZoom.setSuffix("%")
+    self._upscale.setRange(100,500)
+    self._upscale.setSingleStep(50)
+    self._upscale.setValue(400)
+    self._upscale.setSuffix("%")
+    self._iconSize.setValue(16)
+    self._iconShadow.setEnabled(False)
+    super().__init__(state)
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  S E C T I O N   -   T O O L B A R
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dToolbar(dSection):
@@ -320,6 +344,7 @@ class μSettingsProfile(QWidget):
     self.plugins  = dPlugins(self._state)
     self.session  = dSession(self._state)
     self.toolbar  = dToolbar(self._state)
+    self.map      = dMap(self._state)
     self.confFile = self._state.fileName()
     
     self.initializeLayout()
@@ -363,10 +388,16 @@ class μSettingsProfile(QWidget):
     gtoolbar.appendRow(["Number of Rows:", self.toolbar._macroNRows, "Number of Columns:", self.toolbar._macroNCols])
     gtoolbar.appendRow([self.toolbar._macroFillRowFirst, ">", self.toolbar._macroFillMissing])
 
+    gmap = μGridLayout()
+    gmap.appendRow(["Icon Size:", self.map._iconSize, "Icon Shadow Colour:", self.map._iconShadow])
+    gmap.appendRow(["Map Zo0m:", self.map._mapZoom, "Source Bridge:", self.map._sourceBridge])
+    gmap.appendRow(["Upscale:", self.map._upscale])
+
     self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")
     self.tab.addTab(newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"]), "X && Audio")
     self.tab.addTab(newVFrame([gplugins, "__stretch__"]), "Plugins")
     self.tab.addTab(newVFrame([gtoolbar, "__stretch__"]), "Toolbar")
+    self.tab.addTab(newVFrame([gmap, "__stretch__"]), "Map")
     self.tab.setStyleSheet(f"""
       QTabWidget::pane {{ background: rgba(40, 40, 40, 120); border: none; }}
       QTabBar::tab {{

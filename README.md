@@ -22,7 +22,7 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - batch-dissolving, selling (mark as junk), storing or using of selected items
     - repair-all, sell gems also enabled
     - advanced filtering in the local UI
- - NEW: Strategy management via Milvian
+ - Strategy management via Milvian
     - basic follow (analogous to Dungeon Helper's AAF)
     - follows jump, swim, direction (but not camera pitch), target selection and ladder behaviour
     - accept quest share, party invite and ressurrection
@@ -31,6 +31,8 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - follows recall
     - splitting of roles - assigning a commander and a captain to the party
     - advanced and fully functional shortcut configuration support for all of the above
+ - NEW: Map
+    - added basic support, still working icons and refresh rate
 
 
 ## TODO
@@ -45,6 +47,8 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - enable menu macros
     - UI improvements
       - vizualize keyboard with its macros
+  - Map
+    - allow entering "commander" and "leader" in the list of sources
   - Milvian
     - Bug: if you log in a different characters with Milvian Plugin on, it doesn't update the bridge path
   - Strategy
