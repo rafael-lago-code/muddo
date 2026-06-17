@@ -21,7 +21,7 @@ import os, struct, glob, mmap
 from dataclasses import dataclass
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsItem, QVBoxLayout, QHBoxLayout, QProxyStyle, QStyle
 from PyQt6.QtGui import QPixmap, QPainter, QWheelEvent
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from helpers.μImageFactory import *
 from helpers.util import P_DEFAULT_SHM_DIR
 from helpers.μPrint import μPrint
@@ -47,6 +47,14 @@ P_PIN_TYPE_MAP: dict[int, str] = {
    10: "map/pin_airship",
    11: "map/pin_shrine_ress",
    12: "map/pin_shrine",
+   13: "map/pin_tavern",
+   14: "map/pin_door_grey",
+   15: "map/pin_door_blue",
+   16: "map/pin_door_red",
+   17: "map/pin_area_yellow",
+   18: "map/pin_area_red",
+   19: "map/pin_door_raid_yellow",
+   20: "map/pin_dimension_door",
   100: "map/pin_chalice_yellow",
   101: "map/pin_chalice_blue",
   102: "map/pin_chalice_grey",
@@ -63,6 +71,7 @@ P_PIN_TYPE_MAP: dict[int, str] = {
   202: "map/pin_token_pawn",
   203: "map/pin_collector",
   204: "map/pin_hireling_vendor",
+  205: "map/pin_spirit_binder",
   210: "map/pin_trainer",
   300: "map/pin_poi",
   301: "map/pin_breakeable",
@@ -76,6 +85,10 @@ P_PIN_TYPE_MAP: dict[int, str] = {
   309: "map/pin_control_panel",
   310: "map/pin_explorer",
   311: "map/pin_collectible",
+  312: "map/pin_ladder",
+  313: "map/pin_item_dropped",
+  314: "map/pin_collectible_taken",
+  315: "map/pin_soul_stone",
   400: "map/pin_enemy",
   401: "map/pin_friendly",
   402: "map/pin_token_other",
@@ -85,7 +98,7 @@ P_PIN_TYPE_MAP: dict[int, str] = {
   410: "map/pin_boss_reaper",
   411: "map/pin_boss_mini",
   412: "map/pin_boss",
-  413: "map/pin_bos_raids",
+  413: "map/pin_boss_raids",
   1000: "map/pin_token_red",
 }
 
@@ -289,6 +302,8 @@ class μMap(μToggler):
     self.btnPrint = μOrbSmall(icon=P_ICON_REFRESH, tooltip='Print entities for debugging')
     self.btnPlay = μOrbSmall(icon=P_ICON_PLAY, tooltip='Request Milvian to start collecting map data')
     self.btnStop = μOrbSmall(icon=P_ICON_STOP, tooltip='Request Milvian to stop collecting map data')
+    self._timer = QTimer()
+    self._timer.timeout.connect(self.refresh)
     self.btnRefresh.clicked.connect(self.refresh)
     self.btnPrint.clicked.connect(self.printEntities)
     self.btnPlay.clicked.connect(self.launchMapsDaemon)
@@ -347,7 +362,9 @@ class μMap(μToggler):
       zoom = μSettings.profile.map.mapZoom()/(100*μMap.upscale)
       self._view.scale(zoom, zoom)
     self.plotEntities()
-    self._view.centerOn(μMap.mapWidth/2, μMap.mapHeight/2)
+    mainPlayer = self.parser.players[0]
+    self._view.centerOn(mainPlayer.cx * μMap.upscale, mainPlayer.cy * μMap.upscale)
+
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def plotEntities(self):
@@ -392,7 +409,9 @@ class μMap(μToggler):
     for s in sources:
       if s in bridges:
         μMap.runningBridge = bridges[s]
-        μMap.runningBridge.drawMap(True)
+        interval = μSettings.profile.map.refreshInterval()
+        μMap.runningBridge.drawMap(True, interval)
+        self._timer.start(interval)
         return
     else:
       μPrint.warning(f"[μMap] Requested Map but none of the preferred bridges found: \"{sources}\". Edit the list in Settings")
@@ -400,5 +419,6 @@ class μMap(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def stopMapsDaemon(self):
     if not μMap.runningBridge: return
+    self._timer.stop()
     μMap.runningBridge.drawMap(False)
     μMap.runningBridge = None

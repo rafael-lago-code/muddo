@@ -231,6 +231,7 @@ class dMap(dSection):
     self._mapZoom = QSpinBox()
     self._upscale = QSpinBox()
 
+    self._refreshInterval = QSpinBox()
     self._mapZoom.setRange(25,500)
     self._mapZoom.setSingleStep(10)
     self._mapZoom.setValue(100)
@@ -241,6 +242,10 @@ class dMap(dSection):
     self._upscale.setSuffix("%")
     self._iconSize.setValue(16)
     self._iconShadow.setEnabled(False)
+    self._refreshInterval.setRange(100, 10000)
+    self._refreshInterval.setSingleStep(100)
+    self._refreshInterval.setValue(500)
+    self._refreshInterval.setSuffix("ms")
     super().__init__(state)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -391,7 +396,7 @@ class μSettingsProfile(QWidget):
     gmap = μGridLayout()
     gmap.appendRow(["Icon Size:", self.map._iconSize, "Icon Shadow Colour:", self.map._iconShadow])
     gmap.appendRow(["Map Zo0m:", self.map._mapZoom, "Source Bridge:", self.map._sourceBridge])
-    gmap.appendRow(["Upscale:", self.map._upscale])
+    gmap.appendRow(["Upscale:", self.map._upscale, "Refresh Interval:", self.map._refreshInterval])
 
     self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")
     self.tab.addTab(newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"]), "X && Audio")

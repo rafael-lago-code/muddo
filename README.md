@@ -37,7 +37,7 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
 
 ## TODO
   - Macros Daemon
-    - add number of active bridges/sets in "summary"
+    - add number of active bridges/sets in "main UI->summary"
     - add complex macros
       - allow loops, branches, conditionals, check states (e.g. cooldown) and equipment
         - example usecase: cast Flame Arrow, change gear, cast initial buffs at the beginning of each dungeon
@@ -48,24 +48,34 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - UI improvements
       - vizualize keyboard with its macros
   - Map
+    - use arrow for main character (follow heading)
+    - distinguish own pet from other pets
     - allow entering "commander" and "leader" in the list of sources
+    - auto-refresh background image when changing areas (currently needs to click "refresh")
+    - select entity when selecting it on map widget
+      - make selection persistent (it currently resets on each refresh)
+      - make selection visual with a grow around icon, instead of rectangle
   - Milvian
     - Bug: if you log in a different characters with Milvian Plugin on, it doesn't update the bridge path
+    - re-think initialization of Milvian Bridges; it should be done automatically when a character logs in
+    - needs to signal logouts/death of process somehow
+    - maybe leave signal in χDispatcher until something happens? File watcher to see new files creation? 
   - Strategy
+    - re-check pets logic (again)
+    - sometimes drag-and-drop doesn't work, debug that further
     - implement "save" reserved word for strateg() command
     - implement "followPortal"
       - already working, but needs to follow closePortal too
     - fix and test further "closeExplorerJournals"
       - OnExplorer event is for something else, explorer journals seem to have no property, they are not fired when OnSelectedObject... I have no idea how to proceed here.
-    - test Sargeant behaviour
     - Nice to have:
-      - improve "followJump"
-        - requires the user to manually set jump shortcut to "space" (even if default is space, it needs to be manually set)
       - implement "followMount"
         - currently detects but fails to send the "mount" input (cannot find the hotkey for it!)
         - implement dismount as well
         - maybe unnecessary for this framework
       - implement "followBlock" (and most importantly: UNBLOCK!!!!), "followTeleport" (items like key to estar and the D12),  "followSneak", "shareLoot"
+  - DungeonHelper:
+    - add show/hide all, now that it acts as a backend and I very rarely need to interact with it at all
   - Storage Manager
     - enable sorting
     - enable tracking inside of containers (i.e. bags)
@@ -73,10 +83,14 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - enable tracking of last known state for each container/character/bank (like Trove Plugin)
   - MiniBrowser
     - a low-feature ad-blocking minibrowser that automatically opens to the wiki page of the current quest or currently selected item
-  - Other 
+  - Revamp/merge accounts/processmanager
+    - move accounts into settings?
+    - accounts selector in a dropdown menu in "summary" in the main UI?
     - aProcessItems refactor?
       - use a QTableWidget or QListWidget instead?
     - use keyring to store passwords instead of plain text format
+  - Other 
+    - serverInfo needs to be collected in the background instead of blocking init
     - test the launcher with Wine (currently tested with Steam Proton)
     - add cmd line option for verbosity
     - maybe add support for downloading/installing DungeonHelper.exe and the game itself

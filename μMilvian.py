@@ -381,8 +381,8 @@ class μMilvian():
   def debug(self, subcmd: str = "selected") -> μMilvianPacket:
     return self.send(μMilvianPacket(packetCommand.debug, self, cPacker.pack(subcmd)))
 
-  def drawMap(self, enable: bool) -> μMilvianPacket:
-    return self.send(μMilvianPacket(packetCommand.drawMap, self, struct.pack('<?', enable)))
+  def drawMap(self, enable: bool, intervalMs: int = 500) -> μMilvianPacket:
+    return self.send(μMilvianPacket(packetCommand.drawMap, self, struct.pack('<?I', enable, intervalMs)))
 
   def inputAction(self, cmd: str, timeout: int = 10000) -> μMilvianPacket:
     inData = μMilvian.inputActions[cmd.lower()]
