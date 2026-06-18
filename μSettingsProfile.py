@@ -402,7 +402,7 @@ class μSettingsProfile(QWidget):
 
     gmap = μGridLayout()
     gmap.appendRow(["Icon Size:", self.map._iconSize, "Icon Shadow Colour:", self.map._iconShadow])
-    gmap.appendRow(["Map Zo0m:", self.map._mapZoom, "Source Bridge:", self.map._sourceBridge])
+    gmap.appendRow(["Map Zoom:", self.map._mapZoom, "Source Bridge:", self.map._sourceBridge])
     gmap.appendRow(["Upscale:", self.map._upscale, "Refresh Interval:", self.map._refreshInterval])
 
     self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")

@@ -18,7 +18,6 @@
 #
 #
 import os, struct, glob, mmap
-from dataclasses import dataclass
 from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsItem, QVBoxLayout, QHBoxLayout, QProxyStyle, QStyle
 from PyQt6.QtGui import QPixmap, QPainter, QWheelEvent
 from PyQt6.QtCore import Qt, QTimer
@@ -57,6 +56,7 @@ P_PIN_TYPE_MAP: dict[int, str] = {
    20: "map/pin_dimension_door",
    21: "map/pin_main",
    22: "map/pin_target",
+   23: "map/pin_distant_party",
   100: "map/pin_chalice_yellow",
   101: "map/pin_chalice_blue",
   102: "map/pin_chalice_grey",
@@ -121,46 +121,67 @@ assert _ENTITY.size == 164
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   🮿  M A P   E N T I T Y
+#   🮿  M A P   P I N
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-@dataclass
-class μMapPlayer:
-  id      : int
-  cx      : float
-  cy      : float
-  heading : float
-  name    : str
+class μMapPin(QGraphicsPixmapItem):
+  cache: dict[str, QPixmap] = {}
 
+  def __init__(self, id: int, cx: float, cy: float, name: str, isPlayer: bool,
+               isMainPlayer: bool = False, pinType: int = 0, heading: float = 0.0,
+               weenieType: int = 0, mapNoteLevel: int = 0, mapNoteType: int = 0, mapNoteStr: str = ''):
+    super().__init__()
+    self.id           = id
+    self.cx           = cx
+    self.cy           = cy
+    self.name         = name
+    self.isPlayer     = isPlayer
+    self.isMainPlayer = isMainPlayer
+    self.pinType      = pinType
+    self.heading      = heading
+    self.weenieType   = weenieType
+    self.mapNoteLevel = mapNoteLevel
+    self.mapNoteType  = mapNoteType
+    self.mapNoteStr   = mapNoteStr
+    self.setup()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def pinTypeName(self) -> str:
+    if self.isMainPlayer: return "map/pin_main"
+    if self.isPlayer:     return "map/pin_token_pet" if hex(self.id).startswith("0x3") else "map/pin_token_player"
+    return P_PIN_TYPE_MAP.get(self.pinType, "map/pin_token_red")
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setup(self):
+    name = self.pinTypeName()
+    if name not in μMapPin.cache:
+      μMapPin.cache[name] = getPixmap(name).scaled(
+        μMap.pinSize, μMap.pinSize,
+        Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+    self.setPixmap(μMapPin.cache[name])
+    self.setToolTip(self.name)
+    self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
+    self.setOffset(-μMap.pinSize / 2, -μMap.pinSize / 2)
+    self.setZValue(10 if self.isMainPlayer else 3 if self.isPlayer else 2 if self.pinType in P_PIN_TYPE_MAP else 1)
+    self.setCursor(Qt.CursorShape.PointingHandCursor)
+    if self.isMainPlayer: self.setRotation(self.heading)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __repr__(self):
-    return f'μMapPlayer({self.id:#x} "{self.name}" px=({self.cx:.1f},{self.cy:.1f}) h={self.heading:.1f}°)'
-
-@dataclass
-class μMapEntity:
-  id           : int
-  cx           : float
-  cy           : float
-  weenieType   : int
-  mapNoteLevel : int   # int32
-  mapNoteType  : int   # int64
-  mapNoteStr   : str
-  name         : str
-  pinType      : int
-
-  def __repr__(self):
-    return f'μMapEntity({self.id:#x} "{self.name}" pin={self.pinType} wt={self.weenieType:#x} px=({self.cx:.1f},{self.cy:.1f}) lvl={self.mapNoteLevel} type={self.mapNoteType:#x} str="{self.mapNoteStr}")'
+    kind = "player" if self.isPlayer else "entity"
+    return f'μMapPin({self.id:#x} {kind} "{self.name}" pin={self.pinType} wt={self.weenieType:#x} px=({self.cx:.1f},{self.cy:.1f}))'
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   🮿  M A P
+#   🮿  M A P   P A R S E R
 #
 #       Parses the 'map' binary file written by μMap.dumpEntities() on the C# side.
+#       Updates the pins dict in-place: creates new μMapPin for new IDs, updates cx/cy for existing.
+#       Returns (ok, seen_ids).
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMapParser:
   def __init__(self):
-    self.map_image_id : int   = 0
-    self.ext          : str   = ''
-    self.players      : list[μMapPlayer] = []
-    self.entities     : list[μMapEntity] = []
+    self.map_image_id : int = 0
+    self.ext          : str = ''
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
@@ -168,30 +189,37 @@ class μMapParser:
   def imagePath(self) -> str: return f"{μMapParser.dataPath()}{self.ext}"
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def load(self, path: str = None) -> bool:
+  def load(self, pins: dict, path: str = None) -> tuple[bool, set]:
     path = path or μMapParser.dataPath()
     if not os.path.exists(path):
-      return False
+      return False, set()
     mm = None
     try:
       with open(path, 'rb') as f:
         mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
       data = mm
       if len(data) < _HEADER.size:
-        return False
+        return False, set()
       (map_image_id, ext_b, player_count) = _HEADER.unpack_from(data, 0)
       self.map_image_id = map_image_id
-      self.ext          = ext_b.rstrip(b'\x00').decode('ascii', errors='replace')
-      self.players  = []
-      self.entities = []
+      self.ext = ext_b.rstrip(b'\x00').decode('ascii', errors='replace')
+      seen: set[int] = set()
       off = _HEADER.size
-      for _ in range(player_count):
-        if off + _PLAYER.size > len(data): return True
+      for i in range(player_count):
+        if off + _PLAYER.size > len(data): break
         (pid, cx, cy, heading, name_b) = _PLAYER.unpack_from(data, off)
         name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
-        self.players.append(μMapPlayer(id=pid, cx=cx, cy=cy, heading=heading, name=name))
+        if pid in pins:
+          p = pins[pid]
+          p.cx, p.cy = cx, cy
+          if i == 0 and p.heading != heading:
+            p.heading = heading
+            p.setRotation(heading)
+        else:
+          pins[pid] = μMapPin(pid, cx, cy, name, isPlayer=True, isMainPlayer=(i == 0), heading=heading)
+        seen.add(pid)
         off += _PLAYER.size
-      if off + 4 > len(data): return True
+      if off + 4 > len(data): return True, seen
       (entity_count,) = struct.unpack_from('<I', data, off)
       off += 4
       for _ in range(entity_count):
@@ -199,50 +227,19 @@ class μMapParser:
         (eid, cx, cy, weenie_type, note_level, note_type, note_str_b, name_b, pin_type) = _ENTITY.unpack_from(data, off)
         name     = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
         note_str = note_str_b.rstrip(b'\x00').decode('utf-8', errors='replace')
-        self.entities.append(μMapEntity(id=eid, cx=cx, cy=cy, weenieType=weenie_type,
-          mapNoteLevel=note_level, mapNoteType=note_type, mapNoteStr=note_str, name=name, pinType=pin_type))
+        if eid in pins:
+          pins[eid].cx, pins[eid].cy = cx, cy
+        else:
+          pins[eid] = μMapPin(eid, cx, cy, name, isPlayer=False, pinType=pin_type,
+            weenieType=weenie_type, mapNoteLevel=note_level, mapNoteType=note_type, mapNoteStr=note_str)
+        seen.add(eid)
         off += _ENTITY.size
-      return True
+      return True, seen
     except Exception as e:
       μPrint.error(f'[μMap.load] {e}')
-      return False
+      return False, set()
     finally:
       if mm is not None: mm.close()
-
-
-# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   🮿  M A P   P I N
-# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μMapPinItem(QGraphicsPixmapItem):
-  cache: dict[str, QPixmap] = {}
-  
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @classmethod
-  def getPin(cls, data: μMapPlayer | μMapEntity) -> QPixmap:
-    pinType = μMapPinItem.getPinType(data)
-    if pinType not in cls.cache:
-      cls.cache[pinType] = getPixmap(pinType).scaled(μMap.pinSize, μMap.pinSize, Qt.AspectRatioMode.KeepAspectRatio,
-                                                        Qt.TransformationMode.SmoothTransformation)
-    return cls.cache[pinType]
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def __init__(self, data : μMapPlayer | μMapEntity):
-    super().__init__(μMapPinItem.getPin(data))
-    self.setToolTip(data.name)
-    self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
-    self.setOffset(-μMap.pinSize / 2, -μMap.pinSize / 2)
-    if isinstance(data, μMapPlayer):     z = 3
-    elif data.pinType in P_PIN_TYPE_MAP: z = 2
-    else:                                z = 1
-    self.setZValue(z)
-    self.setCursor(Qt.CursorShape.PointingHandCursor)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def getPinType(data):
-    if isinstance(data, μMapPlayer):
-      return "map/pin_token_pet" if hex(data.id).startswith("0x3") else "map/pin_token_player"
-    return P_PIN_TYPE_MAP.get(data.pinType, "map/pin_token_red")
 
 
 class _FastTooltipStyle(QProxyStyle):
@@ -291,7 +288,7 @@ class μMap(μToggler):
     super().__init__("Map", P_ICON_MAP)
     self.toggler.setToolTip("Show Map")
     self.parser = μMapParser()
-    self.pinItems: dict[int, μMapPinItem] = {}
+    self.pins: dict[int, μMapPin] = {}
     self.setMinimumSize(768, 640)
 
     self._scene = QGraphicsScene()
@@ -328,7 +325,7 @@ class μMap(μToggler):
   @classmethod
   def setPinSize(cls, size):
     cls.pinSize = size*cls.upscale
-    μMapPinItem.cache.clear()
+    μMapPin.cache.clear()
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setUpscale(cls, size): cls.upscale = size
@@ -340,14 +337,28 @@ class μMap(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clear(self, clearCache=False):
-    for item in self.pinItems.values(): self._scene.removeItem(item)
-    self.pinItems.clear()
-    if clearCache: μMapPinItem.cache.clear()
-  
+    for item in self.pins.values(): self._scene.removeItem(item)
+    self.pins.clear()
+    if clearCache: μMapPin.cache.clear()
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refresh(self):
-    self.clear()
-    self.parser.load()
+    oldPinSize = μMap.pinSize
+    μMap.setPinSize(μSettings.profile.map.iconSize())
+    ok, seen = self.parser.load(self.pins)
+    if not ok: return
+
+    if μMap.pinSize != oldPinSize:
+      for pin in self.pins.values(): pin.setup()
+
+    for gone_id in set(self.pins) - seen:
+      self._scene.removeItem(self.pins.pop(gone_id))
+    for pid in seen:
+      pin = self.pins[pid]
+      pin.setPos(pin.cx * μMap.upscale, pin.cy * μMap.upscale)
+      if pin.scene() is None:
+        self._scene.addItem(pin)
+
     path = self.parser.imagePath()
     pix = QPixmap(path)
     if pix.isNull():
@@ -363,57 +374,16 @@ class μMap(μToggler):
       self._view.resetTransform()
       zoom = μSettings.profile.map.mapZoom()/(100*μMap.upscale)
       self._view.scale(zoom, zoom)
-    self.plotEntities()
-    mainPlayer = self.parser.players[0]
-    self._view.centerOn(mainPlayer.cx * μMap.upscale, mainPlayer.cy * μMap.upscale)
 
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def plotEntities(self):
-    seen: set[int] = set()
-    μMap.setPinSize(μSettings.profile.map.iconSize())
-    for p in self.parser.players[1:]:
-      self.plotPin(p)
-      seen.add(p.id)
-    for e in self.parser.entities:
-      self.plotPin(e)
-      seen.add(e.id)
-
-    self.plotMainPin(self.parser.players[0])
-    seen.add(self.parser.players[0].id)
-    
-    dead = set(self.pinItems) - seen
-    for pid in dead:
-      self._scene.removeItem(self.pinItems.pop(pid))
-  
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def plotPin(self, data : μMapPlayer | μMapEntity):
-    if data.id in self.pinItems:
-      self.pinItems[data.id].setPos(data.cx * μMap.upscale, data.cy * μMap.upscale)
-    else:
-      item = μMapPinItem(data)
-      item.setPos(data.cx * μMap.upscale, data.cy * μMap.upscale)
-      self._scene.addItem(item)
-      self.pinItems[data.id] = item
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def plotMainPin(self, data : μMapPlayer):
-    if data.id in self.pinItems:
-      self.pinItems[data.id].setPos(data.cx * μMap.upscale, data.cy * μMap.upscale)
-    else:
-      item = μMapPinItem(data)
-      item.setPos(data.cx * μMap.upscale, data.cy * μMap.upscale)
-      self._scene.addItem(item)
-      self.pinItems[data.id] = item
+    p = next(pin for pin in self.pins.values() if pin.isMainPlayer)
+    self._view.centerOn(p.cx * μMap.upscale, p.cy * μMap.upscale)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def printEntities(self):
-    self.parser.load()
-    μPrint.info(f'[μMap] imageId={self.parser.map_image_id} ext={self.parser.ext!r} players={len(self.parser.players)} entities={len(self.parser.entities)}')
-    for p in self.parser.players:
-      μPrint.info(repr(p))
-    for e in self.parser.entities:
-      μPrint.info(repr(e))
+    self.parser.load(self.pins)
+    μPrint.info(f'[μMap] imageId={self.parser.map_image_id} ext={self.parser.ext!r} pins={len(self.pins)}')
+    for pin in self.pins.values():
+      μPrint.info(repr(pin))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   #  TODO: add "commander" and "leader" to list of sources
