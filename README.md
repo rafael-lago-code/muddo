@@ -49,6 +49,7 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - vizualize keyboard with its macros
   - Map
     - use arrow for main character (follow heading)
+    - use arrow for party members faraway & selected objects faraway
     - currently only detects entities nearby; should be possible to detect fixed entities (like all vendors in a public area) but I don't know how to extract that kind of info yet
     - figure out distinction between:
       - normal monsters vs bosses
@@ -67,7 +68,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - needs to signal logouts/death of process somehow
     - maybe leave signal in χDispatcher until something happens? File watcher to see new files creation? 
   - Strategy
-    - re-check pets logic (again)
     - sometimes drag-and-drop doesn't work, debug that further
     - implement "save" reserved word for strateg() command
     - implement "followPortal"
@@ -80,8 +80,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
         - implement dismount as well
         - maybe unnecessary for this framework
       - implement "followBlock" (and most importantly: UNBLOCK!!!!), "followTeleport" (items like key to estar and the D12),  "followSneak", "shareLoot"
-  - DungeonHelper:
-    - add show/hide all, now that it acts as a backend and I very rarely need to interact with it at all
   - Storage Manager
     - enable sorting
     - enable tracking inside of containers (i.e. bags)

@@ -372,18 +372,32 @@ class μMap(μToggler):
   def plotEntities(self):
     seen: set[int] = set()
     μMap.setPinSize(μSettings.profile.map.iconSize())
-    for p in self.parser.players:
+    for p in self.parser.players[1:]:
       self.plotPin(p)
       seen.add(p.id)
     for e in self.parser.entities:
       self.plotPin(e)
       seen.add(e.id)
+
+    self.plotMainPin(self.parser.players[0])
+    seen.add(self.parser.players[0].id)
+    
     dead = set(self.pinItems) - seen
     for pid in dead:
       self._scene.removeItem(self.pinItems.pop(pid))
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def plotPin(self, data : μMapPlayer | μMapEntity):
+    if data.id in self.pinItems:
+      self.pinItems[data.id].setPos(data.cx * μMap.upscale, data.cy * μMap.upscale)
+    else:
+      item = μMapPinItem(data)
+      item.setPos(data.cx * μMap.upscale, data.cy * μMap.upscale)
+      self._scene.addItem(item)
+      self.pinItems[data.id] = item
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def plotMainPin(self, data : μMapPlayer):
     if data.id in self.pinItems:
       self.pinItems[data.id].setPos(data.cx * μMap.upscale, data.cy * μMap.upscale)
     else:
