@@ -117,7 +117,7 @@ class dLauncher(dSection):
     self.lblBackendPath.setFixedWidth(160)
     self._language.setEnabled(False)
     self._backend.currentIndexChanged.connect(self.toggleBackend)
-    self.toggleBackend()
+    # self.toggleBackend()
     super().__init__(state)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---  
@@ -208,6 +208,13 @@ class dPlugins(dSection):
     self._strategyFrameSize = QSpinBox()
     self._strategyFrameSize.setValue(36) # default values
     self._strategyPath.setText(P_DEFAULT_CONFIGDIR+os.sep+"strategy/") # default values
+    
+    # This would be handy but very difficult to implement, specially the overlay part, since we cannot know
+    # when they spawn and I will NOT create a daemon just for that
+    # self._hideDHUI         = QComboBox()
+    # self._hideDHOverlay    = QComboBox()
+    # self._hideDHUI.addItems(["Remember", "Always borderless", "Never borderless"])
+    # self._hideDHOverlay.addItems(["Remember", "Always borderless", "Never borderless"])
 
     self._useMilvian.setEnabled(False)
     self._milvianSHMPath.setEnabled(False)

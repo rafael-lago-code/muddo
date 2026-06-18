@@ -55,6 +55,8 @@ P_PIN_TYPE_MAP: dict[int, str] = {
    18: "map/pin_area_red",
    19: "map/pin_door_raid_yellow",
    20: "map/pin_dimension_door",
+   21: "map/pin_main",
+   22: "map/pin_target",
   100: "map/pin_chalice_yellow",
   101: "map/pin_chalice_blue",
   102: "map/pin_chalice_grey",

@@ -51,17 +51,21 @@ class μDungeonHelper(aProcessItem):
                     tooltip="Launches Dungeon Helper (it if is installed); activates on all instances" \
                      " of the game for as long as it runs.<br><b>Ctrl+Click to purge any instances and restart Dungeon Helper.<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
-    self.actionToggle  = self.orb.menu.addAction("Launch DungeonHelper")
-    self.actionRestart = self.orb.menu.addAction("Restart DungeonHelper")
-    self.actionKill    = self.orb.menu.addAction("Kill DungeonHelper")
-    self.actionConf    = self.orb.menu.addAction("Show/Hide setting UI")
+    self.actionToggle       = self.orb.menu.addAction("Launch DungeonHelper")
+    self.actionRestart      = self.orb.menu.addAction("Restart DungeonHelper")
+    self.actionKill         = self.orb.menu.addAction("Kill DungeonHelper")
+    self.actionToggleUI     = self.orb.menu.addAction("Show/Hide UI")
+    self.actionToggleOv     = self.orb.menu.addAction("Show/Hide Overlay")
+    self.actionToggleUIov   = self.orb.menu.addAction("Show/Hide UI + Overlay")
 
     self.orb.clicked.connect(self.toggle)
     self.orb.ctrlClicked.connect( lambda : self.restart(purge=True))
     self.actionToggle.triggered.connect(self.toggle)
     self.actionRestart.triggered.connect(self.restart)
     self.actionKill.triggered.connect(self.kill)
-    self.actionConf.triggered.connect(lambda : main.settings.toggle())
+    self.actionToggleUI.triggered.connect(lambda: self.toggleUI())
+    self.actionToggleOv.triggered.connect(lambda: self.toggleOverlay())
+    self.actionToggleUIov.triggered.connect(lambda: self.toggleUIOverlay())
 
     self.sigRunning.connect(self.watchPID)
     self.sigGotPID.connect(self.watchWinID)
@@ -176,6 +180,25 @@ class μDungeonHelper(aProcessItem):
     baseExec = os.path.basename(μSettings.plugins.dhExec())
     χTop.terminateAll(baseExec)
     self.clear()
+  
+  #----------------------------------------------------------------------------------------------------------
+  def toggleUI(self, val=None):
+    winIDs = χHelper.getWinIDByName("dungeon helper")
+    for w in winIDs: χHelper.iconify(w, val)
+    winIDs = χHelper.getWinIDByName("wine system tray")
+    for w in winIDs: χHelper.iconify(w, val)
+
+  #----------------------------------------------------------------------------------------------------------
+  def toggleOverlay(self, val=None):
+    winIDs = χHelper.getWinIDByName("dungeon helper overlay")
+    for w in winIDs: χHelper.iconify(w, val)
+
+  #----------------------------------------------------------------------------------------------------------
+  def toggleUIOverlay(self, val=None):
+    winIDs = χHelper.getWinIDByName("dungeon helper*")
+    for w in winIDs: χHelper.iconify(w, val)
+    winIDs = χHelper.getWinIDByName("wine system tray")
+    for w in winIDs: χHelper.iconify(w, val)
   
   #----------------------------------------------------------------------------------------------------------
   def clear(self, kill=False):

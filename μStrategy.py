@@ -80,19 +80,13 @@ class μPartyNode(μNode):
   _DIAG = 1.0 / math.sqrt(2)
 
   @staticmethod
-  def _db():
-    from μMilvian import μMilvianMeta
-    return μMilvianMeta.partyPreferences
-
-  @staticmethod
-  def dataGet(name: str) -> dict:
-    return μPartyNode._db().get(name, {})
+  def dataGet(name: str) -> μDict:
+    return μDict(μMilvianMeta.partyPreferences.get(name, {}))
 
   @staticmethod
   def dataSet(name: str, field: str, value):
-    db = μPartyNode._db()
-    db.set(f"{name}/{field}", value)
-    db.save()
+    μMilvianMeta.partyPreferences.set(f"{name}/{field}", value)
+    μMilvianMeta.partyPreferences.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, key: str, parent=None, bg : QPixmap = None, allowOutgoing: bool = True):
@@ -100,7 +94,7 @@ class μPartyNode(μNode):
     self.key   = key
     self.owner = None
     self.setLabel()
-    entry = μDict(μPartyNode.dataGet(self.id))
+    entry = μPartyNode.dataGet(self.key)
     self.label = entry['nickname'] or self.label
     icon = entry['icon_path']
     self.decorations: list[tuple[QPixmap, str]] = []
@@ -110,9 +104,10 @@ class μPartyNode(μNode):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setLabel(self):
     if ":" in self.key:  # pet — key is "owner:id"
-      self.id    = '#' + self.key.split(':')[1].lower()
       self.owner = self.key.split(':')[0].lower()
       self.label = self.key
+      self.id    = '#' + self.key.split(':')[1].lower()
+      self.key   = self.owner+":pet"
     else:
       self.id    = self.key.lower()
       self.owner = None
@@ -176,7 +171,7 @@ class μPartyNodePanel(QWidget):
     self.nickEdit.setPlaceholderText("Nickname")
 
     self.btnSave     = μOrbSmall(icon=P_ICON_SAVE,  tooltip="Save")
-    self.btnEditIcon = μOrbSmall(icon=P_ICON_IMAGE,  tooltip="Edit Image")
+    self.btnEditIcon = μOrbSmall(icon=P_ICON_IMAGE, tooltip="Edit Image")
     self.btnClose    = μOrbSmall(icon=P_ICON_CLOSE, tooltip="Close")
 
     self.btnSave.clicked.connect(self.save)
@@ -238,11 +233,11 @@ class μPartyNodePanel(QWidget):
     if not nickChanged and not iconChanged: return
     if nickChanged:
       nick = self.nickEdit.text().strip() or self._originalNick
-      μPartyNode.dataSet(self._node.id, 'nickname', nick)
+      μPartyNode.dataSet(self._node.key, 'nickname', nick)
       self._node.label   = nick
       self._originalNick = nick
     if iconChanged:
-      μPartyNode.dataSet(self._node.id, 'icon_path', self._iconPath)
+      μPartyNode.dataSet(self._node.key, 'icon_path', self._iconPath)
       self._node.setBg(QPixmap(self._iconPath))
     if μStrategy._widget: μStrategy._widget.board.update()
 

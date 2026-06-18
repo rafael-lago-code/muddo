@@ -17,10 +17,13 @@
 from Xlib import X, display
 import Xlib.error
 import Xlib.protocol.event
+import Xlib.Xutil
 import time, re, threading, json, subprocess
 from helpers.tStoppableThread import tStoppableThread
 from helpers.μPrint import μPrint
 from helpers.χDispatcher import χDispatcher
+from helpers.μStrings import μString
+import os
 
 P_DEFAULT_SLEEP = 0.05
 P_DEFAULT_KEYSYM = '/usr/include/X11/keysymdef.h'
@@ -339,6 +342,49 @@ class χHelper():
       return None
     finally:
       disp.close()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def getWinIDByName(cls, name: str) -> list:
+    clientList = cls.root.get_full_property(cls.netClientList, X.AnyPropertyType)
+    if not clientList: return []
+    results = []
+    for winID in clientList.value:
+      win = cls.disp.create_resource_object('window', winID)
+      try:
+        prop = win.get_full_property(cls.netWMName, X.AnyPropertyType)
+        title = μString(prop.value.decode('utf-8')) if prop else None
+        if title is None:
+          prop = win.get_full_property(cls.WMName, X.AnyPropertyType)
+          title = μString(prop.value.decode('utf-8')) if prop else None
+        if title and title == name:
+          results.append(winID)
+      except:
+        continue
+    return results
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def iconify(cls, winID, val: bool = None) -> None:
+    win = cls.disp.create_resource_object('window', winID)
+    if val is None:
+      val = win.get_attributes().map_state == X.IsViewable
+    if val:
+      netChangeState = cls.disp.intern_atom('WM_CHANGE_STATE')
+      event = Xlib.protocol.event.ClientMessage(
+        window      = win,
+        client_type = netChangeState,
+        data        = (32, [Xlib.Xutil.IconicState, 0, 0, 0, 0])
+      )
+      cls.root.send_event(event, event_mask=X.SubstructureNotifyMask | X.SubstructureRedirectMask)
+    else:
+      event = Xlib.protocol.event.ClientMessage(
+        window      = win,
+        client_type = cls.netActiveWindow,
+        data        = (32, [1, X.CurrentTime, 0, 0, 0])
+      )
+      cls.root.send_event(event, event_mask=X.SubstructureNotifyMask | X.SubstructureRedirectMask)
+    cls.disp.sync()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
