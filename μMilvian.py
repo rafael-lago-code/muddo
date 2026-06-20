@@ -104,7 +104,7 @@ def parseList(bridge, data) -> μMilvianPacket:
 #   🮿  P A R S E   O R D E R E D   A C T O R S
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def _parseOrdered(cmd: str, bridge) -> μMilvianPacket:
-  # Parses an ordered(...) string into an orderedActors packet. Does not send.
+  # Parses an ordered(...) string into an ordered() packet. Does not send.
   fields = [s.strip('"') for s in splitGroups(cmd.strip()[8:-1], ',')]
   if len(fields) < 3:
     μPrint.error(f"[μMilvian] malformed ordered() command: {cmd!r}")
@@ -162,7 +162,7 @@ def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPack
 #   🮿  B U I L D   O R D E R E D
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 def _buildOrdered(bridge, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
-  # Builds an orderedActors packet from parsed arguments. Does not send.
+  # Builds an ordered() packet from parsed arguments. Does not send.
   if isinstance(actors,  str): actors  = [a.strip() for a in actors.split(',')  if a.strip()]
   if isinstance(targets, str): targets = [t.strip() for t in targets.split(',') if t.strip()]
 
@@ -174,7 +174,7 @@ def _buildOrdered(bridge, actors, targets, action, filterActors="", filterTarget
   inData += cPacker.pack(filterActors)
   inData += cPacker.pack(filterTargets)
   inData += cPacker.pack(action)
-  return μMilvianPacket(packetCommand.orderedActors, bridge, inData)
+  return μMilvianPacket(packetCommand.ordered(), bridge, inData)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  M I L V I A N 
@@ -381,6 +381,9 @@ class μMilvian():
   def debug(self, subcmd: str = "selected") -> μMilvianPacket:
     return self.send(μMilvianPacket(packetCommand.debug, self, cPacker.pack(subcmd)))
 
+  def selectEntity(self, nameOrId) -> μMilvianPacket:
+    return self.send(μMilvianPacket(packetCommand.selectEntity, self, cPacker.packString(str(nameOrId))))
+
   def drawMap(self, enable: bool, intervalMs: int = 500) -> μMilvianPacket:
     return self.send(μMilvianPacket(packetCommand.drawMap, self, struct.pack('<?I', enable, intervalMs)))
 
@@ -402,7 +405,7 @@ class μMilvian():
     cmd = command if isinstance(command, packetCommand) else packetCommand[str(command)]
     return self.send(μMilvianPacket(cmd, self))
 
-  def orderedActors(self, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
+  def ordered(self, actors, targets, action, filterActors="", filterTargets="") -> μMilvianPacket:
     return self.send(_buildOrdered(self, actors, targets, action, filterActors, filterTargets))
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

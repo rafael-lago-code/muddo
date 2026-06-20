@@ -100,13 +100,13 @@ def newVLayout(objects : list, font=None) -> QVBoxLayout:
   return stackToLayout(QVBoxLayout(), objects, font)
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newHFrame(objects : list, font=None) -> QHBoxLayout:
+def newHFrame(objects : list, font=None) -> QFrame:
   f = QFrame()
   f.setLayout(stackToLayout(QHBoxLayout(), objects, font))
   return f
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def newVFrame(objects : list, font=None) -> QHBoxLayout:
+def newVFrame(objects : list, font=None) -> QFrame:
   f = QFrame()
   f.setLayout(stackToLayout(QVBoxLayout(), objects, font))
   return f

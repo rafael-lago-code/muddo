@@ -142,6 +142,7 @@ class χHelper():
   WMName = None
   utf8String = None
   netWMDesktop = None
+  _lock = threading.RLock()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -165,12 +166,12 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def keySym2Code(cls, keysym : int) -> int:
-    return cls.disp.keysym_to_keycode(keysym)
+    with cls._lock: return cls.disp.keysym_to_keycode(keysym)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getKeyCode(cls, key : str) -> int:
-    return cls.disp.keysym_to_keycode(cls.KEYSYM[key])
+    with cls._lock: return cls.disp.keysym_to_keycode(cls.KEYSYM[key])
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -207,21 +208,22 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWinID(cls, pid) -> list:
-    pid = int(pid)
-    winIDList = []
-    clientList = cls.root.get_full_property(cls.netClientList, X.AnyPropertyType)
-    if not clientList:
-      μPrint.error("[XHelper.tryWinID] no windows founds at all!")
-      return None
-    for winID in clientList.value:
-      win = cls.disp.create_resource_object('window', winID)
-      try:
-        pid_prop = win.get_full_property(cls.netWMPID, X.AnyPropertyType)
-        if pid_prop and pid_prop.value and pid_prop.value[0] == pid:
-          winIDList.append(winID)
-      except:
-        continue
-    return winIDList if winIDList else None
+    with cls._lock:
+      pid = int(pid)
+      winIDList = []
+      clientList = cls.root.get_full_property(cls.netClientList, X.AnyPropertyType)
+      if not clientList:
+        μPrint.error("[XHelper.tryWinID] no windows founds at all!")
+        return None
+      for winID in clientList.value:
+        win = cls.disp.create_resource_object('window', winID)
+        try:
+          pid_prop = win.get_full_property(cls.netWMPID, X.AnyPropertyType)
+          if pid_prop and pid_prop.value and pid_prop.value[0] == pid:
+            winIDList.append(winID)
+        except:
+          continue
+      return winIDList if winIDList else None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -253,12 +255,14 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def remapWindow(cls, winID):
-    win = cls.disp.create_resource_object('window', winID)
-    win.unmap()
-    cls.disp.flush()
+    with cls._lock:
+      win = cls.disp.create_resource_object('window', winID)
+      win.unmap()
+      cls.disp.flush()
     time.sleep(0.05)
-    win.map()
-    cls.disp.flush()
+    with cls._lock:
+      win.map()
+      cls.disp.flush()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -287,42 +291,45 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setWindowHint(cls, winID, flags=2, functions=0, decoration=0, input_mode=0):
-    window = cls.disp.create_resource_object('window', winID)
-    motif_wm_hints = cls.disp.intern_atom('_MOTIF_WM_HINTS')
-    hints_data = [ flags, functions, decoration, input_mode, 0 ]
-    window.change_property(motif_wm_hints, motif_wm_hints, 32, hints_data, mode=X.PropModeReplace)
-    cls.disp.flush()
+    with cls._lock:
+      window = cls.disp.create_resource_object('window', winID)
+      motif_wm_hints = cls.disp.intern_atom('_MOTIF_WM_HINTS')
+      hints_data = [ flags, functions, decoration, input_mode, 0 ]
+      window.change_property(motif_wm_hints, motif_wm_hints, 32, hints_data, mode=X.PropModeReplace)
+      cls.disp.flush()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWindowHint(cls, winID) -> dict:
-    window = cls.disp.create_resource_object('window', winID)
-    motif_wm_hints = cls.disp.intern_atom('_MOTIF_WM_HINTS')
-    prop = window.get_full_property(motif_wm_hints, X.AnyPropertyType)
-    if prop and prop.value:
-      values = prop.value
-      if len(values) >= 5:
-          return {
-              'flags': values[0],
-              'functions': values[1],
-              'decorations': values[2],
-              'input_mode': values[3],
-              'status': values[4]
-          }
+    with cls._lock:
+      window = cls.disp.create_resource_object('window', winID)
+      motif_wm_hints = cls.disp.intern_atom('_MOTIF_WM_HINTS')
+      prop = window.get_full_property(motif_wm_hints, X.AnyPropertyType)
+      if prop and prop.value:
+        values = prop.value
+        if len(values) >= 5:
+            return {
+                'flags': values[0],
+                'functions': values[1],
+                'decorations': values[2],
+                'input_mode': values[3],
+                'status': values[4]
+            }
+        else:
+          print(f"Warning: MOTIF hints has {len(values)} values (expected 5)")
+          return {'raw': values}
       else:
-        print(f"Warning: MOTIF hints has {len(values)} values (expected 5)")
-        return {'raw': values}
-    else:
-      μPrint.error(f"[xHelper.getWindowHint] window {winID} has no MOTIF WM hints property")
-      return None
+        μPrint.error(f"[xHelper.getWindowHint] window {winID} has no MOTIF WM hints property")
+        return None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def focusWindow(cls, winID) -> None:
-    win = cls.disp.create_resource_object('window', winID)
-    win.set_input_focus(X.RevertToParent, X.CurrentTime)
-    win.map()
-    cls.disp.sync()
+    with cls._lock:
+      win = cls.disp.create_resource_object('window', winID)
+      win.set_input_focus(X.RevertToParent, X.CurrentTime)
+      win.map()
+      cls.disp.sync()
     time.sleep(P_DEFAULT_SLEEP)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -346,45 +353,47 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWinIDByName(cls, name: str) -> list:
-    clientList = cls.root.get_full_property(cls.netClientList, X.AnyPropertyType)
-    if not clientList: return []
-    results = []
-    for winID in clientList.value:
-      win = cls.disp.create_resource_object('window', winID)
-      try:
-        prop = win.get_full_property(cls.netWMName, X.AnyPropertyType)
-        title = μString(prop.value.decode('utf-8')) if prop else None
-        if title is None:
-          prop = win.get_full_property(cls.WMName, X.AnyPropertyType)
+    with cls._lock:
+      clientList = cls.root.get_full_property(cls.netClientList, X.AnyPropertyType)
+      if not clientList: return []
+      results = []
+      for winID in clientList.value:
+        win = cls.disp.create_resource_object('window', winID)
+        try:
+          prop = win.get_full_property(cls.netWMName, X.AnyPropertyType)
           title = μString(prop.value.decode('utf-8')) if prop else None
-        if title and title == name:
-          results.append(winID)
-      except:
-        continue
-    return results
+          if title is None:
+            prop = win.get_full_property(cls.WMName, X.AnyPropertyType)
+            title = μString(prop.value.decode('utf-8')) if prop else None
+          if title and title == name:
+            results.append(winID)
+        except:
+          continue
+      return results
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def iconify(cls, winID, val: bool = None) -> None:
-    win = cls.disp.create_resource_object('window', winID)
-    if val is None:
-      val = win.get_attributes().map_state == X.IsViewable
-    if val:
-      netChangeState = cls.disp.intern_atom('WM_CHANGE_STATE')
-      event = Xlib.protocol.event.ClientMessage(
-        window      = win,
-        client_type = netChangeState,
-        data        = (32, [Xlib.Xutil.IconicState, 0, 0, 0, 0])
-      )
-      cls.root.send_event(event, event_mask=X.SubstructureNotifyMask | X.SubstructureRedirectMask)
-    else:
-      event = Xlib.protocol.event.ClientMessage(
-        window      = win,
-        client_type = cls.netActiveWindow,
-        data        = (32, [1, X.CurrentTime, 0, 0, 0])
-      )
-      cls.root.send_event(event, event_mask=X.SubstructureNotifyMask | X.SubstructureRedirectMask)
-    cls.disp.sync()
+    with cls._lock:
+      win = cls.disp.create_resource_object('window', winID)
+      if val is None:
+        val = win.get_attributes().map_state == X.IsViewable
+      if val:
+        netChangeState = cls.disp.intern_atom('WM_CHANGE_STATE')
+        event = Xlib.protocol.event.ClientMessage(
+          window      = win,
+          client_type = netChangeState,
+          data        = (32, [Xlib.Xutil.IconicState, 0, 0, 0, 0])
+        )
+        cls.root.send_event(event, event_mask=X.SubstructureNotifyMask | X.SubstructureRedirectMask)
+      else:
+        event = Xlib.protocol.event.ClientMessage(
+          window      = win,
+          client_type = cls.netActiveWindow,
+          data        = (32, [1, X.CurrentTime, 0, 0, 0])
+        )
+        cls.root.send_event(event, event_mask=X.SubstructureNotifyMask | X.SubstructureRedirectMask)
+      cls.disp.sync()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -429,27 +438,28 @@ class χHelper():
       else:
         cls.sendKeystroke(cls._parseKeystring(item))
 
-      cls.disp.sync()
+      with cls._lock: cls.disp.sync()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def sendKeystroke(cls, item) -> None:
-    for mod in item['mods']:
-      if mod not in cls.MODIFIERS:
-        raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
-      cls.disp.xtest_fake_input(X.KeyPress, cls.getKeyCode(mod))
+    with cls._lock:
+      for mod in item['mods']:
+        if mod not in cls.MODIFIERS:
+          raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid modifier \"{item['mod']}\"")
+        cls.disp.xtest_fake_input(X.KeyPress, cls.getKeyCode(mod))
 
-    keycode = cls.getKeyCode(item['key'])
-    if keycode:
-      cls.disp.xtest_fake_input(X.KeyPress, keycode)
-      cls.disp.xtest_fake_input(X.KeyRelease, keycode)
-    else:
-      raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
+      keycode = cls.getKeyCode(item['key'])
+      if keycode:
+        cls.disp.xtest_fake_input(X.KeyPress, keycode)
+        cls.disp.xtest_fake_input(X.KeyRelease, keycode)
+      else:
+        raise Exception(f" ERROR in XHelper.sendKeystrokes: invalid key \"{item['key']}\"")
 
-    for mod in reversed(item['mods']):
-      cls.disp.xtest_fake_input(X.KeyRelease, cls.getKeyCode(mod))
+      for mod in reversed(item['mods']):
+        cls.disp.xtest_fake_input(X.KeyRelease, cls.getKeyCode(mod))
 
-    cls.disp.sync()
+      cls.disp.sync()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -457,10 +467,12 @@ class χHelper():
     if winID:
       cls.focusWindow(winID)
     try:
-      cls.disp.xtest_fake_input(X.ButtonPress, button)
+      with cls._lock:
+        cls.disp.xtest_fake_input(X.ButtonPress, button)
       if delay: time.sleep(delay)
-      cls.disp.xtest_fake_input(X.ButtonRelease, button)
-      cls.disp.sync()
+      with cls._lock:
+        cls.disp.xtest_fake_input(X.ButtonRelease, button)
+        cls.disp.sync()
       return True
     except:
       return False
@@ -473,8 +485,9 @@ class χHelper():
       if not geo: return
       abs_x = geo[0] + rel_x
       abs_y = geo[1] + rel_y
-      cls.disp.xtest_fake_input(X.MotionNotify, x=abs_x, y=abs_y)
-      cls.disp.sync()
+      with cls._lock:
+        cls.disp.xtest_fake_input(X.MotionNotify, x=abs_x, y=abs_y)
+        cls.disp.sync()
     except:
       pass
 
@@ -486,11 +499,13 @@ class χHelper():
       if not geo: return False
       abs_x = geo[0] + rel_x
       abs_y = geo[1] + rel_y
-      cls.disp.xtest_fake_input(X.MotionNotify, x=abs_x, y=abs_y)
-      cls.disp.xtest_fake_input(X.ButtonPress, button)
+      with cls._lock:
+        cls.disp.xtest_fake_input(X.MotionNotify, x=abs_x, y=abs_y)
+        cls.disp.xtest_fake_input(X.ButtonPress, button)
       if delay: time.sleep(delay)
-      cls.disp.xtest_fake_input(X.ButtonRelease, button)
-      cls.disp.sync()
+      with cls._lock:
+        cls.disp.xtest_fake_input(X.ButtonRelease, button)
+        cls.disp.sync()
       return True
     except:
       return False
@@ -511,18 +526,19 @@ class χHelper():
       keycode = cls.getKeyCode(item['key'])
 
       try:
-        cls.root.grab_key( keycode, modmask, True, X.GrabModeAsync, X.GrabModeAsync )
-        grabbed[(modmask, keycode)] = callback
-        cls.root.grab_key( keycode, modmask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
-        grabbed[(modmask | X.LockMask, keycode)] = callback
-        cls.root.grab_key( keycode, modmask | X.Button1Mask, True, X.GrabModeAsync, X.GrabModeAsync )
-        grabbed[(modmask | X.Button1Mask, keycode)] = callback
-        cls.root.grab_key( keycode, modmask | X.Button1Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
-        grabbed[(modmask | X.Button1Mask | X.LockMask, keycode)] = callback
-        cls.root.grab_key( keycode, modmask | X.Button3Mask, True, X.GrabModeAsync, X.GrabModeAsync )
-        grabbed[(modmask | X.Button3Mask, keycode)] = callback
-        cls.root.grab_key( keycode, modmask | X.Button3Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
-        grabbed[(modmask | X.Button3Mask | X.LockMask, keycode)] = callback
+        with cls._lock:
+          cls.root.grab_key( keycode, modmask, True, X.GrabModeAsync, X.GrabModeAsync )
+          grabbed[(modmask, keycode)] = callback
+          cls.root.grab_key( keycode, modmask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
+          grabbed[(modmask | X.LockMask, keycode)] = callback
+          cls.root.grab_key( keycode, modmask | X.Button1Mask, True, X.GrabModeAsync, X.GrabModeAsync )
+          grabbed[(modmask | X.Button1Mask, keycode)] = callback
+          cls.root.grab_key( keycode, modmask | X.Button1Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
+          grabbed[(modmask | X.Button1Mask | X.LockMask, keycode)] = callback
+          cls.root.grab_key( keycode, modmask | X.Button3Mask, True, X.GrabModeAsync, X.GrabModeAsync )
+          grabbed[(modmask | X.Button3Mask, keycode)] = callback
+          cls.root.grab_key( keycode, modmask | X.Button3Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
+          grabbed[(modmask | X.Button3Mask | X.LockMask, keycode)] = callback
         μPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] registered \"{keystring}\"")
       except Exception as e:
         μPrint.error(f"[XHelper.getShortcutsDaemon:Error]: failed to grab \"{keystring}\"\n{e}")
@@ -535,43 +551,50 @@ class χHelper():
 
     def daemonLoop():
       μPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] daemon started running")
-      cls.root.change_attributes(event_mask=X.KeyPressMask)
+      with cls._lock:
+        cls.root.change_attributes(event_mask=X.KeyPressMask)
       while not daemonStopSignal.is_set():
-        if cls.disp.pending_events():
-          event = cls.disp.next_event()
+        with cls._lock:
+          has_events = cls.disp.pending_events()
+        if has_events:
+          with cls._lock:
+            event = cls.disp.next_event()
           if event.type == X.KeyPress:
             callback = grabbed.get((event.state, event.detail))
             if callback: callback()
         else:
           time.sleep(0.01)
-      for (modmask, keycode), _ in grabbed.items():
-        cls.root.ungrab_key(keycode, modmask)
-      cls.disp.sync()
+      with cls._lock:
+        for (modmask, keycode), _ in grabbed.items():
+          cls.root.ungrab_key(keycode, modmask)
+        cls.disp.sync()
 
     return tStoppableThread(stopper=daemonStopSignal, target=daemonLoop, daemon=True)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def forceCleanup(cls):
-    try:
-      for keycode in range(8, 256):
-        for modmask in range(0, 256):
-          cls.root.ungrab_key(keycode, modmask)
-      cls.disp.ungrab_keyboard(X.CurrentTime)
-      cls.disp.sync()
-    except:
-      pass
+    with cls._lock:
+      try:
+        for keycode in range(8, 256):
+          for modmask in range(0, 256):
+            cls.root.ungrab_key(keycode, modmask)
+        cls.disp.ungrab_keyboard(X.CurrentTime)
+        cls.disp.sync()
+      except:
+        pass
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWindowGeometry(cls, winID):
-    try:
-      win = cls.disp.create_resource_object('window', winID)
-      geometry = win.get_geometry()
-      coords = win.translate_coords(cls.root, 0, 0)
-      return [-coords.x, -coords.y, geometry.width, geometry.height]
-    except Exception as e:
-      raise(f"XHelper.getWindowGeometry failed\n{e}")
+    with cls._lock:
+      try:
+        win = cls.disp.create_resource_object('window', winID)
+        geometry = win.get_geometry()
+        coords = win.translate_coords(cls.root, 0, 0)
+        return [-coords.x, -coords.y, geometry.width, geometry.height]
+      except Exception as e:
+        raise(f"XHelper.getWindowGeometry failed\n{e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -585,22 +608,24 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def _getToplevel(cls, winID):
-    win = cls.disp.create_resource_object('window', winID)
-    while True:
-      parent = win.query_tree().parent
-      if parent.id == cls.root.id:
-        return win
-      win = parent
+    with cls._lock:
+      win = cls.disp.create_resource_object('window', winID)
+      while True:
+        parent = win.query_tree().parent
+        if parent.id == cls.root.id:
+          return win
+        win = parent
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWindowsVirtualDesktop(cls, winID) -> int:
-    try:
-      win = cls._getToplevel(winID)
-      prop = win.get_full_property(cls.netWMDesktop, X.AnyPropertyType)
-      return int(prop.value[0]) if prop and prop.value else 0
-    except Exception as e:
-      raise(f"XHelper.getWindowsVirtualDesktop failed\n{e}")
+    with cls._lock:
+      try:
+        win = cls._getToplevel(winID)
+        prop = win.get_full_property(cls.netWMDesktop, X.AnyPropertyType)
+        return int(prop.value[0]) if prop and prop.value else 0
+      except Exception as e:
+        raise(f"XHelper.getWindowsVirtualDesktop failed\n{e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -615,26 +640,28 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getPID(cls, winID) -> int:
-    try:
-      win = cls.disp.create_resource_object('window', winID)
-      prop = win.get_full_property(cls.netWMPID, X.AnyPropertyType)
-      return int(prop.value[0]) if prop and prop.value else 0
-    except Exception as e:
-      raise(f"XHelper.getPID failed\n{e}")
+    with cls._lock:
+      try:
+        win = cls.disp.create_resource_object('window', winID)
+        prop = win.get_full_property(cls.netWMPID, X.AnyPropertyType)
+        return int(prop.value[0]) if prop and prop.value else 0
+      except Exception as e:
+        raise(f"XHelper.getPID failed\n{e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def moveVirtualDesktop(cls, winID, targetDesktop: int):
     try:
-      win = cls.disp.create_resource_object('window', winID)
-      atom = cls.disp.intern_atom('_NET_WM_DESKTOP')
-      evt = Xlib.protocol.event.ClientMessage(
-        window=win,
-        client_type=atom,
-        data=(32, [targetDesktop, 2, 0, 0, 0])
-      )
-      cls.root.send_event(evt, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
-      cls.disp.sync()
+      with cls._lock:
+        win = cls.disp.create_resource_object('window', winID)
+        atom = cls.disp.intern_atom('_NET_WM_DESKTOP')
+        evt = Xlib.protocol.event.ClientMessage(
+          window=win,
+          client_type=atom,
+          data=(32, [targetDesktop, 2, 0, 0, 0])
+        )
+        cls.root.send_event(evt, event_mask=X.SubstructureRedirectMask | X.SubstructureNotifyMask)
+        cls.disp.sync()
       for _ in range(5):
         time.sleep(P_DEFAULT_SLEEP)
         if cls.getWindowsVirtualDesktop(winID) == targetDesktop:
@@ -648,9 +675,10 @@ class χHelper():
   @classmethod
   def moveWindow(cls, winID, x, y):
     try:
-      win = cls.disp.create_resource_object('window', winID)
-      win.configure(x=x, y=y)
-      cls.disp.sync()
+      with cls._lock:
+        win = cls.disp.create_resource_object('window', winID)
+        win.configure(x=x, y=y)
+        cls.disp.sync()
       for _ in range(5):
         time.sleep(P_DEFAULT_SLEEP)
         geo = cls.getWindowGeometry(winID)

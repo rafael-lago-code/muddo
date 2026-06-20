@@ -234,7 +234,7 @@ class dMap(dSection):
   def __init__(self, state):
     self._iconSize = QSpinBox()
     self._iconShadow = QLineEdit("")
-    self._sourceBridge = QLineEdit("")
+    self._cartographers = QLineEdit("")
     self._mapZoom = QSpinBox()
     self._upscale = QSpinBox()
 
@@ -402,7 +402,7 @@ class μSettingsProfile(QWidget):
 
     gmap = μGridLayout()
     gmap.appendRow(["Icon Size:", self.map._iconSize, "Icon Shadow Colour:", self.map._iconShadow])
-    gmap.appendRow(["Map Zoom:", self.map._mapZoom, "Source Bridge:", self.map._sourceBridge])
+    gmap.appendRow(["Map Zoom:", self.map._mapZoom, "Defautl Cartographers:", self.map._cartographers])
     gmap.appendRow(["Upscale:", self.map._upscale, "Refresh Interval:", self.map._refreshInterval])
 
     self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")

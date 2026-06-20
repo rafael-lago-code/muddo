@@ -17,15 +17,16 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-import os, struct, glob, mmap
-from PyQt6.QtWidgets import QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsItem, QVBoxLayout, QHBoxLayout, QProxyStyle, QStyle
-from PyQt6.QtGui import QPixmap, QPainter, QWheelEvent
-from PyQt6.QtCore import Qt, QTimer
+import os, struct, glob, mmap, math
+from PyQt6.QtWidgets import QComboBox, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsItem, QSlider, QTextEdit, QVBoxLayout, QHBoxLayout, QProxyStyle, QStyle
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QWheelEvent
+from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QObject, QPointF, pyqtProperty
 from helpers.μImageFactory import *
 from helpers.util import P_DEFAULT_SHM_DIR
 from helpers.μPrint import μPrint
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
+from widgets.μText import μDisplayLabel
 from μSettings import μSettings
 from μMilvian import μMilvianMeta, μMilvian
 from typing import TYPE_CHECKING
@@ -57,6 +58,8 @@ P_PIN_TYPE_MAP: dict[int, str] = {
    21: "map/pin_main",
    22: "map/pin_target",
    23: "map/pin_distant_party",
+   24: "map/pin_selected",
+   25: "map/pin_trap",
   100: "map/pin_chalice_yellow",
   101: "map/pin_chalice_blue",
   102: "map/pin_chalice_grey",
@@ -108,16 +111,23 @@ P_PIN_TYPE_MAP: dict[int, str] = {
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  L A Y O U T
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-# Header: <I4sI = uint32 + char[4] + uint32(playerCount) = 12 bytes
-_HEADER  = struct.Struct('<I4sI')
+# Header: <I4sI64s = uint32 + char[4] + uint32(playerCount) + char[64](areaName) = 76 bytes
+_HEADER  = struct.Struct('<I4sI64s')
 # Player: <Qfff64s = ulong + 3×float32 (cx,cy,heading) + char[64] = 84 bytes
 _PLAYER  = struct.Struct('<Qfff64s')
-# Entity: <QffIiq64s64sI = ulong + 2×float32 (cx,cy) + uint32 + int32 + int64 + char[64] + char[64] + uint32 = 164 bytes
-_ENTITY  = struct.Struct('<QffIiq64s64sI')
+# Entity: <Qff64sI = ulong + 2×float32 (cx,cy) + char[64] + uint32 = 84 bytes
+_ENTITY  = struct.Struct('<Qff64sI')
 
-assert _HEADER.size == 12
+assert _HEADER.size == 76
 assert _PLAYER.size == 84
-assert _ENTITY.size == 164
+assert _ENTITY.size == 84
+
+
+class _RotRelay(QObject):
+  def __init__(self, pin): super().__init__(); self._pin = pin
+  def _get(self): return self._pin.rotation()
+  def _set(self, v): self._pin.setRotation(v)
+  rotation = pyqtProperty(float, _get, _set)
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -127,8 +137,7 @@ class μMapPin(QGraphicsPixmapItem):
   cache: dict[str, QPixmap] = {}
 
   def __init__(self, id: int, cx: float, cy: float, name: str, isPlayer: bool,
-               isMainPlayer: bool = False, pinType: int = 0, heading: float = 0.0,
-               weenieType: int = 0, mapNoteLevel: int = 0, mapNoteType: int = 0, mapNoteStr: str = ''):
+               isMainPlayer: bool = False, pinType: int = 0, heading: float = 0.0, prio: int = None):
     super().__init__()
     self.id           = id
     self.cx           = cx
@@ -138,10 +147,10 @@ class μMapPin(QGraphicsPixmapItem):
     self.isMainPlayer = isMainPlayer
     self.pinType      = pinType
     self.heading      = heading
-    self.weenieType   = weenieType
-    self.mapNoteLevel = mapNoteLevel
-    self.mapNoteType  = mapNoteType
-    self.mapNoteStr   = mapNoteStr
+    self._relay       = _RotRelay(self)
+    self._rotAnim     = None
+    self._selOverlay  = None
+    self.setZValue(prio if prio is not None else (10 if isMainPlayer else 3 if isPlayer else 2 if pinType in P_PIN_TYPE_MAP else 1))
     self.setup()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -161,14 +170,50 @@ class μMapPin(QGraphicsPixmapItem):
     self.setToolTip(self.name)
     self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
     self.setOffset(-μMap.pinSize / 2, -μMap.pinSize / 2)
-    self.setZValue(10 if self.isMainPlayer else 3 if self.isPlayer else 2 if self.pinType in P_PIN_TYPE_MAP else 1)
     self.setCursor(Qt.CursorShape.PointingHandCursor)
-    if self.isMainPlayer: self.setRotation(self.heading)
+    if self.isMainPlayer: self.setRotation(self.heading)  # instant on setup; animated via rotateTo() after
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def paint(self, painter, option, widget=None):
+    option.state &= ~QStyle.StateFlag.State_Selected
+    super().paint(painter, option, widget)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def itemChange(self, change, value):
+    if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+      if value:
+        if μMap.runningBridge: μMap.runningBridge.selectEntity(self.id)
+        sel_key = 'map/pin_selected'
+        if sel_key not in μMapPin.cache:
+          μMapPin.cache[sel_key] = getPixmap(sel_key).scaled( μMap.pinSize, μMap.pinSize,
+            Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        self._selOverlay = QGraphicsPixmapItem(μMapPin.cache[sel_key], self)
+        self._selOverlay.setOffset(-μMap.pinSize / 2, -μMap.pinSize / 2)
+        self._selOverlay.setFlag(QGraphicsItem.GraphicsItemFlag.ItemStacksBehindParent)
+      elif self._selOverlay:
+        self._selOverlay.setParentItem(None)
+        self._selOverlay = None
+    return super().itemChange(change, value)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def rotateTo(self, heading: float, duration: int):
+    current = self.rotation()
+    delta = (heading - current) % 360
+    if delta > 180: delta -= 360
+    target = current + delta
+    self.heading = heading
+    if self._rotAnim:
+      self._rotAnim.stop()
+    self._rotAnim = QPropertyAnimation(self._relay, b"rotation")
+    self._rotAnim.setDuration(duration)
+    self._rotAnim.setStartValue(current)
+    self._rotAnim.setEndValue(target)
+    self._rotAnim.start()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __repr__(self):
     kind = "player" if self.isPlayer else "entity"
-    return f'μMapPin({self.id:#x} {kind} "{self.name}" pin={self.pinType} wt={self.weenieType:#x} px=({self.cx:.1f},{self.cy:.1f}))'
+    return f'μMapPin({self.id:#x} {kind} "{self.name}" pin={self.pinType} px=({self.cx:.1f},{self.cy:.1f}))'
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -180,8 +225,9 @@ class μMapPin(QGraphicsPixmapItem):
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMapParser:
   def __init__(self):
-    self.map_image_id : int = 0
-    self.ext          : str = ''
+    self.mapId    : int = 0
+    self.ext      : str = ''
+    self.areaName : str = ''
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
@@ -200,12 +246,13 @@ class μMapParser:
       data = mm
       if len(data) < _HEADER.size:
         return False, set()
-      (map_image_id, ext_b, player_count) = _HEADER.unpack_from(data, 0)
-      self.map_image_id = map_image_id
-      self.ext = ext_b.rstrip(b'\x00').decode('ascii', errors='replace')
+      (mapId, ext_b, nPlayers, area_b) = _HEADER.unpack_from(data, 0)
+      self.mapId    = mapId
+      self.ext      = ext_b.rstrip(b'\x00').decode('ascii', errors='replace')
+      self.areaName = area_b.rstrip(b'\x00').decode('utf-8', errors='replace')
       seen: set[int] = set()
       off = _HEADER.size
-      for i in range(player_count):
+      for i in range(nPlayers):
         if off + _PLAYER.size > len(data): break
         (pid, cx, cy, heading, name_b) = _PLAYER.unpack_from(data, off)
         name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
@@ -213,25 +260,25 @@ class μMapParser:
           p = pins[pid]
           p.cx, p.cy = cx, cy
           if i == 0 and p.heading != heading:
-            p.heading = heading
-            p.setRotation(heading)
+            p.rotateTo(heading, μSettings.profile.map.refreshInterval())
         else:
           pins[pid] = μMapPin(pid, cx, cy, name, isPlayer=True, isMainPlayer=(i == 0), heading=heading)
         seen.add(pid)
         off += _PLAYER.size
       if off + 4 > len(data): return True, seen
-      (entity_count,) = struct.unpack_from('<I', data, off)
+
+      (nEntities,) = struct.unpack_from('<I', data, off)
+      if nEntities == 0: return False, set() # skips this refresh frame, no need to remove any pins
       off += 4
-      for _ in range(entity_count):
+
+      for _ in range(nEntities):
         if off + _ENTITY.size > len(data): break
-        (eid, cx, cy, weenie_type, note_level, note_type, note_str_b, name_b, pin_type) = _ENTITY.unpack_from(data, off)
-        name     = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
-        note_str = note_str_b.rstrip(b'\x00').decode('utf-8', errors='replace')
+        (eid, cx, cy, name_b, pin_type) = _ENTITY.unpack_from(data, off)
+        name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
         if eid in pins:
           pins[eid].cx, pins[eid].cy = cx, cy
         else:
-          pins[eid] = μMapPin(eid, cx, cy, name, isPlayer=False, pinType=pin_type,
-            weenieType=weenie_type, mapNoteLevel=note_level, mapNoteType=note_type, mapNoteStr=note_str)
+          pins[eid] = μMapPin(eid, cx, cy, name, isPlayer=False, pinType=pin_type)
         seen.add(eid)
         off += _ENTITY.size
       return True, seen
@@ -261,6 +308,17 @@ class μMapView(QGraphicsView):
     self.setRenderHint(QPainter.RenderHint.Antialiasing)
     self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
 
+  def _getCenter(self): return self.mapToScene(self.viewport().rect().center())
+  def _setCenter(self, pt): self.centerOn(pt)
+  center = pyqtProperty(QPointF, _getCenter, _setCenter)
+
+  def mousePressEvent(self, event):
+    if event.button() == Qt.MouseButton.RightButton:
+      self.scene().clearSelection()
+    else:
+      μMap.centerMode = 'none'
+      super().mousePressEvent(event)
+
   def wheelEvent(self, event: QWheelEvent):
     delta = event.angleDelta().y()
     mods  = event.modifiers()
@@ -281,51 +339,125 @@ class μMapView(QGraphicsView):
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMap(μToggler):
   runningBridge : μMilvian = None
+  selectedPin   : 'μMapPin | None' = None
+  centerMode    : str = 'cartographer'
   upscale = 4
   pinSize = 16*upscale
 
   def __init__(self, parent=None):
     super().__init__("Map", P_ICON_MAP)
-    self.toggler.setToolTip("Show Map")
+    self.toggler.setToolTip("Show/Hide Map")
     self.parser = μMapParser()
     self.pins: dict[int, μMapPin] = {}
+    self.edgePins: dict[int, μMapPin] = {}
+    self._selEdgePin: μMapPin | None = None
     self.setMinimumSize(768, 640)
 
     self._scene = QGraphicsScene()
     self._bgItem = QGraphicsPixmapItem()
     self._bgItem.setZValue(0)
     self._scene.addItem(self._bgItem)
-    self._view = μMapView(self._scene)
+    self.view = μMapView(self._scene)
+    self._scrollTarget: QPointF = None
+    self._scrollTimer = QTimer()
+    self._scrollTimer.setInterval(16)
+    self._scrollTimer.timeout.connect(self._scrollStep)
 
-    self.btnRefresh = μOrbSmall(icon=P_ICON_REFRESH, tooltip='Reload map image from disk')
     self.btnPrint = μOrbSmall(icon=P_ICON_REFRESH, tooltip='Print entities for debugging')
     self.btnPlay = μOrbSmall(icon=P_ICON_PLAY, tooltip='Request Milvian to start collecting map data')
     self.btnStop = μOrbSmall(icon=P_ICON_STOP, tooltip='Request Milvian to stop collecting map data')
     self._timer = QTimer()
     self._timer.timeout.connect(self.refresh)
-    self.btnRefresh.clicked.connect(self.refresh)
     self.btnPrint.clicked.connect(self.printEntities)
-    self.btnPlay.clicked.connect(self.launchMapsDaemon)
+    self.btnPlay.clicked.connect(self.startMapsDaemon)
     self.btnStop.clicked.connect(self.stopMapsDaemon)
+
+    self.btnRefresh   = μOrbSmall(icon=P_ICON_REFRESH, tooltip='Reload map view.<br><b><i>Ctrl+click</i></b> restarts map daemon altogether.')
+    self.btnCenterMain = μOrbSmall(icon="thick_arrow_up", tooltip='Center on view Cartographer')
+    self.btnCenterSelect = μOrbSmall(icon="bullseye", tooltip='Center on view target Object')
+    self.btnSelectTarget = μOrbSmall(icon='hand-select', tooltip='Select (in-game) the target object')
+    self.btnDetails = μOrbSmall(icon='view-visible', tooltip='Show/Hide Details')
+    self.txtSearch = QTextEdit()
+    self.lblTargetPin = QLabel()
+    self.lblTargetName = QLabel("None")
+    self.lblTargetName.setWordWrap(True)
+    self.lblTargetName.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    self.cartographer = QComboBox()
+    self.mapOpacity = QSlider()
+    self.pinsOpacity = QSlider()
+    self.mapOpacity.setRange(0,100)
+    self.mapOpacity.setValue(100)
+    self.pinsOpacity.setRange(0,100)
+    self.pinsOpacity.setValue(100)
+    self.details = newVFrame([μDisplayLabel("Cartographer:"), self.cartographer, " ", μDisplayLabel("Selection:"), newHLayout([self.lblTargetPin, self.lblTargetName]),
+                              "__stretch__", μDisplayLabel("Opacity:"), newHLayout([self.mapOpacity, self.pinsOpacity]),
+                              newHLayout(["__stretch__", "map", "__stretch__", "pins", "__stretch__"]), "__stretch__", μDisplayLabel("Search:"), self.txtSearch])
+    self.details.setFixedWidth(200)
+    self.details.hide()
+
+    self.btnRefresh.clicked.connect(self.refresh)
+    self.btnRefresh.ctrlClicked.connect(self.startMapsDaemon) # this does restart if it is already running
+    self.btnDetails.clicked.connect(lambda : self.details.setVisible(not self.details.isVisible()))
+    self._scene.selectionChanged.connect(self.onSelectionChanged)
 
     toolbar = QHBoxLayout()
     toolbar.addWidget(self.btnRefresh)
-    toolbar.addWidget(self.btnPrint)
-    toolbar.addWidget(self.btnPlay)
-    toolbar.addWidget(self.btnStop)
+    toolbar.addWidget(self.btnCenterMain)
+    toolbar.addWidget(self.btnCenterSelect)
+    toolbar.addWidget(self.btnSelectTarget)
+    # debug stuff
+    # toolbar.addWidget(self.btnPrint) 
+    # toolbar.addWidget(self.btnPlay)
+    # toolbar.addWidget(self.btnStop)
     toolbar.addStretch()
+    toolbar.addWidget(self.btnDetails)
+    
+    self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
+    self.mapOpacity.valueChanged.connect(self.setMapOpacity)
+    self.pinsOpacity.valueChanged.connect(self.setPinsOpacity)
+    self.btnSelectTarget.clicked.connect(self.selectTarget)
+    self.btnCenterMain.clicked.connect(lambda: self.setCenterOn('cartographer'))
+    self.btnCenterSelect.clicked.connect(lambda: self.setCenterOn('target'))
 
     layout = QVBoxLayout()
     layout.setContentsMargins(0, 0, 0, 0)
     layout.addLayout(toolbar)
-    layout.addWidget(self._view)
+    layout.addLayout(newHLayout([self.view,self.details]))
     self.setLayout(layout)
+ 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def toggle(self):
+    if self.isVisible():
+      self.hide()
+      self.stopMapsDaemon()
+    else:
+      self.show()
+      self.startMapsDaemon()
+  
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  #    Select the in-game object associated with the currently targeted pin
+  def selectTarget(self):
+    if μMap.selectedPin and μMap.runningBridge: 
+      μMap.runningBridge.selectEntity(μMap.selectedPin.id)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setCenterOn(self, target):
+    μMap.centerMode = target
+    if target == 'cartographer':
+      p = next((pin for pin in self.pins.values() if pin.isMainPlayer), None)
+      if p: self._startScroll(p.cx * μMap.upscale, p.cy * μMap.upscale)
+    elif target == 'target':
+      if μMap.selectedPin:
+        self._startScroll(μMap.selectedPin.cx * μMap.upscale, μMap.selectedPin.cy * μMap.upscale)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setPinSize(cls, size):
-    cls.pinSize = size*cls.upscale
-    μMapPin.cache.clear()
+    new = size * cls.upscale
+    if new != cls.pinSize:
+      cls.pinSize = new
+      μMapPin.cache.clear()
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setUpscale(cls, size): cls.upscale = size
@@ -339,17 +471,34 @@ class μMap(μToggler):
   def clear(self, clearCache=False):
     for item in self.pins.values(): self._scene.removeItem(item)
     self.pins.clear()
+    for item in self.edgePins.values(): self._scene.removeItem(item)
+    self.edgePins.clear()
     if clearCache: μMapPin.cache.clear()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setMapOpacity(self, val : int):
+    self._bgItem.setOpacity(val/100.0)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setPinsOpacity(self, val : int):
+    opacity = val/100.0
+    for pin in self.pins.values():
+        pin.setOpacity(opacity)
+    for pin in self.edgePins.values():
+        pin.setOpacity(opacity)
+
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refresh(self):
     oldPinSize = μMap.pinSize
+    oldImageId = self.parser.mapId
     μMap.setPinSize(μSettings.profile.map.iconSize())
     ok, seen = self.parser.load(self.pins)
     if not ok: return
 
     if μMap.pinSize != oldPinSize:
       for pin in self.pins.values(): pin.setup()
+      for pin in self.edgePins.values(): pin.setup()
 
     for gone_id in set(self.pins) - seen:
       self._scene.removeItem(self.pins.pop(gone_id))
@@ -359,48 +508,169 @@ class μMap(μToggler):
       if pin.scene() is None:
         self._scene.addItem(pin)
 
-    path = self.parser.imagePath()
-    pix = QPixmap(path)
-    if pix.isNull():
-      μPrint.error(f'[μMap] Failed to load {path}')
-      return
-    firstLoad = self._bgItem.pixmap().isNull()
-    μMap.setUpscale(int(μSettings.profile.map.upscale()/100))
-    μMap.setMapSize(pix.width(), pix.height())
-    self._bgItem.setPixmap(pix.scaled(μMap.mapWidth, μMap.mapHeight,
-      Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-    self._scene.setSceneRect(0, 0, μMap.mapWidth, μMap.mapHeight)
-    if firstLoad:
-      self._view.resetTransform()
-      zoom = μSettings.profile.map.mapZoom()/(100*μMap.upscale)
-      self._view.scale(zoom, zoom)
+    if self.parser.mapId != oldImageId:
+      μMap.centerMode = 'cartographer'
+      μPrint.info(f'[μMap] ID changed: {C_ORANGE}{oldImageId}</font> ➜ {C_ORANGE}{self.parser.mapId}</font>')
+      path = self.parser.imagePath()
+      pix = QPixmap.fromImage(QImage(path))
+      if pix.isNull():
+        μPrint.error(f'[μMap] Failed to load {path}')
+        self.parser.mapId = -1
+        return
+      μMap.setUpscale(int(μSettings.profile.map.upscale()/100))
+      μMap.setMapSize(pix.width(), pix.height())
+      self._bgItem.setPixmap(pix.scaled(μMap.mapWidth, μMap.mapHeight,
+        Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+      self._scene.setSceneRect(0, 0, μMap.mapWidth, μMap.mapHeight)
+      self.view.resetTransform()
+      zoom = μSettings.profile.map.mapZoom() / (100 * μMap.upscale)
+      self.view.scale(zoom, zoom)
 
-    p = next(pin for pin in self.pins.values() if pin.isMainPlayer)
-    self._view.centerOn(p.cx * μMap.upscale, p.cy * μMap.upscale)
+    if μMap.centerMode == 'cartographer':
+      p = next((pin for pin in self.pins.values() if pin.isMainPlayer), None)
+      if p: self._startScroll(p.cx * μMap.upscale, p.cy * μMap.upscale)
+    elif μMap.centerMode == 'target' and μMap.selectedPin:
+      self._startScroll(μMap.selectedPin.cx * μMap.upscale, μMap.selectedPin.cy * μMap.upscale)
+    self._updateEdgePins()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _startScroll(self, x, y):
+    self._scrollTarget = QPointF(x, y)
+    if not self._scrollTimer.isActive():
+      self._scrollTimer.start()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _scrollStep(self):
+    if self._scrollTarget is None:
+      self._scrollTimer.stop()
+      return
+    cur = self.view._getCenter()
+    dx = self._scrollTarget.x() - cur.x()
+    dy = self._scrollTarget.y() - cur.y()
+    if dx*dx + dy*dy < 1.0:
+      self.view.centerOn(self._scrollTarget)
+      self._scrollTarget = None
+      self._scrollTimer.stop()
+    else:
+      self.view.centerOn(cur.x() + dx * 0.12, cur.y() + dy * 0.12)
+    self._updateEdgePins()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def onSelectionChanged(self):
+    sel = next((p for p in self.pins.values() if p.isSelected()), None)
+    μMap.selectedPin = sel
+    if sel:
+      self.lblTargetPin.setPixmap(sel.pixmap().scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+      name = sel.name.split("<br>", 1)
+      self.lblTargetName.setText(f"<b>Id:</b> {sel.id}<br><b>Name:</b> {name[0]}{f"<br><i>({name[1]})</i>" if len(name)>1 else ""}")
+    else:
+      self.lblTargetPin.clear()
+      self.lblTargetName.setText("None")
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _updateEdgePins(self):
+    vr = self.view.mapToScene(self.view.viewport().rect()).boundingRect()
+    margin = μMap.pinSize / 2
+    inner = vr.adjusted(margin, margin, -margin, -margin)
+    main = next((p for p in self.pins.values() if p.isMainPlayer), None)
+    if main is None: return
+    mx = main.cx * μMap.upscale
+    my = main.cy * μMap.upscale
+    seen: set[int] = set()
+    for pid, pin in self.pins.items():
+      if not pin.isPlayer or pin.isMainPlayer: continue
+      px = pin.cx * μMap.upscale
+      py = pin.cy * μMap.upscale
+      if vr.contains(px, py):
+        if pid in self.edgePins:
+          self._scene.removeItem(self.edgePins.pop(pid))
+        continue
+      seen.add(pid)
+      if pid not in self.edgePins:
+        ep = μMapPin(pid, 0, 0, pin.name, isPlayer=False, pinType=23, prio=10)
+        self._scene.addItem(ep)
+        self.edgePins[pid] = ep
+      ep = self.edgePins[pid]
+      μMap.pushToEdge(ep, px, py, mx, my, inner)
+    for pid in set(self.edgePins) - seen:
+      self._scene.removeItem(self.edgePins.pop(pid))
+
+    sel = μMap.selectedPin
+    if sel:
+      sx, sy = sel.cx * μMap.upscale, sel.cy * μMap.upscale
+    if sel and not vr.contains(sx, sy):
+      if self._selEdgePin is None:
+        self._selEdgePin = μMapPin(-1, 0, 0, sel.name, isPlayer=False, pinType=22, prio=10)
+        self._scene.addItem(self._selEdgePin)
+      μMap.pushToEdge(self._selEdgePin, sx, sy, mx, my, inner)
+    elif self._selEdgePin is not None:
+      self._scene.removeItem(self._selEdgePin)
+      self._selEdgePin = None
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def pushToEdge(ep, px, py, ox, oy, inner):
+    dx, dy = px - ox, py - oy
+    ex, ey = μMap._edgeIntersect(ox, oy, dx, dy, inner)
+    ep.setPos(ex, ey)
+    ep.setRotation(math.degrees(math.atan2(dx, -dy)) % 360)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def _edgeIntersect(ox, oy, dx, dy, rect) -> tuple[float, float]:
+    best_t = float('inf')
+    if dx > 0:
+      t = (rect.right() - ox) / dx
+      if t > 0 and rect.top() <= oy + t * dy <= rect.bottom(): best_t = min(best_t, t)
+    elif dx < 0:
+      t = (rect.left() - ox) / dx
+      if t > 0 and rect.top() <= oy + t * dy <= rect.bottom(): best_t = min(best_t, t)
+    if dy > 0:
+      t = (rect.bottom() - oy) / dy
+      if t > 0 and rect.left() <= ox + t * dx <= rect.right(): best_t = min(best_t, t)
+    elif dy < 0:
+      t = (rect.top() - oy) / dy
+      if t > 0 and rect.left() <= ox + t * dx <= rect.right(): best_t = min(best_t, t)
+    if best_t == float('inf'): return ox, oy
+    return ox + best_t * dx, oy + best_t * dy
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def printEntities(self):
     self.parser.load(self.pins)
-    μPrint.info(f'[μMap] imageId={self.parser.map_image_id} ext={self.parser.ext!r} pins={len(self.pins)}')
+    μPrint.info(f'[μMap] imageId={self.parser.mapId} ext={self.parser.ext!r} pins={len(self.pins)}')
     for pin in self.pins.values():
       μPrint.info(repr(pin))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   #  TODO: add "commander" and "leader" to list of sources
-  def launchMapsDaemon(self):
+  def startMapsDaemon(self, cartographers = None):
     if μMap.runningBridge: self.stopMapsDaemon()
     bridges = μMilvianMeta.getBridges()
 
-    sources = [s.strip() for s in μSettings.profile.map.sourceBridge().split(',')]
-    for s in sources:
-      if s in bridges:
-        μMap.runningBridge = bridges[s]
-        interval = μSettings.profile.map.refreshInterval()
-        μMap.runningBridge.drawMap(True, interval)
-        self._timer.start(interval)
-        return
+
+    self.cartographer.currentTextChanged.disconnect()
+    self.cartographer.clear()
+    if not bridges:
+      self.widgetID = "Map - None"
     else:
-      μPrint.warning(f"[μMap] Requested Map but none of the preferred bridges found: \"{sources}\". Edit the list in Settings")
+      self.cartographer.addItems([b.capitalize() for b in bridges.keys()])
+      if cartographers is None:
+        cartographers = [s.strip() for s in μSettings.profile.map.cartographers().split(',')]
+      elif not isinstance(cartographers, list):
+        cartographers = [cartographers]
+
+      for c in cartographers:
+        c = c.lower()
+        if c in bridges:
+          μMap.runningBridge = bridges[c]
+          interval = μSettings.profile.map.refreshInterval()
+          μMap.runningBridge.drawMap(True, interval)
+          self._timer.start(interval)
+          self.cartographer.setCurrentText(c.capitalize())
+          break
+      else:
+        μPrint.warning(f"[μMap] Requested Map but no cartographer found: \"{cartographers}\". Edit the list of \"cartographers\" in Settings and try again.")
+    self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def stopMapsDaemon(self):

@@ -48,8 +48,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - UI improvements
       - vizualize keyboard with its macros
   - Map
-    - use arrow for main character (follow heading)
-    - use arrow for party members faraway & selected objects faraway
     - currently only detects entities nearby; should be possible to detect fixed entities (like all vendors in a public area) but I don't know how to extract that kind of info yet
     - figure out distinction between:
       - normal monsters vs bosses
@@ -58,7 +56,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
         - between champion ranks
     - distinguish own pet from other pets
     - allow entering "commander" and "leader" in the list of sources
-    - auto-refresh background image when changing areas (currently needs to click "refresh")
     - select entity when selecting it on map widget
       - make selection persistent (it currently resets on each refresh)
       - make selection visual with a grow around icon, instead of rectangle
