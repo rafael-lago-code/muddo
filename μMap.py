@@ -37,7 +37,163 @@ if TYPE_CHECKING:
 
 
 P_MAP_DIR = P_DEFAULT_SHM_DIR
-P_PIN_TYPE_MAP: dict[int, str] = {
+
+P_TYPE_MAIN          = 1
+P_TYPE_PLAYER        = 2
+P_TYPE_PET           = 3
+P_PLAYER_TYPES: dict[int, str] = {
+  1: "map/pin_main",
+  2: "map/pin_token_player",
+  3: "map/pin_token_pet",
+  4: "map/pin_token_green",
+  5: "map/pin_token_hireling",
+  6: "map/pin_token_pet_others",
+}
+
+P_TYPE_TARGET        = 30
+P_TYPE_DISTANT_PARTY = 31
+P_EDGE_TYPES: dict[int, str] = {
+  30: "map/pin_target",
+  31: "map/pin_distant_party",
+}
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+# These "usually" map nicely to MapNoteType property. I added some extras
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+P_STATIC_TYPES: dict[int, str] = {
+  # Block - Teleports
+  100: "map/pin_teleport",
+  101: "map/pin_teleport_red",
+  110: "map/pin_area_yellow",
+  111: "map/pin_area_red",
+  120: "map/pin_airship",
+  # Block - Amenities
+  200: "map/pin_shrine",
+  201: "map/pin_shrine_ress",
+  210: "map/pin_bank",
+  215: "map/pin_auction",
+  220: "map/pin_mailbox",
+  225: "map/pin_crafting",
+  230: "map/pin_patron",
+  235: "map/pin_trainer",
+  240: "map/pin_poi",
+  245: "map/pin_spirit_binder",
+  # Block - Vendors
+  300: "map/pin_tavern",
+  305: "map/pin_token_vendor",
+  310: "map/pin_token_pawn",
+  315: "map/pin_collector",
+  320: "map/pin_hireling_vendor",
+  # Block - Doors
+  350: "map/pin_door_yellow",
+  351: "map/pin_door_blue",
+  352: "map/pin_door_red",
+  353: "map/pin_door_grey",
+  360: "map/pin_door_raid_yellow",
+  # Block - Chalices
+  370: "map/pin_check",
+  380: "map/pin_chalice_raid",
+  381: "map/pin_chalice_raid_blue",
+  382: "map/pin_chalice_raid_grey",
+  383: "map/pin_chalice_raid_red",
+  400: "map/pin_chalice_yellow",
+  401: "map/pin_chalice_blue",
+  402: "map/pin_chalice_grey",
+  403: "map/pin_chalice_red",
+  420: "map/pin_chalice_arc",
+  421: "map/pin_chalice_arc_blue",
+  430: "map/pin_chalice_saga",
+  431: "map/pin_chalice_saga_blue",
+  # Block - Challenges
+  450: "map/pin_challenge_blue",
+  451: "map/pin_challenge_grey",
+  452: "map/pin_challenge_red",
+}
+
+P_ENTITY_TYPES: dict[int, str] = {
+  # Block - Dungeon Stuff
+  500: "map/pin_chest",
+  510: "map/pin_explorer",
+  515: "map/pin_soul_stone",
+  520: "map/pin_crest",
+  521: "map/pin_crest_socket",
+  525: "map/pin_token_npc",
+  530: "map/pin_dimension_door",
+  535: "map/pin_mysterious_remnants",
+  540: "map/pin_lostsoul",
+  550: "map/pin_usable",
+  551: "map/pin_control_panel",
+  552: "map/pin_collectible",
+  553: "map/pin_item_dropped",
+  560: "map/pin_trap",
+  561: "map/pin_secret",
+  570: "map/pin_ladder",
+  575: "map/pin_collectible_taken",
+  # Block - Enemies
+  600: "map/pin_champion_yellow",
+  601: "map/pin_champion_orange",
+  602: "map/pin_champion_red",
+  610: "map/pin_boss_reaper",
+  611: "map/pin_boss_mini",
+  612: "map/pin_boss",
+  613: "map/pin_boss_raids",
+  620: "map/pin_enemy",
+  # Block - Others
+  650: "map/pin_friendly",
+  660: "map/pin_breakeable",
+  670: "map/pin_token_red",
+  680: "map/pin_token_other",
+}
+
+P_PIN_TYPE_MAP: dict[int, str] = P_PLAYER_TYPES | P_EDGE_TYPES | P_STATIC_TYPES | P_ENTITY_TYPES
+
+P_MAPPING: dict[int, str] = {
+   3: 400, # pin_chalice_yellow
+   4: 402, # pin_chalice_grey
+   5: 402, # pin_chalice_grey
+   6: 401, # pin_chalice_blue
+   7: 353, # pin_door_grey
+   8: 350, # pin_door_yellow
+   9: 240, # pin_poi
+  10: 2,   # pin_token_player
+  11: 305, # pin_token_vendor
+  12: 235, # pin_trainer
+  13: 300, # pin_tavern
+  14: 315, # pin_collector
+  15: 225, # pin_crafting
+  16: 110, # pin_area_yellow
+  17: 370, # pin_chalice_raid
+  18: 310, # pin_token_pawn
+  19: 220, # pin_mailbox
+  20: 230, # pin_patron
+  21: 215, # pin_auction
+  22: 320, # pin_hireling_vendor
+  23: 500, # pin_chest
+  24: 200, # pin_shrine
+  25: 100, # pin_teleport
+  26: 210, # pin_bank
+  27: 120, # pin_airship
+  28: 670, # pin_token_red
+  29: 403, # map/pin_chalice_red
+  30: 111, # map/pin_area_red
+  31: 352, # map/pin_door_red
+  32: 101, # map/pin_teleport_red
+  33: 370, # map/pin_check
+  34: 373, # map/pin_chalice_raid_red
+  35: 3,   # pin_token_pet
+  36: 450, # pin_challenge_blue
+  37: 452, # map/pin_challenge_red
+  38: 451, # pin_challenge_grey
+  39: 450, # pin_challenge_blue
+  40: 430, # pin_chalice_saga
+  41: 431, # pin_chalice_saga_blue
+  42: 430, # map/pin_chalice_saga
+  43: 431, # map/pin_chalice_saga_blue
+  44: 370, # map/pin_check
+  45: 5,   # pin_token_hireling
+}
+
+P_OLD_DICT_FOR_CLAUDE: dict[int, str] = {
     1: "map/pin_auction",
     2: "map/pin_bank",
     3: "map/pin_challenge_blue",
@@ -110,7 +266,6 @@ P_PIN_TYPE_MAP: dict[int, str] = {
   1000: "map/pin_token_red",
 }
 
-
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  L A Y O U T
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
@@ -118,12 +273,18 @@ P_PIN_TYPE_MAP: dict[int, str] = {
 _HEADER  = struct.Struct('<I4sI64s')
 # Player: <Qfff64s = ulong + 3×float32 (cx,cy,heading) + char[64] = 84 bytes
 _PLAYER  = struct.Struct('<Qfff64s')
-# Entity: <Qff64sI = ulong + 2×float32 (cx,cy) + char[64] + uint32 = 84 bytes
+# Entity/Static: <Qff64sI = ulong + 2×float32 (cx,cy) + char[64] + uint32 = 84 bytes
 _ENTITY  = struct.Struct('<Qff64sI')
+
+_MAX_PLAYERS      = 24
+_OFF_STATIC_COUNT = _HEADER.size + _MAX_PLAYERS * _PLAYER.size  # 76 + 24*84 = 2092
+_OFF_STATIC_START = _OFF_STATIC_COUNT + 4                        # 2096
 
 assert _HEADER.size == 76
 assert _PLAYER.size == 84
 assert _ENTITY.size == 84
+assert _OFF_STATIC_COUNT == 2092
+assert _OFF_STATIC_START == 2096
 
 
 class _RotRelay(QObject):
@@ -139,27 +300,24 @@ class _RotRelay(QObject):
 class μMapPin(QGraphicsPixmapItem):
   cache: dict[str, QPixmap] = {}
 
-  def __init__(self, id: int, cx: float, cy: float, name: str, isPlayer: bool,
-               isMainPlayer: bool = False, pinType: int = 0, heading: float = 0.0, prio: int = None):
+  def __init__(self, id: int, cx: float, cy: float, name: str,
+               pinType: int = 0, heading: float = 0.0):
     super().__init__()
-    self.id           = id
-    self.cx           = cx
-    self.cy           = cy
-    self.name         = name
-    self.isPlayer     = isPlayer
-    self.isMainPlayer = isMainPlayer
-    self.pinType      = pinType
-    self.heading      = heading
-    self._relay       = _RotRelay(self)
-    self._rotAnim     = None
-    self._selOverlay  = None
-    self.setZValue(prio if prio is not None else (10 if isMainPlayer else 3 if isPlayer else 2 if pinType in P_PIN_TYPE_MAP else 1))
+    self.id      = id
+    # self.weenie  = weenie
+    self.cx      = cx
+    self.cy      = cy
+    self.name    = name
+    self.pinType = pinType
+    self.heading = heading
+    self._relay      = _RotRelay(self)
+    self._rotAnim    = None
+    self._selOverlay = None
+    self.setZValue(-pinType)
     self.setup()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def pinTypeName(self) -> str:
-    if self.isMainPlayer: return "map/pin_main"
-    if self.isPlayer:     return "map/pin_token_pet" if hex(self.id).startswith("0x3") else "map/pin_token_player"
     return P_PIN_TYPE_MAP.get(self.pinType, "map/pin_token_red")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -174,7 +332,7 @@ class μMapPin(QGraphicsPixmapItem):
     self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
     self.setOffset(-μMap.pinSize / 2, -μMap.pinSize / 2)
     self.setCursor(Qt.CursorShape.PointingHandCursor)
-    if self.isMainPlayer: self.setRotation(self.heading)  # instant on setup; animated via rotateTo() after
+    if self.pinType == P_TYPE_MAIN: self.setRotation(self.heading)  # instant on setup; animated via rotateTo() after
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def paint(self, painter, option, widget=None):
@@ -215,7 +373,7 @@ class μMapPin(QGraphicsPixmapItem):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __repr__(self):
-    kind = "player" if self.isPlayer else "entity"
+    kind = "player" if self.pinType in P_PLAYER_TYPES else "entity"
     return f'μMapPin({self.id:#x} {kind} "{self.name}" pin={self.pinType} px=({self.cx:.1f},{self.cy:.1f}))'
 
 
@@ -238,7 +396,8 @@ class μMapParser:
   def imagePath(self) -> str: return f"{μMapParser.dataPath()}{self.ext}"
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def load(self, pins: dict, path: str = None) -> tuple[bool, set]:
+  def load(self, map, path: str = None) -> tuple[bool, set]:
+
     if μMap.runningBridge is None: return False, set()
     path = path or μMapParser.dataPath()
     if not os.path.exists(path):
@@ -250,41 +409,64 @@ class μMapParser:
       data = mm
       if len(data) < _HEADER.size:
         return False, set()
+      old_mapId = self.mapId
       (mapId, ext_b, nPlayers, area_b) = _HEADER.unpack_from(data, 0)
       self.mapId    = mapId
       self.ext      = ext_b.rstrip(b'\x00').decode('ascii', errors='replace')
       self.areaName = area_b.rstrip(b'\x00').decode('utf-8', errors='replace')
       seen: set[int] = set()
-      off = _HEADER.size
+
+      # Players — fixed 24-slot block
+      poff = _HEADER.size
       for i in range(nPlayers):
-        if off + _PLAYER.size > len(data): break
-        (pid, cx, cy, heading, name_b) = _PLAYER.unpack_from(data, off)
+        if poff + _PLAYER.size > len(data): break
+        (pid, cx, cy, heading, name_b) = _PLAYER.unpack_from(data, poff)
         name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
-        if pid in pins:
-          p = pins[pid]
+        if pid in map.playerPins:
+          p = map.playerPins[pid]
           p.cx, p.cy = cx, cy
           if i == 0 and p.heading != heading:
             p.rotateTo(heading, μSettings.profile.map.refreshInterval())
         else:
-          pins[pid] = μMapPin(pid, cx, cy, name, isPlayer=True, isMainPlayer=(i == 0), heading=heading)
+          pin_type = P_TYPE_MAIN if i == 0 else (P_TYPE_PET if hex(pid).startswith("0x3") else P_TYPE_PLAYER)
+          map.playerPins[pid] = μMapPin(pid, cx, cy, name, pinType=pin_type, heading=heading)
         seen.add(pid)
-        off += _PLAYER.size
-      if off + 4 > len(data): return True, seen
+        poff += _PLAYER.size
 
-      (nEntities,) = struct.unpack_from('<I', data, off)
+      # Static pins — written once per area on C# side
+      if len(data) < _OFF_STATIC_COUNT + 4: return True, seen
+      (nStatics,) = struct.unpack_from('<I', data, _OFF_STATIC_COUNT)
+
+      if mapId != old_mapId:
+        for pin in map.staticPins.values():
+          if pin.scene() is not None: map._scene.removeItem(pin)
+        map.staticPins.clear()
+
+      for i in range(nStatics):
+        soff = _OFF_STATIC_START + i * _ENTITY.size
+        if soff + _ENTITY.size > len(data): break
+        (eid, cx, cy, name_b, pin_type) = _ENTITY.unpack_from(data, soff)
+        name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
+        if eid not in map.staticPins:
+          map.staticPins[eid] = μMapPin(eid, cx, cy, name, pinType=pin_type)
+
+      # Entities — after static section
+      entity_count_off = _OFF_STATIC_START + nStatics * _ENTITY.size
+      if len(data) < entity_count_off + 4: return True, seen
+      (nEntities,) = struct.unpack_from('<I', data, entity_count_off)
       if nEntities == 0: return False, set() # skips this refresh frame, no need to remove any pins
-      off += 4
+      eoff = entity_count_off + 4
 
       for _ in range(nEntities):
-        if off + _ENTITY.size > len(data): break
-        (eid, cx, cy, name_b, pin_type) = _ENTITY.unpack_from(data, off)
+        if eoff + _ENTITY.size > len(data): break
+        (eid, cx, cy, name_b, pin_type) = _ENTITY.unpack_from(data, eoff)
         name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
-        if eid in pins:
-          pins[eid].cx, pins[eid].cy = cx, cy
+        if eid in map.entityPins:
+          map.entityPins[eid].cx, map.entityPins[eid].cy = cx, cy
         else:
-          pins[eid] = μMapPin(eid, cx, cy, name, isPlayer=False, pinType=pin_type)
+          map.entityPins[eid] = μMapPin(eid, cx, cy, name, pinType=pin_type)
         seen.add(eid)
-        off += _ENTITY.size
+        eoff += _ENTITY.size
       return True, seen
     except Exception as e:
       μPrint.error(f'[μMap.load] {e}')
@@ -374,14 +556,16 @@ class μMap(μToggler):
     super().__init__("Map", P_ICON_MAP)
     self.toggler.setToolTip("Show/Hide Map")
     self.parser = μMapParser()
-    self.pins: dict[int, μMapPin] = {}
+    self.entityPins: dict[int, μMapPin] = {}
+    self.staticPins: dict[int, μMapPin] = {}
+    self.playerPins: dict[int, μMapPin] = {}
     self.edgePins: dict[int, μMapPin] = {}
     self._selEdgePin: μMapPin | None = None
     self.setMinimumSize(320, 240)
 
     self._scene = QGraphicsScene()
     self._bgItem = QGraphicsPixmapItem()
-    self._bgItem.setZValue(0)
+    self._bgItem.setZValue(-10000)
     self._scene.addItem(self._bgItem)
     self.view = μMapView(self._scene, self)
     self._scrollTarget: QPointF = None
@@ -413,15 +597,21 @@ class μMap(μToggler):
     self.lblTargetName.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
     self.cartographer = QComboBox()
     self.mapOpacity = QSlider()
-    self.pinsOpacity = QSlider()
+    self.entityOpacity = QSlider()
+    self.staticOpacity = QSlider()
+    self.playerOpacity = QSlider()
     self.mapOpacity.setRange(0,100)
     self.mapOpacity.setValue(100)
-    self.pinsOpacity.setRange(0,100)
-    self.pinsOpacity.setValue(100)
+    self.entityOpacity.setRange(0,100)
+    self.entityOpacity.setValue(100)
+    self.staticOpacity.setRange(0,100)
+    self.staticOpacity.setValue(100)
+    self.playerOpacity.setRange(0,100)
+    self.playerOpacity.setValue(100)
     self.details = vFrame(μDisplayLabel("Cartographer:"), self.cartographer, " ", μDisplayLabel("Area ID:"), self.lblAreaId, " ", 
                           μDisplayLabel("Selection:"), hLayout(self.lblTargetPin, self.lblTargetName),
-                              "__stretch__", μDisplayLabel("Opacity:"), hLayout(self.mapOpacity, self.pinsOpacity),
-                              hLayout("__stretch__", "map", "__stretch__", "pins", "__stretch__"), "__stretch__", μDisplayLabel("Search:"), self.filter)
+                              "__stretch__", μDisplayLabel("Opacity:"), hLayout(self.mapOpacity, self.playerOpacity, self.staticOpacity, self.entityOpacity),
+                              hLayout("__stretch__", "map", "__stretch__", "party", "__stretch__", "static", "__stretch__", "entities", "__stretch__"), "__stretch__", μDisplayLabel("Search:"), self.filter)
     self.details.setFixedWidth(200)
     self.details.hide()
 
@@ -432,7 +622,9 @@ class μMap(μToggler):
 
     self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
     self.mapOpacity.valueChanged.connect(self.setMapOpacity)
-    self.pinsOpacity.valueChanged.connect(self.setPinsOpacity)
+    self.entityOpacity.valueChanged.connect(lambda x : self.setPinsOpacity(x/100.0, entity=True))
+    self.staticOpacity.valueChanged.connect(lambda x : self.setPinsOpacity(x/100.0, static=True))
+    self.playerOpacity.valueChanged.connect(lambda x : self.setPinsOpacity(x/100.0, player=True))
     self.btnSelectTarget.clicked.connect(self.selectTarget)
     self.btnCenterMain.clicked.connect(lambda: self.setCenterOn('cartographer'))
     self.btnCenterSelect.clicked.connect(lambda: self.setCenterOn('target'))
@@ -473,16 +665,16 @@ class μMap(μToggler):
   def filterPins(self):
     text = self.filter.text()
     if text:
-      for pin in self.pins.values():
+      for pin in self.entityPins.values():
         pin.setVisible(not text or μString(pin.name) == text)
     else:
-      for pin in self.pins.values(): pin.setVisible(True)
+      for pin in self.entityPins.values(): pin.setVisible(True)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setCenterOn(self, target):
     μMap.centerMode = target
     if target == 'cartographer':
-      p = next((pin for pin in self.pins.values() if pin.isMainPlayer), None)
+      p = next((pin for pin in self.playerPins.values() if pin.pinType == P_TYPE_MAIN), None)
       if p: self._startScroll(p.cx * μMap.upscale, p.cy * μMap.upscale)
     elif target == 'target':
       if μMap.selectedPin:
@@ -498,6 +690,7 @@ class μMap(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setUpscale(cls, size): cls.upscale = size
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setMapSize(cls, width, height):
@@ -506,8 +699,12 @@ class μMap(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clear(self, clearCache=False):
-    for item in self.pins.values(): self._scene.removeItem(item)
-    self.pins.clear()
+    for item in self.playerPins.values(): self._scene.removeItem(item)
+    self.playerPins.clear()
+    for item in self.entityPins.values(): self._scene.removeItem(item)
+    self.entityPins.clear()
+    for item in self.staticPins.values(): self._scene.removeItem(item)
+    self.staticPins.clear()
     for item in self.edgePins.values(): self._scene.removeItem(item)
     self.edgePins.clear()
     if clearCache: μMapPin.cache.clear()
@@ -517,12 +714,15 @@ class μMap(μToggler):
     self._bgItem.setOpacity(val/100.0)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def setPinsOpacity(self, val : int):
-    opacity = val/100.0
-    for pin in self.pins.values():
-        pin.setOpacity(opacity)
-    for pin in self.edgePins.values():
-        pin.setOpacity(opacity)
+  def setPinsOpacity(self, val : float, player = False, static = False, entity = False):
+    if player:
+      for pin in self.playerPins.values(): pin.setOpacity(val)
+      for pin in self.edgePins.values(): pin.setOpacity(val)
+    if static:
+      for pin in self.staticPins.values(): pin.setOpacity(val)
+    if entity:
+      for pin in self.entityPins.values(): pin.setOpacity(val)
+
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refresh(self):
@@ -530,20 +730,7 @@ class μMap(μToggler):
     oldImageId = self.parser.mapId
     oldAreaName = self.parser.areaName
     μMap.setPinSize(μSettings.profile.map.iconSize())
-    ok, seen = self.parser.load(self.pins)
-    if not ok: return
-
-    if μMap.pinSize != oldPinSize:
-      for pin in self.pins.values(): pin.setup()
-      for pin in self.edgePins.values(): pin.setup()
-
-    for gone_id in set(self.pins) - seen:
-      self._scene.removeItem(self.pins.pop(gone_id))
-    for pid in seen:
-      pin = self.pins[pid]
-      pin.setPos(pin.cx * μMap.upscale, pin.cy * μMap.upscale)
-      if pin.scene() is None:
-        self._scene.addItem(pin)
+    ok, seen = self.parser.load(self)
 
     if self.parser.mapId != oldImageId:
       μMap.centerMode = 'cartographer'
@@ -567,8 +754,31 @@ class μMap(μToggler):
       zoom = μSettings.profile.map.mapZoom() / (100 * μMap.upscale)
       self.view.scale(zoom, zoom)
 
+    if not ok: return
+
+    if μMap.pinSize != oldPinSize:
+      for pin in self.edgePins.values(): pin.setup()
+      for pin in self.playerPins.values(): pin.setup()
+      for pin in self.entityPins.values(): pin.setup()
+      for pin in self.staticPins.values(): pin.setup()
+
+    for gone_id in set(self.playerPins) - seen:
+      self._scene.removeItem(self.playerPins.pop(gone_id))
+    for gone_id in set(self.entityPins) - seen:
+      self._scene.removeItem(self.entityPins.pop(gone_id))
+    for pid in seen:
+      pin = self.playerPins.get(pid) or self.entityPins.get(pid)
+      if pin is None: continue
+      pin.setPos(pin.cx * μMap.upscale, pin.cy * μMap.upscale)
+      if pin.scene() is None:
+        self._scene.addItem(pin)
+    for pin in self.staticPins.values():
+      pin.setPos(pin.cx * μMap.upscale, pin.cy * μMap.upscale)
+      if pin.scene() is None:
+        self._scene.addItem(pin)
+
     if μMap.centerMode == 'cartographer':
-      p = next((pin for pin in self.pins.values() if pin.isMainPlayer), None)
+      p = next((pin for pin in self.playerPins.values() if pin.pinType == P_TYPE_MAIN), None)
       if p: self._startScroll(p.cx * μMap.upscale, p.cy * μMap.upscale)
     elif μMap.centerMode == 'target' and μMap.selectedPin:
       self._startScroll(μMap.selectedPin.cx * μMap.upscale, μMap.selectedPin.cy * μMap.upscale)
@@ -598,7 +808,8 @@ class μMap(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onSelectionChanged(self):
-    sel = next((p for p in self.pins.values() if not sip.isdeleted(p) and p.isSelected()), None)
+    all_pins = list(self.playerPins.values()) + list(self.entityPins.values()) + list(self.staticPins.values())
+    sel = next((p for p in all_pins if not sip.isdeleted(p) and p.isSelected()), None)
     μMap.selectedPin = sel
     if sel:
       self.lblTargetPin.setPixmap(sel.pixmap().scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
@@ -613,13 +824,13 @@ class μMap(μToggler):
     vr = self.view.mapToScene(self.view.viewport().rect()).boundingRect()
     margin = μMap.pinSize / 2
     inner = vr.adjusted(margin, margin, -margin, -margin)
-    main = next((p for p in self.pins.values() if p.isMainPlayer), None)
+    main = next((p for p in self.playerPins.values() if p.pinType == P_TYPE_MAIN), None)
     if main is None: return
     mx = main.cx * μMap.upscale
     my = main.cy * μMap.upscale
     seen: set[int] = set()
-    for pid, pin in self.pins.items():
-      if not pin.isPlayer or pin.isMainPlayer: continue
+    for pid, pin in self.playerPins.items():
+      if pin.pinType == P_TYPE_MAIN: continue
       px = pin.cx * μMap.upscale
       py = pin.cy * μMap.upscale
       if vr.contains(px, py):
@@ -628,7 +839,7 @@ class μMap(μToggler):
         continue
       seen.add(pid)
       if pid not in self.edgePins:
-        ep = μMapPin(pid, 0, 0, pin.name, isPlayer=False, pinType=23, prio=10)
+        ep = μMapPin(pid, 0, 0, pin.name, pinType=P_TYPE_DISTANT_PARTY)
         self._scene.addItem(ep)
         self.edgePins[pid] = ep
       ep = self.edgePins[pid]
@@ -641,7 +852,7 @@ class μMap(μToggler):
       sx, sy = sel.cx * μMap.upscale, sel.cy * μMap.upscale
     if sel and not vr.contains(sx, sy):
       if self._selEdgePin is None:
-        self._selEdgePin = μMapPin(-1, 0, 0, sel.name, isPlayer=False, pinType=22, prio=10)
+        self._selEdgePin = μMapPin(-1, 0, 0, sel.name, pinType=P_TYPE_TARGET)
         self._scene.addItem(self._selEdgePin)
       μMap.pushToEdge(self._selEdgePin, sx, sy, mx, my, inner)
     elif self._selEdgePin is not None:
@@ -677,9 +888,9 @@ class μMap(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def printEntities(self):
-    self.parser.load(self.pins)
-    μPrint.info(f'[μMap] imageId={self.parser.mapId} ext={self.parser.ext!r} pins={len(self.pins)}')
-    for pin in self.pins.values():
+    self.parser.load(self.entityPins)
+    μPrint.info(f'[μMap] imageId={self.parser.mapId} ext={self.parser.ext!r} pins={len(self.entityPins)}')
+    for pin in self.entityPins.values():
       μPrint.info(repr(pin))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -719,3 +930,8 @@ class μMap(μToggler):
     self._timer.stop()
     μMap.runningBridge.drawMap(False)
     μMap.runningBridge = None
+
+    # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def close(self):
+    self.stopMapsDaemon()
+    super().close()
