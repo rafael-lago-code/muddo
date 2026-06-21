@@ -117,7 +117,7 @@ class dLauncher(dSection):
     self.lblBackendPath.setFixedWidth(160)
     self._language.setEnabled(False)
     self._backend.currentIndexChanged.connect(self.toggleBackend)
-    # self.toggleBackend()
+    self.toggleBackend()
     super().__init__(state)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---  

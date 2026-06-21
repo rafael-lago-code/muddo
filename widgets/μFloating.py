@@ -171,14 +171,14 @@ class μFloating(QDockWidget):
     self.setStyleSheet("QDockWidget { border: none; }")
     self._pending_bg = None
 
-    self._titleBar = μBar(title, self)
-    self._titleBar.btnClose.clicked.connect(self.hide)
-    self.setTitleBarWidget(self._titleBar)
+    self.titleBar = μBar(title, self)
+    self.titleBar.btnClose.clicked.connect(self.hide)
+    self.setTitleBarWidget(self.titleBar)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setWindowTitle(self, title: str):
     super().setWindowTitle(title)
-    self._titleBar.setTitle(title)
+    self.titleBar.setTitle(title)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setBackground(self, images: dict):

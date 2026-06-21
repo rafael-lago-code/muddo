@@ -100,7 +100,7 @@ class μMainWindow(QMainWindow):
     self.setCentralWidget(newVFrame([lButtonsBar]))
 
     self._docks = [self.credentials, self.settings, self.macros, self.processManager,
-                   self.storageManager, self.patch, self.console, self.strategy]
+                   self.storageManager, self.patch, self.console, self.strategy, self.map]
     for dock in self._docks:
       self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
       dock.setFloating(True)
@@ -210,6 +210,8 @@ class μMainWindow(QMainWindow):
     self.credentials.close()
     self.console.close()
     self.storageManager.close()
+    self.map.close()
+    self.strategy.close()
     super().close()
 
 

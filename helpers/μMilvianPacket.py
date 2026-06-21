@@ -52,7 +52,7 @@ class packetCommand(Enum):
   sellItems      = struct.pack('<I', 21)
   storeItems     = struct.pack('<I', 22)
   useItems       = struct.pack('<I', 23)
-  orderedActors  = struct.pack('<I', 30)
+  ordered        = struct.pack('<I', 30)
   chat           = struct.pack('<I', 31)
   namedaction    = struct.pack('<I', 32)
   strategy       = struct.pack('<I', 40)

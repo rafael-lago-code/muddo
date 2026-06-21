@@ -32,7 +32,7 @@ from widgets.μNetwork import *
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrb, μBoxCheck, μOrbSmall, μOrbTask
 from widgets.μCheckCombo import μCheckCombo
-from widgets.μText import μFontDisplay, μTextEdit, μFontMono
+from widgets.μText import μDisplayLabel, μFontDisplay, μTextEdit, μFontMono
 import glob
 import yaml
 import math
@@ -283,13 +283,16 @@ class μStrategy(μToggler):
     μStrategy._widget = self
     self.isDebugging = True
     self.logFileName = filename
-    self.btnToggle = μOrb(icon=P_ICON_TOGGLE, title="Toggle", tooltip="Toggle each individual Strategy on/off.<br><b><i>Ctrl+click</b></i> to pause all instead.")
-    self.btnRefresh = μOrbTask(icon=P_ICON_REFRESH, title="Refresh", tooltip="Refresh party info")
+    self.btnToggle    = μOrb(icon=P_ICON_TOGGLE, title="Toggle", tooltip="Toggle selected Strategies on/off.<br><b><i>Ctrl+click</b></i> to pause all instead.")
+    self.btnRefresh   = μOrbTask(icon=P_ICON_REFRESH, title="Refresh", tooltip="Refresh party info")
+    self.btnOffensive = μOrb(icon="swords", title="Offensive", tooltip="Set selected party members to aggressive")
+    self.btnDefensive = μOrb(icon="shield", title="Defensive",  tooltip="Set selected party members to defensive")
+    self.btnPassive   = μOrb(icon="zen", title="Passive",    tooltip="Set selected party members to passive (follow only)")
 
     self.showPets = μBoxCheck(title="Show Pets")
     self.directiveList = QComboBox()
     self.directiveList.setEditable(True)
-    self.directiveList.setMinimumWidth(200)
+    self.directiveList.setMinimumWidth(150)
     self.board = μNetwork(self)
     self.board.setMinimumWidth(450)
 
@@ -307,6 +310,11 @@ class μStrategy(μToggler):
 
     self.directiveList.currentTextChanged.connect(self._saveDirectiveToSession)
     self.directiveList.currentTextChanged.connect(self.load)
+
+    self.btnOffensive.setEnabled(False) # Not yet implemented
+    # self.btnOffensive.setFont(μFontDisplay(8))
+    self.btnDefensive.setEnabled(False)  # Not yet implemented
+    self.btnPassive.setEnabled(False)    # Not yet implemented
 
     self.board.setEdgeStyle(width=4, arrow_size=20, color=QColor(200, 60, 60))
     self.btnRefresh.execute = μStrategy.refreshPartyInfo
@@ -326,11 +334,14 @@ class μStrategy(μToggler):
     self.nodePanel.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
 
     _boardSplitter = QSplitter(Qt.Orientation.Horizontal)
-    _boardSplitter.addWidget(newVFrame([self.board, newHLayout([self.btnToggle, self.btnRefresh, self.showPets, "__stretch__"])]))
-    _boardSplitter.addWidget(newVFrame([self.directivesEditor, self.nodePanel]))
+    _boardSplitter.addWidget(self.board)
+    _boardSplitter.addWidget(vFrame(self.nodePanel, self.directivesEditor))
 
-    self.setLayout(newVLayout([newHLayout(["__stretch__","Directives:", self.directiveList, self.btnDuplicateDirectives, self.btnRemoveDirectives, self.btnEditDirectives]),
-                      _boardSplitter]))
+    _toolbar = hLayout(self.btnOffensive, self.btnDefensive, self.btnPassive, self.btnToggle, self.btnRefresh, self.showPets, "__stretch__",
+                  vLayout(hLayout(μDisplayLabel("Directives:"), self.directiveList),
+                      hLayout(self.btnDuplicateDirectives, self.btnRemoveDirectives, self.btnEditDirectives)))
+
+    self.setLayout(newVLayout([_boardSplitter,_toolbar]))
   
   # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
   #   🞋  W I D G E T / I N S T A N C E   M E T H O D S 

@@ -112,6 +112,23 @@ def newVFrame(objects : list, font=None) -> QFrame:
   return f
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+def hLayout(*objects, font=None) -> QHBoxLayout:
+  return stackToLayout(QHBoxLayout(), list(objects), font)
+
+def vLayout(*objects, font=None) -> QVBoxLayout:
+  return stackToLayout(QVBoxLayout(), list(objects), font)
+
+def hFrame(*objects, font=None) -> QFrame:
+  f = QFrame()
+  f.setLayout(stackToLayout(QHBoxLayout(), list(objects), font))
+  return f
+
+def vFrame(*objects, font=None) -> QFrame:
+  f = QFrame()
+  f.setLayout(stackToLayout(QVBoxLayout(), list(objects), font))
+  return f
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def newVSplitter(objects : list, font=None) -> QSplitter:
   f = QSplitter(Qt.Orientation.Vertical)
   appendWidget(f, objects, font)

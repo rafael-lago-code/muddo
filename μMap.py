@@ -18,11 +18,13 @@
 #
 #
 import os, struct, glob, mmap, math
-from PyQt6.QtWidgets import QComboBox, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsItem, QSlider, QTextEdit, QVBoxLayout, QHBoxLayout, QProxyStyle, QStyle
+from PyQt6 import sip
+from PyQt6.QtWidgets import QLineEdit, QWidget, QComboBox, QGraphicsView, QGraphicsScene, QGraphicsPixmapItem, QGraphicsItem, QSlider, QTextEdit, QVBoxLayout, QHBoxLayout, QProxyStyle, QStyle
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QWheelEvent
 from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QObject, QPointF, pyqtProperty
 from helpers.μImageFactory import *
 from helpers.util import P_DEFAULT_SHM_DIR
+from helpers.μStrings import μString
 from helpers.μPrint import μPrint
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
@@ -94,6 +96,7 @@ P_PIN_TYPE_MAP: dict[int, str] = {
   313: "map/pin_item_dropped",
   314: "map/pin_collectible_taken",
   315: "map/pin_soul_stone",
+  316: "map/pin_token_npc",
   400: "map/pin_enemy",
   401: "map/pin_friendly",
   402: "map/pin_token_other",
@@ -236,6 +239,7 @@ class μMapParser:
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self, pins: dict, path: str = None) -> tuple[bool, set]:
+    if μMap.runningBridge is None: return False, set()
     path = path or μMapParser.dataPath()
     if not os.path.exists(path):
       return False, set()
@@ -299,14 +303,22 @@ class _FastTooltipStyle(QProxyStyle):
 #   🮿  M A P   V I E W
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMapView(QGraphicsView):
-  def __init__(self, scene: QGraphicsScene):
+
+  def __init__(self, scene: QGraphicsScene, mapWidget: 'μMap'):
     super().__init__(scene)
+    self._map = mapWidget
     self.setStyle(_FastTooltipStyle())
     self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
     self.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
     self.setResizeAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
     self.setRenderHint(QPainter.RenderHint.Antialiasing)
     self.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform)
+    self.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    self.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    self.setBackgroundBrush(Qt.GlobalColor.black)
+    self.toolbar = QWidget(self)
+    self.toolbar.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Maximum)
+    self.toolbar.setFixedWidth(48)
 
   def _getCenter(self): return self.mapToScene(self.viewport().rect().center())
   def _setCenter(self, pt): self.centerOn(pt)
@@ -317,7 +329,20 @@ class μMapView(QGraphicsView):
       self.scene().clearSelection()
     else:
       μMap.centerMode = 'none'
+      self._map._scrollTarget = None
+      self._map._scrollTimer.stop()
       super().mousePressEvent(event)
+
+  def _repositionToolbar(self):
+    self.toolbar.move(self.width() - self.toolbar.width(), self.height() - self.toolbar.height())
+
+  def resizeEvent(self, event):
+    super().resizeEvent(event)
+    self._repositionToolbar()
+
+  def showEvent(self, event):
+    super().showEvent(event)
+    self._repositionToolbar()
 
   def wheelEvent(self, event: QWheelEvent):
     delta = event.angleDelta().y()
@@ -345,19 +370,20 @@ class μMap(μToggler):
   pinSize = 16*upscale
 
   def __init__(self, parent=None):
+    self.widgetID = "Map"
     super().__init__("Map", P_ICON_MAP)
     self.toggler.setToolTip("Show/Hide Map")
     self.parser = μMapParser()
     self.pins: dict[int, μMapPin] = {}
     self.edgePins: dict[int, μMapPin] = {}
     self._selEdgePin: μMapPin | None = None
-    self.setMinimumSize(768, 640)
+    self.setMinimumSize(320, 240)
 
     self._scene = QGraphicsScene()
     self._bgItem = QGraphicsPixmapItem()
     self._bgItem.setZValue(0)
     self._scene.addItem(self._bgItem)
-    self.view = μMapView(self._scene)
+    self.view = μMapView(self._scene, self)
     self._scrollTarget: QPointF = None
     self._scrollTimer = QTimer()
     self._scrollTimer.setInterval(16)
@@ -377,8 +403,11 @@ class μMap(μToggler):
     self.btnCenterSelect = μOrbSmall(icon="bullseye", tooltip='Center on view target Object')
     self.btnSelectTarget = μOrbSmall(icon='hand-select', tooltip='Select (in-game) the target object')
     self.btnDetails = μOrbSmall(icon='view-visible', tooltip='Show/Hide Details')
-    self.txtSearch = QTextEdit()
+    self.filter = QLineEdit()
     self.lblTargetPin = QLabel()
+    self.lblAreaId = QLabel()
+    self.lblAreaId.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+    self.lblAreaId.setWordWrap(True)
     self.lblTargetName = QLabel("None")
     self.lblTargetName.setWordWrap(True)
     self.lblTargetName.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
@@ -389,40 +418,40 @@ class μMap(μToggler):
     self.mapOpacity.setValue(100)
     self.pinsOpacity.setRange(0,100)
     self.pinsOpacity.setValue(100)
-    self.details = newVFrame([μDisplayLabel("Cartographer:"), self.cartographer, " ", μDisplayLabel("Selection:"), newHLayout([self.lblTargetPin, self.lblTargetName]),
-                              "__stretch__", μDisplayLabel("Opacity:"), newHLayout([self.mapOpacity, self.pinsOpacity]),
-                              newHLayout(["__stretch__", "map", "__stretch__", "pins", "__stretch__"]), "__stretch__", μDisplayLabel("Search:"), self.txtSearch])
+    self.details = vFrame(μDisplayLabel("Cartographer:"), self.cartographer, " ", μDisplayLabel("Area ID:"), self.lblAreaId, " ", 
+                          μDisplayLabel("Selection:"), hLayout(self.lblTargetPin, self.lblTargetName),
+                              "__stretch__", μDisplayLabel("Opacity:"), hLayout(self.mapOpacity, self.pinsOpacity),
+                              hLayout("__stretch__", "map", "__stretch__", "pins", "__stretch__"), "__stretch__", μDisplayLabel("Search:"), self.filter)
     self.details.setFixedWidth(200)
     self.details.hide()
 
     self.btnRefresh.clicked.connect(self.refresh)
-    self.btnRefresh.ctrlClicked.connect(self.startMapsDaemon) # this does restart if it is already running
+    self.btnRefresh.ctrlClicked.connect(lambda : self.startMapsDaemon()) # this does restart if it is already running
     self.btnDetails.clicked.connect(lambda : self.details.setVisible(not self.details.isVisible()))
     self._scene.selectionChanged.connect(self.onSelectionChanged)
 
-    toolbar = QHBoxLayout()
-    toolbar.addWidget(self.btnRefresh)
-    toolbar.addWidget(self.btnCenterMain)
-    toolbar.addWidget(self.btnCenterSelect)
-    toolbar.addWidget(self.btnSelectTarget)
-    # debug stuff
-    # toolbar.addWidget(self.btnPrint) 
-    # toolbar.addWidget(self.btnPlay)
-    # toolbar.addWidget(self.btnStop)
-    toolbar.addStretch()
-    toolbar.addWidget(self.btnDetails)
-    
     self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
     self.mapOpacity.valueChanged.connect(self.setMapOpacity)
     self.pinsOpacity.valueChanged.connect(self.setPinsOpacity)
     self.btnSelectTarget.clicked.connect(self.selectTarget)
     self.btnCenterMain.clicked.connect(lambda: self.setCenterOn('cartographer'))
     self.btnCenterSelect.clicked.connect(lambda: self.setCenterOn('target'))
+    self.filter.editingFinished.connect(self.filterPins)
+
+    # toolbar_widget = QWidget(self.view)
+    tl = QVBoxLayout()
+    tl.addWidget(self.btnCenterMain)
+    tl.addWidget(self.btnCenterSelect)
+    tl.addWidget(self.btnSelectTarget)
+    tl.addSpacing(10)
+    tl.addWidget(self.btnDetails)
+    tl.addWidget(self.btnRefresh)
+    tl.addSpacing(10)
+    self.view.toolbar.setLayout(tl)
 
     layout = QVBoxLayout()
     layout.setContentsMargins(0, 0, 0, 0)
-    layout.addLayout(toolbar)
-    layout.addLayout(newHLayout([self.view,self.details]))
+    layout.addLayout(newHLayout([self.view, self.details]))
     self.setLayout(layout)
  
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -434,12 +463,20 @@ class μMap(μToggler):
       self.show()
       self.startMapsDaemon()
   
-  
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   #    Select the in-game object associated with the currently targeted pin
   def selectTarget(self):
     if μMap.selectedPin and μMap.runningBridge: 
       μMap.runningBridge.selectEntity(μMap.selectedPin.id)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def filterPins(self):
+    text = self.filter.text()
+    if text:
+      for pin in self.pins.values():
+        pin.setVisible(not text or μString(pin.name) == text)
+    else:
+      for pin in self.pins.values(): pin.setVisible(True)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setCenterOn(self, target):
@@ -487,11 +524,11 @@ class μMap(μToggler):
     for pin in self.edgePins.values():
         pin.setOpacity(opacity)
 
-
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refresh(self):
     oldPinSize = μMap.pinSize
     oldImageId = self.parser.mapId
+    oldAreaName = self.parser.areaName
     μMap.setPinSize(μSettings.profile.map.iconSize())
     ok, seen = self.parser.load(self.pins)
     if not ok: return
@@ -510,15 +547,19 @@ class μMap(μToggler):
 
     if self.parser.mapId != oldImageId:
       μMap.centerMode = 'cartographer'
-      μPrint.info(f'[μMap] ID changed: {C_ORANGE}{oldImageId}</font> ➜ {C_ORANGE}{self.parser.mapId}</font>')
+      μPrint.info(f'[μMap] ID changed: {C_ORANGE}{oldAreaName}</font> ➜ {C_ORANGE}{self.parser.areaName}</font>')
       path = self.parser.imagePath()
       pix = QPixmap.fromImage(QImage(path))
       if pix.isNull():
         μPrint.error(f'[μMap] Failed to load {path}')
+        μMap.setWindowTitle(f"Map - Unknown")
+        self.lblAreaId.setText("")
         self.parser.mapId = -1
         return
       μMap.setUpscale(int(μSettings.profile.map.upscale()/100))
       μMap.setMapSize(pix.width(), pix.height())
+      self.setWindowTitle(f"Map - {self.parser.areaName}")
+      self.lblAreaId.setText(str(self.parser.mapId))
       self._bgItem.setPixmap(pix.scaled(μMap.mapWidth, μMap.mapHeight,
         Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
       self._scene.setSceneRect(0, 0, μMap.mapWidth, μMap.mapHeight)
@@ -557,7 +598,7 @@ class μMap(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onSelectionChanged(self):
-    sel = next((p for p in self.pins.values() if p.isSelected()), None)
+    sel = next((p for p in self.pins.values() if not sip.isdeleted(p) and p.isSelected()), None)
     μMap.selectedPin = sel
     if sel:
       self.lblTargetPin.setPixmap(sel.pixmap().scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
@@ -647,11 +688,11 @@ class μMap(μToggler):
     if μMap.runningBridge: self.stopMapsDaemon()
     bridges = μMilvianMeta.getBridges()
 
-
     self.cartographer.currentTextChanged.disconnect()
     self.cartographer.clear()
     if not bridges:
-      self.widgetID = "Map - None"
+      self.setWindowTitle(f"Map - Unknown")
+      self.lblAreaId.setText("")
     else:
       self.cartographer.addItems([b.capitalize() for b in bridges.keys()])
       if cartographers is None:
@@ -669,7 +710,7 @@ class μMap(μToggler):
           self.cartographer.setCurrentText(c.capitalize())
           break
       else:
-        μPrint.warning(f"[μMap] Requested Map but no cartographer found: \"{cartographers}\". Edit the list of \"cartographers\" in Settings and try again.")
+        μPrint.warning(f"[μMap] Requested Map but no cartographer found: \"{cartographers}\". Select one from the drop-down menu. Edit the list of \"cartographers\" in Settings to suppress this warning.")
     self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
