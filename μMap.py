@@ -41,111 +41,111 @@ P_MAP_DIR = P_DEFAULT_SHM_DIR
 P_TYPE_MAIN          = 1
 P_TYPE_PLAYER        = 2
 P_TYPE_PET           = 3
-P_PLAYER_TYPES: dict[int, str] = {
-  1: "map/pin_main",
-  2: "map/pin_token_player",
-  3: "map/pin_token_pet",
-  4: "map/pin_token_green",
-  5: "map/pin_token_hireling",
-  6: "map/pin_token_pet_others",
+P_PLAYER_PINS: dict[int, str] = {
+  1: "main",
+  2: "token_player",
+  3: "token_pet",
+  4: "token_green",
+  5: "token_hireling",
+  6: "token_pet_others",
 }
 
 P_TYPE_TARGET        = 30
 P_TYPE_DISTANT_PARTY = 31
-P_EDGE_TYPES: dict[int, str] = {
-  30: "map/pin_target",
-  31: "map/pin_distant_party",
+P_EDGE_PINS: dict[int, str] = {
+  30: "target",
+  31: "distant_party",
 }
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 # These "usually" map nicely to MapNoteType property. I added some extras
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-P_STATIC_TYPES: dict[int, str] = {
+P_STATIC_PINS: dict[int, str] = {
   # Block - Teleports
-  100: "map/pin_teleport",
-  101: "map/pin_teleport_red",
-  110: "map/pin_area_yellow",
-  111: "map/pin_area_red",
-  120: "map/pin_airship",
+  100: "teleport",
+  101: "teleport_red",
+  110: "area_yellow",
+  111: "area_red",
+  120: "airship",
   # Block - Amenities
-  200: "map/pin_shrine",
-  201: "map/pin_shrine_ress",
-  210: "map/pin_bank",
-  215: "map/pin_auction",
-  220: "map/pin_mailbox",
-  225: "map/pin_crafting",
-  230: "map/pin_patron",
-  235: "map/pin_trainer",
-  240: "map/pin_poi",
-  245: "map/pin_spirit_binder",
+  200: "shrine",
+  201: "shrine_ress",  # extra
+  210: "bank",
+  215: "auction",
+  220: "mailbox",
+  225: "crafting",
+  230: "patron",
+  235: "trainer",
+  240: "poi",
+  245: "spirit_binder", # extra
   # Block - Vendors
-  300: "map/pin_tavern",
-  305: "map/pin_token_vendor",
-  310: "map/pin_token_pawn",
-  315: "map/pin_collector",
-  320: "map/pin_hireling_vendor",
+  300: "tavern",
+  305: "token_vendor",
+  310: "token_pawn",
+  315: "collector",
+  320: "hireling_vendor",
   # Block - Doors
-  350: "map/pin_door_yellow",
-  351: "map/pin_door_blue",
-  352: "map/pin_door_red",
-  353: "map/pin_door_grey",
-  360: "map/pin_door_raid_yellow",
+  350: "door_yellow",
+  351: "door_blue",
+  352: "door_red",
+  353: "door_grey",
+  360: "door_raid_yellow",
   # Block - Chalices
-  370: "map/pin_check",
-  380: "map/pin_chalice_raid",
-  381: "map/pin_chalice_raid_blue",
-  382: "map/pin_chalice_raid_grey",
-  383: "map/pin_chalice_raid_red",
-  400: "map/pin_chalice_yellow",
-  401: "map/pin_chalice_blue",
-  402: "map/pin_chalice_grey",
-  403: "map/pin_chalice_red",
-  420: "map/pin_chalice_arc",
-  421: "map/pin_chalice_arc_blue",
-  430: "map/pin_chalice_saga",
-  431: "map/pin_chalice_saga_blue",
+  370: "check",
+  380: "chalice_raid",
+  381: "chalice_raid_blue",
+  382: "chalice_raid_grey",
+  383: "chalice_raid_red",
+  400: "chalice_yellow",
+  401: "chalice_blue",
+  402: "chalice_grey",
+  403: "chalice_red",
+  420: "chalice_arc",
+  421: "chalice_arc_blue",
+  430: "chalice_saga",
+  431: "chalice_saga_blue",
   # Block - Challenges
-  450: "map/pin_challenge_blue",
-  451: "map/pin_challenge_grey",
-  452: "map/pin_challenge_red",
+  450: "challenge_blue",
+  451: "challenge_grey",
+  452: "challenge_red",
 }
 
-P_ENTITY_TYPES: dict[int, str] = {
+P_ENTITY_PINS: dict[int, str] = {
   # Block - Dungeon Stuff
-  500: "map/pin_chest",
-  510: "map/pin_explorer",
-  515: "map/pin_soul_stone",
-  520: "map/pin_crest",
-  521: "map/pin_crest_socket",
-  525: "map/pin_token_npc",
-  530: "map/pin_dimension_door",
-  535: "map/pin_mysterious_remnants",
-  540: "map/pin_lostsoul",
-  550: "map/pin_usable",
-  551: "map/pin_control_panel",
-  552: "map/pin_collectible",
-  553: "map/pin_item_dropped",
-  560: "map/pin_trap",
-  561: "map/pin_secret",
-  570: "map/pin_ladder",
-  575: "map/pin_collectible_taken",
+  500: "chest",
+  510: "explorer",
+  515: "soul_stone",
+  520: "crest",
+  521: "crest_socket",
+  525: "token_npc",
+  530: "dimension_door",
+  535: "mysterious_remnants",
+  540: "lostsoul",
+  550: "usable",
+  551: "control_panel",
+  552: "collectible",
+  553: "item_dropped",
+  560: "trap",
+  561: "secret",
+  570: "ladder",
+  575: "collectible_taken",
   # Block - Enemies
-  600: "map/pin_champion_yellow",
-  601: "map/pin_champion_orange",
-  602: "map/pin_champion_red",
-  610: "map/pin_boss_reaper",
-  611: "map/pin_boss_mini",
-  612: "map/pin_boss",
-  613: "map/pin_boss_raids",
-  620: "map/pin_enemy",
+  600: "champion_yellow",
+  601: "champion_orange",
+  602: "champion_red",
+  610: "boss_reaper",
+  611: "boss_mini",
+  612: "boss",
+  613: "boss_raids",
+  620: "enemy",
   # Block - Others
-  650: "map/pin_friendly",
-  660: "map/pin_breakeable",
-  670: "map/pin_token_red",
-  680: "map/pin_token_other",
+  650: "friendly",
+  660: "breakeable",
+  670: "token_red",
+  680: "token_other",
 }
 
-P_PIN_TYPE_MAP: dict[int, str] = P_PLAYER_TYPES | P_EDGE_TYPES | P_STATIC_TYPES | P_ENTITY_TYPES
+P_MAP_PINS: dict[int, str] = P_PLAYER_PINS | P_EDGE_PINS | P_STATIC_PINS | P_ENTITY_PINS
 
 P_MAPPING: dict[int, str] = {
    3: 400, # pin_chalice_yellow
@@ -191,79 +191,6 @@ P_MAPPING: dict[int, str] = {
   43: 431, # map/pin_chalice_saga_blue
   44: 370, # map/pin_check
   45: 5,   # pin_token_hireling
-}
-
-P_OLD_DICT_FOR_CLAUDE: dict[int, str] = {
-    1: "map/pin_auction",
-    2: "map/pin_bank",
-    3: "map/pin_challenge_blue",
-    4: "map/pin_door_yellow",
-    6: "map/pin_mailbox",
-    7: "map/pin_crafting",
-    8: "map/pin_teleport",
-    9: "map/pin_patron",
-   10: "map/pin_airship",
-   11: "map/pin_shrine_ress",
-   12: "map/pin_shrine",
-   13: "map/pin_tavern",
-   14: "map/pin_door_grey",
-   15: "map/pin_door_blue",
-   16: "map/pin_door_red",
-   17: "map/pin_area_yellow",
-   18: "map/pin_area_red",
-   19: "map/pin_door_raid_yellow",
-   20: "map/pin_dimension_door",
-   21: "map/pin_main",
-   22: "map/pin_target",
-   23: "map/pin_distant_party",
-   24: "map/pin_selected",
-   25: "map/pin_trap",
-  100: "map/pin_chalice_yellow",
-  101: "map/pin_chalice_blue",
-  102: "map/pin_chalice_grey",
-  103: "map/pin_chalice_red",
-  110: "map/pin_chalice_raid",
-  111: "map/pin_chalice_raid_blue",
-  112: "map/pin_chalice_raid_grey",
-  113: "map/pin_chalice_raid_red",
-  120: "map/pin_chalice_arc",
-  121: "map/pin_chalice_arc_blue",
-  130: "map/pin_chalice_saga",
-  131: "map/pin_chalice_saga_blue",
-  201: "map/pin_token_vendor",
-  202: "map/pin_token_pawn",
-  203: "map/pin_collector",
-  204: "map/pin_hireling_vendor",
-  205: "map/pin_spirit_binder",
-  210: "map/pin_trainer",
-  300: "map/pin_poi",
-  301: "map/pin_breakeable",
-  302: "map/pin_crest",
-  303: "map/pin_crest_socket",
-  304: "map/pin_chest",
-  305: "map/pin_secret",
-  306: "map/pin_mysterious_remnants",
-  307: "map/pin_lostsoul",
-  308: "map/pin_usable",
-  309: "map/pin_control_panel",
-  310: "map/pin_explorer",
-  311: "map/pin_collectible",
-  312: "map/pin_ladder",
-  313: "map/pin_item_dropped",
-  314: "map/pin_collectible_taken",
-  315: "map/pin_soul_stone",
-  316: "map/pin_token_npc",
-  400: "map/pin_enemy",
-  401: "map/pin_friendly",
-  402: "map/pin_token_other",
-  403: "map/pin_champion_yellow",
-  404: "map/pin_champion_orange",
-  405: "map/pin_champion_red",
-  410: "map/pin_boss_reaper",
-  411: "map/pin_boss_mini",
-  412: "map/pin_boss",
-  413: "map/pin_boss_raids",
-  1000: "map/pin_token_red",
 }
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -318,7 +245,7 @@ class μMapPin(QGraphicsPixmapItem):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def pinTypeName(self) -> str:
-    return P_PIN_TYPE_MAP.get(self.pinType, "map/pin_token_red")
+    return "map/pin_" + P_MAP_PINS.get(self.pinType, "token_red")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setup(self):
@@ -373,7 +300,7 @@ class μMapPin(QGraphicsPixmapItem):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __repr__(self):
-    kind = "player" if self.pinType in P_PLAYER_TYPES else "entity"
+    kind = "player" if self.pinType in P_PLAYER_PINS else "entity"
     return f'μMapPin({self.id:#x} {kind} "{self.name}" pin={self.pinType} px=({self.cx:.1f},{self.cy:.1f}))'
 
 
