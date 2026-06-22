@@ -18,7 +18,7 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QTabWidget, QWidget
+from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QTabWidget, QWidget, QSlider
 from PyQt6.QtCore import QSettings
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-P_SERIALIZABLE = (QLineEdit, μBoxCheck, QComboBox, QSpinBox)
+P_SERIALIZABLE = (QLineEdit, μBoxCheck, QComboBox, QSpinBox, QSlider)
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def _getValue(w):
@@ -41,6 +41,7 @@ def _getValue(w):
   if isinstance(w, μBoxCheck): return w.isChecked()
   if isinstance(w, QComboBox): return w.currentText()
   if isinstance(w, QSpinBox):  return w.value()
+  if isinstance(w, QSlider):  return w.value()
   return None
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -53,6 +54,9 @@ def _setValue(w, v):
     idx = w.findText(str(v))
     if idx >= 0: w.setCurrentIndex(idx)
   elif isinstance(w, QSpinBox):
+    try: w.setValue(int(v))
+    except (TypeError, ValueError): pass
+  elif isinstance(w, QSlider):
     try: w.setValue(int(v))
     except (TypeError, ValueError): pass
 
@@ -70,7 +74,7 @@ class dSection():
       if isinstance(att, QLineEdit): setattr(self, wname, att.text)
       if isinstance(att, μBoxCheck): setattr(self, wname, att.isChecked)
       if isinstance(att, QComboBox): setattr(self, wname, att.currentText)
-      if isinstance(att, QSpinBox):  setattr(self, wname, att.value)
+      if isinstance(att, (QSpinBox, QSlider)): setattr(self, wname, att.value)
 
     # each modification saves to disk immediately
     for wname, att in allItems.items():
@@ -78,7 +82,7 @@ class dSection():
       if isinstance(att, QLineEdit): att.editingFinished.connect(lambda a=att, w=wname: self.saveWidget(w, a.text()))
       if isinstance(att, μBoxCheck): att.stateChanged.connect(lambda a=False, w=wname: self.saveWidget(w, a))
       if isinstance(att, QComboBox): att.currentTextChanged.connect(lambda a="", w=wname: self.saveWidget(w, a))
-      if isinstance(att, QSpinBox):  att.valueChanged.connect(lambda a=0, w=wname: self.saveWidget(w, a))
+      if isinstance(att, (QSpinBox, QSlider)): att.valueChanged.connect(lambda a=0, w=wname: self.saveWidget(w, a))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────---
   def saveWidget(self, key, value):

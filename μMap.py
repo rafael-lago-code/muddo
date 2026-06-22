@@ -58,63 +58,6 @@ P_EDGE_PINS: dict[int, str] = {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-# P_STATIC_PINS 600-999
-# These "usually" map nicely to MapNoteType property. I added some extras
-# Exactly the same as the first entries from P_ENTITY_PINS, +500. These will be displayed bellow
-# their Entity counterpart, so that you can click on the Entity pin when both a static and an entity one
-# exist
-# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-P_STATIC_PINS: dict[int, str] = {
-  # Block - Teleports
-  600: "teleport",
-  601: "teleport_red",
-  610: "area_yellow",
-  611: "area_red",
-  620: "airship",
-  # Block - Amenities
-  700: "shrine",
-  701: "shrine_ress",  # extra
-  710: "bank",
-  715: "auction",
-  720: "mailbox",
-  725: "crafting",
-  730: "patron",
-  735: "trainer",
-  740: "poi",
-  745: "spirit_binder", # extra
-  # Block - Vendors
-  800: "tavern",
-  805: "token_vendor",
-  810: "token_pawn",
-  815: "collector",
-  820: "hireling_vendor",
-  # Block - Doors
-  850: "door_yellow",
-  851: "door_blue",
-  852: "door_red",
-  853: "door_grey",
-  860: "door_raid_yellow",
-  # Block - Chalices
-  870: "check",
-  880: "chalice_raid",
-  881: "chalice_raid_blue",
-  882: "chalice_raid_grey",
-  883: "chalice_raid_red",
-  900: "chalice_yellow",
-  901: "chalice_blue",
-  902: "chalice_grey",
-  903: "chalice_red",
-  920: "chalice_arc",
-  921: "chalice_arc_blue",
-  930: "chalice_saga",
-  931: "chalice_saga_blue",
-  # Block - Challenges
-  950: "challenge_blue",
-  951: "challenge_grey",
-  952: "challenge_red",
-}
-
-# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 # P_ENTITY_PINS
 # 100-500: static pins, but with entity context as well. 
 # 1000-1200: pure entity pins, stuff that you wouldn't see in the static pin list
@@ -186,6 +129,7 @@ P_ENTITY_PINS: dict[int, str] = {
   1060: "trap",
   1061: "secret",
   1070: "ladder",
+  1071: "door_grey",
   1075: "collectible_taken",
   # Block - Enemies
   1100: "champion_yellow",
@@ -207,53 +151,13 @@ P_STATIC_PINS_SHIFT=500
 P_STATIC_PINS_START=600
 P_STATIC_PINS_END=999
 P_STATIC_PINS = {k+P_STATIC_PINS_SHIFT:v for k,v in P_ENTITY_PINS.items() if k<500}
+
+  # Block - VeryMuchNotInTheEnum
+P_STATIC_PINS[1520] = "crest"
+P_STATIC_PINS[1521] = "crest_socket"
+P_STATIC_PINS[1525] = "token_npc"
 P_MAP_PINS: dict[int, str] = P_PLAYER_PINS | P_EDGE_PINS | P_STATIC_PINS | P_ENTITY_PINS
 
-P_MAPPING: dict[int, str] = {
-   1: 400, # pin_chalice_yellow
-   4: 402, # pin_chalice_grey
-   5: 402, # pin_chalice_grey
-   6: 401, # pin_chalice_blue
-   7: 353, # pin_door_grey
-   8: 350, # pin_door_yellow
-   9: 240, # pin_poi
-  10: 2,   # pin_token_player
-  11: 305, # pin_token_vendor
-  12: 235, # pin_trainer
-  13: 300, # pin_tavern
-  14: 315, # pin_collector
-  15: 225, # pin_crafting
-  16: 110, # pin_area_yellow
-  17: 370, # pin_chalice_raid
-  18: 310, # pin_token_pawn
-  19: 220, # pin_mailbox
-  20: 230, # pin_patron
-  21: 215, # pin_auction
-  22: 320, # pin_hireling_vendor
-  23: 500, # pin_chest
-  24: 200, # pin_shrine
-  25: 100, # pin_teleport
-  26: 210, # pin_bank
-  27: 120, # pin_airship
-  28: 670, # pin_token_red
-  29: 403, # map/pin_chalice_red
-  30: 111, # map/pin_area_red
-  31: 352, # map/pin_door_red
-  32: 101, # map/pin_teleport_red
-  33: 370, # map/pin_check
-  34: 373, # map/pin_chalice_raid_red
-  35: 3,   # pin_token_pet
-  36: 450, # pin_challenge_blue
-  37: 452, # map/pin_challenge_red
-  38: 451, # pin_challenge_grey
-  39: 450, # pin_challenge_blue
-  40: 430, # pin_chalice_saga
-  41: 431, # pin_chalice_saga_blue
-  42: 430, # map/pin_chalice_saga
-  43: 431, # map/pin_chalice_saga_blue
-  44: 370, # map/pin_check
-  45: 5,   # pin_token_hireling
-}
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  L A Y O U T
@@ -590,19 +494,11 @@ class μMap(μToggler):
     self.lblTargetName.setWordWrap(True)
     self.lblTargetName.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
     self.cartographer = QComboBox()
-    self.mapOpacity = QSlider()
-    self.entityOpacity = QSlider()
-    self.staticOpacity = QSlider()
-    self.playerOpacity = QSlider()
-    self.mapOpacity.setRange(0,100)
-    self.mapOpacity.setValue(100)
-    self.entityOpacity.setRange(0,100)
-    self.entityOpacity.setValue(100)
-    self.staticOpacity.setRange(0,100)
-    self.staticOpacity.setValue(100)
-    self.playerOpacity.setRange(0,100)
-    self.playerOpacity.setValue(100)
-    self.details = vFrame(μDisplayLabel("Cartographer:"), self.cartographer, " ", μDisplayLabel("Area ID:"), self.lblAreaId, " ", 
+    self.mapOpacity = QSlider(); self.mapOpacity.setRange(0,100); self.mapOpacity.setValue(100)
+    self.entityOpacity = QSlider(); self.entityOpacity.setRange(0,100); self.entityOpacity.setValue(100)
+    self.staticOpacity = QSlider(); self.staticOpacity.setRange(0,100); self.staticOpacity.setValue(100)
+    self.playerOpacity = QSlider(); self.playerOpacity.setRange(0,100); self.playerOpacity.setValue(100)
+    self.details = vFrame(μDisplayLabel("Cartographer:"), self.cartographer, " ", μDisplayLabel("Area ID:"), self.lblAreaId, " ",
                           μDisplayLabel("Selection:"), hLayout(self.lblTargetPin, self.lblTargetName),
                               "__stretch__", μDisplayLabel("Opacity:"), hLayout(self.mapOpacity, self.playerOpacity, self.staticOpacity, self.entityOpacity),
                               hLayout("__stretch__", "map", "__stretch__", "party", "__stretch__", "static", "__stretch__", "entities", "__stretch__"), "__stretch__", μDisplayLabel("Search:"), self.filter)
@@ -611,14 +507,21 @@ class μMap(μToggler):
 
     self.btnRefresh.clicked.connect(self.refresh)
     self.btnRefresh.ctrlClicked.connect(lambda : self.startMapsDaemon()) # this does restart if it is already running
-    self.btnDetails.clicked.connect(lambda : self.details.setVisible(not self.details.isVisible()))
+    self.btnDetails.clicked.connect(lambda: (
+      self.details.setVisible(not self.details.isVisible()),
+      μSettings.profile and μSettings.profile._state.setValue("map/uiDetailsVisible", self.details.isVisible())))
     self._scene.selectionChanged.connect(self.onSelectionChanged)
 
     self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
     self.mapOpacity.valueChanged.connect(self.setMapOpacity)
-    self.entityOpacity.valueChanged.connect(lambda x : self.setPinsOpacity(x/100.0, entity=True))
-    self.staticOpacity.valueChanged.connect(lambda x : self.setPinsOpacity(x/100.0, static=True))
-    self.playerOpacity.valueChanged.connect(lambda x : self.setPinsOpacity(x/100.0, player=True))
+    self.mapOpacity.valueChanged.connect(   lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiMapOpacity",    v))
+    self.entityOpacity.valueChanged.connect(lambda x: self.setPinsOpacity(x/100.0, entity=True))
+    self.entityOpacity.valueChanged.connect(lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiEntityOpacity", v))
+    self.staticOpacity.valueChanged.connect(lambda x: self.setPinsOpacity(x/100.0, static=True))
+    self.staticOpacity.valueChanged.connect(lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiStaticOpacity", v))
+    self.playerOpacity.valueChanged.connect(lambda x: self.setPinsOpacity(x/100.0, player=True))
+    self.playerOpacity.valueChanged.connect(lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiPlayerOpacity", v))
+    μSettings.widget.sigProfileChanged.connect(lambda p, _: self._restoreMapState(p._state))
     self.btnSelectTarget.clicked.connect(self.selectTarget)
     self.btnCenterMain.clicked.connect(lambda: self.setCenterOn('cartographer'))
     self.btnCenterSelect.clicked.connect(lambda: self.setCenterOn('target'))
@@ -655,6 +558,14 @@ class μMap(μToggler):
     if μMap.selectedPin and μMap.runningBridge: 
       if self.selectedPin.isStatic(): return
       μMap.runningBridge.selectEntity(μMap.selectedPin.id)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _restoreMapState(self, state):
+    self.mapOpacity.setValue(   int(state.value("map/uiMapOpacity",    100)))
+    self.playerOpacity.setValue(int(state.value("map/uiPlayerOpacity", 100)))
+    self.staticOpacity.setValue(int(state.value("map/uiStaticOpacity", 100)))
+    self.entityOpacity.setValue(int(state.value("map/uiEntityOpacity", 100)))
+    self.details.setVisible(state.value("map/uiDetailsVisible", False, type=bool))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def filterPins(self):
