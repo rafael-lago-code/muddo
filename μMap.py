@@ -58,9 +58,68 @@ P_EDGE_PINS: dict[int, str] = {
 }
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+# P_STATIC_PINS 600-999
 # These "usually" map nicely to MapNoteType property. I added some extras
+# Exactly the same as the first entries from P_ENTITY_PINS, +500. These will be displayed bellow
+# their Entity counterpart, so that you can click on the Entity pin when both a static and an entity one
+# exist
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 P_STATIC_PINS: dict[int, str] = {
+  # Block - Teleports
+  600: "teleport",
+  601: "teleport_red",
+  610: "area_yellow",
+  611: "area_red",
+  620: "airship",
+  # Block - Amenities
+  700: "shrine",
+  701: "shrine_ress",  # extra
+  710: "bank",
+  715: "auction",
+  720: "mailbox",
+  725: "crafting",
+  730: "patron",
+  735: "trainer",
+  740: "poi",
+  745: "spirit_binder", # extra
+  # Block - Vendors
+  800: "tavern",
+  805: "token_vendor",
+  810: "token_pawn",
+  815: "collector",
+  820: "hireling_vendor",
+  # Block - Doors
+  850: "door_yellow",
+  851: "door_blue",
+  852: "door_red",
+  853: "door_grey",
+  860: "door_raid_yellow",
+  # Block - Chalices
+  870: "check",
+  880: "chalice_raid",
+  881: "chalice_raid_blue",
+  882: "chalice_raid_grey",
+  883: "chalice_raid_red",
+  900: "chalice_yellow",
+  901: "chalice_blue",
+  902: "chalice_grey",
+  903: "chalice_red",
+  920: "chalice_arc",
+  921: "chalice_arc_blue",
+  930: "chalice_saga",
+  931: "chalice_saga_blue",
+  # Block - Challenges
+  950: "challenge_blue",
+  951: "challenge_grey",
+  952: "challenge_red",
+}
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+# P_ENTITY_PINS
+# 100-500: static pins, but with entity context as well. 
+# 1000-1200: pure entity pins, stuff that you wouldn't see in the static pin list
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+P_ENTITY_PINS: dict[int, str] = {
   # Block - Teleports
   100: "teleport",
   101: "teleport_red",
@@ -108,47 +167,50 @@ P_STATIC_PINS: dict[int, str] = {
   450: "challenge_blue",
   451: "challenge_grey",
   452: "challenge_red",
-}
-
-P_ENTITY_PINS: dict[int, str] = {
+  # ─────────────────────────────────────────────────
   # Block - Dungeon Stuff
-  500: "chest",
-  510: "explorer",
-  515: "soul_stone",
-  520: "crest",
-  521: "crest_socket",
-  525: "token_npc",
-  530: "dimension_door",
-  535: "mysterious_remnants",
-  540: "lostsoul",
-  550: "usable",
-  551: "control_panel",
-  552: "collectible",
-  553: "item_dropped",
-  560: "trap",
-  561: "secret",
-  570: "ladder",
-  575: "collectible_taken",
+  # TODO move "chest" to static and shift all indices
+  1000: "chest",
+  1010: "explorer",
+  1015: "soul_stone",
+  1020: "crest",
+  1021: "crest_socket",
+  1025: "token_npc",
+  1030: "dimension_door",
+  1035: "mysterious_remnants",
+  1040: "lostsoul",
+  1050: "usable",
+  1051: "control_panel",
+  1052: "collectible",
+  1053: "item_dropped",
+  1060: "trap",
+  1061: "secret",
+  1070: "ladder",
+  1075: "collectible_taken",
   # Block - Enemies
-  600: "champion_yellow",
-  601: "champion_orange",
-  602: "champion_red",
-  610: "boss_reaper",
-  611: "boss_mini",
-  612: "boss",
-  613: "boss_raids",
-  620: "enemy",
+  1100: "champion_yellow",
+  1101: "champion_orange",
+  1102: "champion_red",
+  1110: "boss_reaper",
+  1111: "boss_mini",
+  1112: "boss",
+  1113: "boss_raids",
+  1120: "enemy",
   # Block - Others
-  650: "friendly",
-  660: "breakeable",
-  670: "token_red",
-  680: "token_other",
+  1150: "friendly",
+  1160: "breakeable",
+  1170: "token_red",
+  1180: "token_other",
 }
 
+P_STATIC_PINS_SHIFT=500
+P_STATIC_PINS_START=600
+P_STATIC_PINS_END=999
+P_STATIC_PINS = {k+P_STATIC_PINS_SHIFT:v for k,v in P_ENTITY_PINS.items() if k<500}
 P_MAP_PINS: dict[int, str] = P_PLAYER_PINS | P_EDGE_PINS | P_STATIC_PINS | P_ENTITY_PINS
 
 P_MAPPING: dict[int, str] = {
-   3: 400, # pin_chalice_yellow
+   1: 400, # pin_chalice_yellow
    4: 402, # pin_chalice_grey
    5: 402, # pin_chalice_grey
    6: 401, # pin_chalice_blue
@@ -246,6 +308,10 @@ class μMapPin(QGraphicsPixmapItem):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def pinTypeName(self) -> str:
     return "map/pin_" + P_MAP_PINS.get(self.pinType, "token_red")
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def isStatic(self) -> str:
+    return P_STATIC_PINS_START <= self.pinType <= P_STATIC_PINS_END
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setup(self):
@@ -270,7 +336,7 @@ class μMapPin(QGraphicsPixmapItem):
   def itemChange(self, change, value):
     if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
       if value:
-        if μMap.runningBridge: μMap.runningBridge.selectEntity(self.id)
+        if μMap.runningBridge and not self.isStatic(): μMap.runningBridge.selectEntity(self.id)
         sel_key = 'map/pin_selected'
         if sel_key not in μMapPin.cache:
           μMapPin.cache[sel_key] = getPixmap(sel_key).scaled( μMap.pinSize, μMap.pinSize,
@@ -364,18 +430,17 @@ class μMapParser:
       if len(data) < _OFF_STATIC_COUNT + 4: return True, seen
       (nStatics,) = struct.unpack_from('<I', data, _OFF_STATIC_COUNT)
 
-      if mapId != old_mapId:
+      if mapId != old_mapId or (nStatics > 0 and not map.staticPins):
         for pin in map.staticPins.values():
           if pin.scene() is not None: map._scene.removeItem(pin)
         map.staticPins.clear()
-
-      for i in range(nStatics):
-        soff = _OFF_STATIC_START + i * _ENTITY.size
-        if soff + _ENTITY.size > len(data): break
-        (eid, cx, cy, name_b, pin_type) = _ENTITY.unpack_from(data, soff)
-        name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
-        if eid not in map.staticPins:
-          map.staticPins[eid] = μMapPin(eid, cx, cy, name, pinType=pin_type)
+        for i in range(nStatics):
+          soff = _OFF_STATIC_START + i * _ENTITY.size
+          if soff + _ENTITY.size > len(data): break
+          (eid, cx, cy, name_b, pin_type) = _ENTITY.unpack_from(data, soff)
+          name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
+          map.staticPins[i] = μMapPin(eid, cx, cy, name, pinType=pin_type+P_STATIC_PINS_SHIFT)
+          μMap.applyPinFilter(map.filter.text(), map.staticPins[i])
 
       # Entities — after static section
       entity_count_off = _OFF_STATIC_START + nStatics * _ENTITY.size
@@ -392,6 +457,8 @@ class μMapParser:
           map.entityPins[eid].cx, map.entityPins[eid].cy = cx, cy
         else:
           map.entityPins[eid] = μMapPin(eid, cx, cy, name, pinType=pin_type)
+          μMap.applyPinFilter(map.filter.text(), map.entityPins[eid])
+
         seen.add(eid)
         eoff += _ENTITY.size
       return True, seen
@@ -586,16 +653,19 @@ class μMap(μToggler):
   #    Select the in-game object associated with the currently targeted pin
   def selectTarget(self):
     if μMap.selectedPin and μMap.runningBridge: 
+      if self.selectedPin.isStatic(): return
       μMap.runningBridge.selectEntity(μMap.selectedPin.id)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def filterPins(self):
     text = self.filter.text()
-    if text:
-      for pin in self.entityPins.values():
-        pin.setVisible(not text or μString(pin.name) == text)
-    else:
-      for pin in self.entityPins.values(): pin.setVisible(True)
+    for pin in list(self.entityPins.values()) + list(self.staticPins.values()):
+      μMap.applyPinFilter(text, pin)
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def applyPinFilter(text, pin : μMapPin):
+    pin.setVisible(not text or μString(pin.name) == text)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setCenterOn(self, target):
@@ -741,7 +811,8 @@ class μMap(μToggler):
     if sel:
       self.lblTargetPin.setPixmap(sel.pixmap().scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
       name = sel.name.split("<br>", 1)
-      self.lblTargetName.setText(f"<b>Id:</b> {sel.id}<br><b>Name:</b> {name[0]}{f"<br><i>({name[1]})</i>" if len(name)>1 else ""}")
+      lbl = "<b>Weenie:</b>" if sel.isStatic() else "<b>Id:</b>"
+      self.lblTargetName.setText(f"{lbl} {sel.id}<br><b>Name:</b> {name[0]}{f"<br><i>({name[1]})</i>" if len(name)>1 else ""}")
     else:
       self.lblTargetPin.clear()
       self.lblTargetName.setText("None")
