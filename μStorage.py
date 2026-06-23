@@ -32,7 +32,7 @@ from widgets.μOrb import μOrb, μOrbSmall, μOrbTask
 from widgets.μOrb import μBoxCheck
 from helpers.μImageFactory import *
 from widgets.μFloating import μToggler
-from widgets.μCheckCombo import μCheckCombo
+from widgets.μCombo import μCheckCombo
 from widgets.μItemsTable import *
 from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus, packetSignal
 from helpers.μPrint import μPrint

@@ -20,6 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox
 from PyQt6.QtCore import pyqtSignal
+from widgets.μCombo import μCheckCombo, μCombo
 from μSettingsProfile import μSettingsProfile
 from helpers.μPrint import μPrint
 from widgets.μOrb import μOrbSmall
@@ -55,9 +56,9 @@ class μSettings(μToggler):
   def setup(cls, widget : μSettings):
     cls.widget = widget
     cls.hiddenLayer = QVBoxLayout()
-    cls.profileMain = QComboBox()
+    cls.profileMain = μCombo()
     cls.profileMain.setMinimumWidth(200)
-    cls.profileList = QComboBox()
+    cls.profileList = μCombo()
     cls.profileList.setEditable(True)
     cls.profileList.setMinimumWidth(200)
 

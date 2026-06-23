@@ -31,7 +31,7 @@ from helpers.μMilvianPacket import μMilvianPacket, cPacker, μPhonyPacket, pac
 from widgets.μNetwork import *
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrb, μBoxCheck, μOrbSmall, μOrbTask
-from widgets.μCheckCombo import μCheckCombo
+from widgets.μCombo import μCheckCombo
 from widgets.μText import μDisplayLabel, μFontDisplay, μTextEdit, μFontMono
 import glob
 import yaml

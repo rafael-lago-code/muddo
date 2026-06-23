@@ -18,38 +18,28 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox, QStyle, QStyledItemDelegate
-from PyQt6.QtCore import QModelIndex, QSize, Qt, pyqtSignal
+from PyQt6.QtWidgets import QComboBox, QStyle, QStyleOptionComboBox, QStylePainter, QStyledItemDelegate
+from PyQt6.QtCore import QModelIndex, QRect, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QStandardItem, QStandardItemModel
 from helpers.util import *
-from typing import TYPE_CHECKING
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖  D E L E G A T E
+#   ❖  D E L E G A T E S
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class _RightIconDelegate(QStyledItemDelegate):
+class _IconRightDelegate(QStyledItemDelegate):
   def paint(self, painter, option, index):
     painter.save()
 
-    # Background
     if option.state & QStyle.StateFlag.State_Selected:
       painter.fillRect(option.rect, option.palette.highlight())
     else:
       painter.fillRect(option.rect, option.palette.base())
 
-    # Check mark (left)
-    checked = index.data(Qt.ItemDataRole.UserRole)
-    painter.drawText(option.rect.adjusted(4, 0, 0, 0),
-                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
-                     "✓" if checked else " ")
-
-    # Text
     text = index.data(Qt.ItemDataRole.DisplayRole) or ""
-    painter.drawText(option.rect.adjusted(20, 0, -24, 0),
+    painter.drawText(option.rect.adjusted(4, 0, -24, 0),
                      Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
 
-    # Icon (right)
     icon = index.data(Qt.ItemDataRole.DecorationRole)
     if icon and not icon.isNull():
       sz = 16
@@ -67,21 +57,79 @@ class _RightIconDelegate(QStyledItemDelegate):
     return size
 
 
+class _CheckIconRightDelegate(_IconRightDelegate):
+  def paint(self, painter, option, index):
+    painter.save()
+
+    if option.state & QStyle.StateFlag.State_Selected:
+      painter.fillRect(option.rect, option.palette.highlight())
+    else:
+      painter.fillRect(option.rect, option.palette.base())
+
+    checked = index.data(Qt.ItemDataRole.UserRole)
+    painter.drawText(option.rect.adjusted(4, 0, 0, 0),
+                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                     "✓" if checked else " ")
+
+    text = index.data(Qt.ItemDataRole.DisplayRole) or ""
+    painter.drawText(option.rect.adjusted(20, 0, -24, 0),
+                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+
+    icon = index.data(Qt.ItemDataRole.DecorationRole)
+    if icon and not icon.isNull():
+      sz = 16
+      icon_rect = option.rect.adjusted(option.rect.width() - sz - 4,
+                                       (option.rect.height() - sz) // 2, -4,
+                                       (option.rect.height() - sz) // 2)
+      icon_rect.setSize(QSize(sz, sz))
+      icon.paint(painter, icon_rect)
+
+    painter.restore()
+
+
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖  C H E C K   C O M B O
+#   ❖  ζ C O M B O   R I G H T
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μCheckCombo(QComboBox):
+class μCombo(QComboBox):
+  def __init__(self):
+    super().__init__()
+    self.view().setItemDelegate(_IconRightDelegate(self))
+
+  def paintEvent(self, event):
+    painter = QStylePainter(self)
+    opt = QStyleOptionComboBox()
+    self.initStyleOption(opt)
+    icon = self.itemIcon(self.currentIndex())
+    opt.currentIcon = QIcon()
+    opt.iconSize    = QSize(0, 0)
+    painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, opt)
+    painter.drawControl(QStyle.ControlElement.CE_ComboBoxLabel, opt)
+    if not icon.isNull():
+      content_rect = self.style().subControlRect(
+        QStyle.ComplexControl.CC_ComboBox, opt,
+        QStyle.SubControl.SC_ComboBoxEditField, self)
+      sz = 16
+      x = content_rect.right() - sz - 2
+      y = content_rect.center().y() - sz // 2
+      painter.setClipping(False)
+      icon.paint(painter, QRect(x, y, sz, sz))
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  μ C H E C K   C O M B O
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μCheckCombo(μCombo):
   changed = pyqtSignal()
 
-  def __init__(self, title: str):
+  def __init__(self, title: str = None):
     super().__init__()
-    self.title = title
+    self.title     = title
     self.blockHide = False
-    self.rowModel = QStandardItemModel(self)
+    self.rowModel  = QStandardItemModel(self)
     self.setModel(self.rowModel)
-    self.header = QStandardItem(f"{title}: None")
+    self.header = QStandardItem("")
     self.rowModel.appendRow(self.header)
-    self.view().setItemDelegate(_RightIconDelegate(self))
+    self.view().setItemDelegate(_CheckIconRightDelegate(self))
     self.view().pressed.connect(self.onPressed)
     self.rowModel.itemChanged.connect(self.onItemChanged)
 
@@ -91,7 +139,7 @@ class μCheckCombo(QComboBox):
     if not item:
       return
     self.blockHide = True
-    if index.row() == 0:  # Header
+    if index.row() == 0:  # Header — toggle all
       new_state = not self.areAllChecked()
       for i in range(1, self.rowModel.rowCount()):
         self.rowModel.item(i).setData(new_state, Qt.ItemDataRole.UserRole)
@@ -152,15 +200,16 @@ class μCheckCombo(QComboBox):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refreshHeader(self):
+    prefix  = f"{self.title}: " if self.title is not None else ""
     checked = self.getChecked()
     nitems  = self.rowModel.rowCount() - 1
     if nitems == 0 or len(checked) == nitems:
-      text = f"{self.title}: All"
+      text = f"{prefix}All"
     elif len(checked) == 1:
-      text = f"{self.title}: {checked[0]}"
+      text = f"{prefix}{checked[0]}"
     elif len(checked) == 0:
-      text = f"{self.title}: None"
+      text = f"{prefix}None"
     else:
-      text = f"{self.title}: {len(checked)}/{nitems}"
+      text = f"{prefix}{len(checked)}/{nitems}"
     self.rowModel.item(0).setText(text)
     self.setCurrentIndex(0)

@@ -40,7 +40,7 @@ class μSummary:
     cls.widget = QWidget()
     cls.widget.setMaximumWidth(480)
     g = μGridLayout()
-    g.appendRow([μDisplayLabel("World:"),   '>', credentials.accountsSummary])
+    g.appendRow([μDisplayLabel("Accounts:"), '>', credentials.accountsSummary])
     g.appendRow([μDisplayLabel("World:"),   '>', credentials.listWorlds])
     g.appendRow([μDisplayLabel("Profile:"), '>', μSettings.profileMain])
     cls.widget.setLayout(g)
