@@ -17,7 +17,7 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #
-from PyQt6.QtWidgets import QMainWindow, QWidget, QGridLayout
+from PyQt6.QtWidgets import QMainWindow, QWidget
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
 from μCredentials import cCredentials
 from μMap import μMap
@@ -30,13 +30,12 @@ from μProcess import μProcessManager
 from μStorage import μStorage
 from μDDO import μDDO
 from μStrategy import μStrategy
+from μSummary import μSummary
 from μToolbar import μToolbar
-from widgets.μGrid import μGridLayout
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from helpers.χHelper import χHelper
-from widgets.μText import μDisplayLabel
 
 class μMainWindow(QMainWindow):
   P_POS_X = 100
@@ -57,7 +56,7 @@ class μMainWindow(QMainWindow):
     self.btnLaunch = μOrb("Launch", P_ICON_D20, tooltip="Launches Dungeons & Dragons Online for all selected" \
                           " accounts in the selected world. <br><b><i>Right-click for more options</i></b>")
     btnQuit = μOrb("Quit", P_ICON_EXIT)
-        
+
     self.console = μConsole(P_DEFAULT_LOGSDIR+'/log')
     μPrint.attachConsole(self.console)
     self.credentials = cCredentials(self)
@@ -74,15 +73,9 @@ class μMainWindow(QMainWindow):
     self.btnLaunch.clicked.connect(self.launchAll)
     btnQuit.clicked.connect(self.close)
 
-    g = μGridLayout()
-    g.appendRow(['>', '>', '>', self.credentials.loginSummary])
-    g.appendRow([μDisplayLabel("World:"),   '>', self.credentials.listWorlds])
-    g.appendRow([μDisplayLabel("Profile:"), '>', self.settings.profileMain])
-    self.summary = QWidget()
-    self.summary.setMaximumWidth(480)
-    self.summary.setLayout(g)
+    μSummary.setup(self.credentials)
     lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.strategy.toggler, self.map.toggler, self.btnLaunch,
-                              self.summary, self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler,
+                              μSummary.widget, self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler,
                               self.macros.toggler, self.settings.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
 
     aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
@@ -111,7 +104,6 @@ class μMainWindow(QMainWindow):
       self.console.error(f"Failed to intialize certificate, is the file \"{P_CERTFILE}\" accessible? ")
     else:
       self.console.info(f"SSL certificate verification enabled! Using {P_CERTFILE}")
-
   
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):

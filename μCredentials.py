@@ -25,6 +25,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QCheckBox, QListWidget, \
   QSizePolicy, QListWidgetItem
 from PyQt6.QtCore import Qt, pyqtSignal, QThreadPool, QItemSelectionModel, QSize
+from widgets.μCheckCombo import μCheckCombo
 from μSettings import μSettings
 from μWorlds import cWorldList
 from μServerInfo import μServerInfo
@@ -57,6 +58,7 @@ class cCredentials(μToggler):
     self.serverInfo = None
 
     self.listAccounts = QListWidget()
+    self.accountsSummary = μCheckCombo("Accounts")
     self.loginSummary = μDisplayLabel()
     self.loginSummary.setAlignment(Qt.AlignmentFlag.AlignCenter)
     self.listWorlds = cWorldList(main)
@@ -204,6 +206,8 @@ class cCredentials(μToggler):
     for a in self.accounts.keys():
       self.listAccounts.addItem(QListWidgetItem(getIcon(P_ICON_LOCKCLOSE_RED) if self.accounts[a] == ""\
                                 else getIcon(P_ICON_LOCKOPEN_GREEN), a))
+      self.accountsSummary.addItem(getIcon(P_ICON_LOCKCLOSE_RED) if self.accounts[a] == ""\
+                                else getIcon(P_ICON_LOCKOPEN_GREEN), a)
 
   #----------------------------------------------------------------------------------------------------------
   def delAccount(self):

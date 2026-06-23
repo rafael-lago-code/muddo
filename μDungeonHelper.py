@@ -199,6 +199,11 @@ class μDungeonHelper(aProcessItem):
     for w in winIDs: χHelper.iconify(w, val)
     winIDs = χHelper.getWinIDByName("wine system tray")
     for w in winIDs: χHelper.iconify(w, val)
+
+  #----------------------------------------------------------------------------------------------------------
+  def toggle(self, kill=False):
+    if self.status != self.P_STATUS_RUNNING: self.launch()
+    self.toggleUIOverlay()
   
   #----------------------------------------------------------------------------------------------------------
   def clear(self, kill=False):

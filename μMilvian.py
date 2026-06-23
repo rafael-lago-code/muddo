@@ -229,6 +229,8 @@ class μMilvian():
     for (n, v) in zip(aiaNames, aiaValues):
       ia[n.lower()] = int(v).to_bytes(4, byteorder='little', signed=False)
     cls.inputActions = ia
+    # from helpers.χVoK import χVoK
+    # cls.inputActions = χVoK.inputActions
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod

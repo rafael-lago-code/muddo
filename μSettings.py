@@ -25,7 +25,7 @@ from helpers.μPrint import μPrint
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
 from widgets.μFloating import μToggler
-import os, json, glob, shutil
+import os, glob, shutil
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow

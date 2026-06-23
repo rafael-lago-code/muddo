@@ -18,11 +18,54 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox
-from PyQt6.QtCore import QModelIndex, Qt, pyqtSignal
-from PyQt6.QtGui import QStandardItem, QStandardItemModel
+from PyQt6.QtWidgets import QComboBox, QStyle, QStyledItemDelegate
+from PyQt6.QtCore import QModelIndex, QSize, Qt, pyqtSignal
+from PyQt6.QtGui import QIcon, QStandardItem, QStandardItemModel
 from helpers.util import *
 from typing import TYPE_CHECKING
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  D E L E G A T E
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class _RightIconDelegate(QStyledItemDelegate):
+  def paint(self, painter, option, index):
+    painter.save()
+
+    # Background
+    if option.state & QStyle.StateFlag.State_Selected:
+      painter.fillRect(option.rect, option.palette.highlight())
+    else:
+      painter.fillRect(option.rect, option.palette.base())
+
+    # Check mark (left)
+    checked = index.data(Qt.ItemDataRole.UserRole)
+    painter.drawText(option.rect.adjusted(4, 0, 0, 0),
+                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter,
+                     "✓" if checked else " ")
+
+    # Text
+    text = index.data(Qt.ItemDataRole.DisplayRole) or ""
+    painter.drawText(option.rect.adjusted(20, 0, -24, 0),
+                     Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter, text)
+
+    # Icon (right)
+    icon = index.data(Qt.ItemDataRole.DecorationRole)
+    if icon and not icon.isNull():
+      sz = 16
+      icon_rect = option.rect.adjusted(option.rect.width() - sz - 4,
+                                       (option.rect.height() - sz) // 2, -4,
+                                       (option.rect.height() - sz) // 2)
+      icon_rect.setSize(QSize(sz, sz))
+      icon.paint(painter, icon_rect)
+
+    painter.restore()
+
+  def sizeHint(self, option, index):
+    size = super().sizeHint(option, index)
+    size.setHeight(max(size.height(), 24))
+    return size
+
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  C H E C K   C O M B O
@@ -34,34 +77,29 @@ class μCheckCombo(QComboBox):
     super().__init__()
     self.title = title
     self.blockHide = False
-    self.rowModel   = QStandardItemModel(self)
+    self.rowModel = QStandardItemModel(self)
     self.setModel(self.rowModel)
-    self.header = QStandardItem(f"{title}: All")
-    # self.header.setCheckable(False)
+    self.header = QStandardItem(f"{title}: None")
     self.rowModel.appendRow(self.header)
+    self.view().setItemDelegate(_RightIconDelegate(self))
     self.view().pressed.connect(self.onPressed)
     self.rowModel.itemChanged.connect(self.onItemChanged)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onPressed(self, index: QModelIndex):
-      item = self.rowModel.itemFromIndex(index)
-      if not item:
-          return
-
-      self.blockHide = True
-      if index.row() == 0:  # Header
-          toggledState = Qt.CheckState.Unchecked if self.areAllChecked() else Qt.CheckState.Checked
-          for i in range(1, self.rowModel.rowCount()):
-              ii = self.rowModel.item(i)
-              if ii.isCheckable():
-                  ii.setCheckState(toggledState)
-      else:                 # Individual item
-          newState = Qt.CheckState.Unchecked if item.checkState() == Qt.CheckState.Checked else Qt.CheckState.Checked
-          item.setCheckState(newState)
-
-      # Always update header and notify listeners
-      self.refreshHeader()
-      self.changed.emit()
+    item = self.rowModel.itemFromIndex(index)
+    if not item:
+      return
+    self.blockHide = True
+    if index.row() == 0:  # Header
+      new_state = not self.areAllChecked()
+      for i in range(1, self.rowModel.rowCount()):
+        self.rowModel.item(i).setData(new_state, Qt.ItemDataRole.UserRole)
+    else:
+      current = item.data(Qt.ItemDataRole.UserRole)
+      item.setData(not current, Qt.ItemDataRole.UserRole)
+    self.refreshHeader()
+    self.changed.emit()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def hidePopup(self):
@@ -75,23 +113,24 @@ class μCheckCombo(QComboBox):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setCurrentIndex(self, index):
     super().setCurrentIndex(0)
-  
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def addCheckItem(self, text: str, checked: bool = True):
+  def addCheckItem(self, text: str, checked: bool = True, icon: QIcon = None):
     for i in range(1, self.rowModel.rowCount()):
       if self.rowModel.item(i).text() == text:
         return
     row = QStandardItem(text)
-    row.setCheckable(True)
-    row.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
+    row.setData(checked, Qt.ItemDataRole.UserRole)
+    if icon and not icon.isNull():
+      row.setIcon(icon)
 
     insertPos = self.rowModel.rowCount()
     self.rowModel.itemChanged.disconnect(self.onItemChanged)
     for i in range(1, self.rowModel.rowCount()):
-        if text.lower() < self.rowModel.item(i).text().lower():
-            insertPos = i
-            break
-    self.rowModel.insertRow(insertPos,row)
+      if text.lower() < self.rowModel.item(i).text().lower():
+        insertPos = i
+        break
+    self.rowModel.insertRow(insertPos, row)
     self.refreshHeader()
     self.rowModel.itemChanged.connect(self.onItemChanged)
 
@@ -99,7 +138,7 @@ class μCheckCombo(QComboBox):
   def getChecked(self) -> list:
     return [self.rowModel.item(i).text()
             for i in range(1, self.rowModel.rowCount())
-            if self.rowModel.item(i).checkState() == Qt.CheckState.Checked]
+            if self.rowModel.item(i).data(Qt.ItemDataRole.UserRole)]
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def areAllChecked(self) -> bool:
@@ -114,11 +153,11 @@ class μCheckCombo(QComboBox):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refreshHeader(self):
     checked = self.getChecked()
-    nitems   = self.rowModel.rowCount() - 1
-    if (nitems == 0 or len(checked) == nitems):
+    nitems  = self.rowModel.rowCount() - 1
+    if nitems == 0 or len(checked) == nitems:
       text = f"{self.title}: All"
     elif len(checked) == 1:
-      text = f"{self.title}: {checked[0]} Only"
+      text = f"{self.title}: {checked[0]}"
     elif len(checked) == 0:
       text = f"{self.title}: None"
     else:
