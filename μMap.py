@@ -306,7 +306,8 @@ class μMapParser:
       data = mm
       if len(data) < _HEADER.size:
         return False, set()
-      old_mapId = self.mapId
+      old_mapId    = self.mapId
+      old_areaName = self.areaName
       (mapId, ext_b, nPlayers, area_b) = _HEADER.unpack_from(data, 0)
       self.mapId    = mapId
       self.ext      = ext_b.rstrip(b'\x00').decode('ascii', errors='replace')
@@ -334,7 +335,7 @@ class μMapParser:
       if len(data) < _OFF_STATIC_COUNT + 4: return True, seen
       (nStatics,) = struct.unpack_from('<I', data, _OFF_STATIC_COUNT)
 
-      if mapId != old_mapId or (nStatics > 0 and not map.staticPins):
+      if mapId != old_mapId or self.areaName != old_areaName or nStatics != len(map.staticPins):
         for pin in map.staticPins.values():
           if pin.scene() is not None: map._scene.removeItem(pin)
         map.staticPins.clear()

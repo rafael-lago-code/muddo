@@ -29,10 +29,10 @@ import subprocess
 import os, time, glob, threading
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
+from μWorlds import μWorld, μWorldList
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
-   from μWorlds import μWorld
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  D D O
@@ -320,7 +320,7 @@ class μDDO(aProcessItem):
       μPrint.debug(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
       return None
     
-    for w in main.credentials.listWorlds.worlds.values():
+    for w in μWorldList.worlds.values():
       if w.loginServer == loginServer:
         world = w
     if not world:
