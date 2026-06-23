@@ -29,7 +29,7 @@ from helpers.μPrint import μPrint
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
 from widgets.μText import μDisplayLabel
-from μSettings import μSettings
+from μSettings import μSetup
 from μMilvian import μMilvianMeta, μMilvian
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -323,7 +323,7 @@ class μMapParser:
           p = map.playerPins[pid]
           p.cx, p.cy = cx, cy
           if i == 0 and p.heading != heading:
-            p.rotateTo(heading, μSettings.profile.map.refreshInterval())
+            p.rotateTo(heading, μSetup.profile.map.refreshInterval())
         else:
           pin_type = P_TYPE_MAIN if i == 0 else (P_TYPE_PET if hex(pid).startswith("0x3") else P_TYPE_PLAYER)
           map.playerPins[pid] = μMapPin(pid, cx, cy, name, pinType=pin_type, heading=heading)
@@ -509,19 +509,19 @@ class μMap(μToggler):
     self.btnRefresh.ctrlClicked.connect(lambda : self.startMapsDaemon()) # this does restart if it is already running
     self.btnDetails.clicked.connect(lambda: (
       self.details.setVisible(not self.details.isVisible()),
-      μSettings.profile and μSettings.profile._state.setValue("map/uiDetailsVisible", self.details.isVisible())))
+      μSetup.profile and μSetup.profile._state.setValue("map/uiDetailsVisible", self.details.isVisible())))
     self._scene.selectionChanged.connect(self.onSelectionChanged)
 
     self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
     self.mapOpacity.valueChanged.connect(self.setMapOpacity)
-    self.mapOpacity.valueChanged.connect(   lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiMapOpacity",    v))
+    self.mapOpacity.valueChanged.connect(   lambda v: μSetup.profile and μSetup.profile._state.setValue("map/uiMapOpacity",    v))
     self.entityOpacity.valueChanged.connect(lambda x: self.setPinsOpacity(x/100.0, entity=True))
-    self.entityOpacity.valueChanged.connect(lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiEntityOpacity", v))
+    self.entityOpacity.valueChanged.connect(lambda v: μSetup.profile and μSetup.profile._state.setValue("map/uiEntityOpacity", v))
     self.staticOpacity.valueChanged.connect(lambda x: self.setPinsOpacity(x/100.0, static=True))
-    self.staticOpacity.valueChanged.connect(lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiStaticOpacity", v))
+    self.staticOpacity.valueChanged.connect(lambda v: μSetup.profile and μSetup.profile._state.setValue("map/uiStaticOpacity", v))
     self.playerOpacity.valueChanged.connect(lambda x: self.setPinsOpacity(x/100.0, player=True))
-    self.playerOpacity.valueChanged.connect(lambda v: μSettings.profile and μSettings.profile._state.setValue("map/uiPlayerOpacity", v))
-    μSettings.widget.sigProfileChanged.connect(lambda p, _: self._restoreMapState(p._state))
+    self.playerOpacity.valueChanged.connect(lambda v: μSetup.profile and μSetup.profile._state.setValue("map/uiPlayerOpacity", v))
+    μSetup.widget.sigProfileChanged.connect(lambda p, _: self._restoreMapState(p._state))
     self.btnSelectTarget.clicked.connect(self.selectTarget)
     self.btnCenterMain.clicked.connect(lambda: self.setCenterOn('cartographer'))
     self.btnCenterSelect.clicked.connect(lambda: self.setCenterOn('target'))
@@ -637,7 +637,7 @@ class μMap(μToggler):
     oldPinSize = μMap.pinSize
     oldImageId = self.parser.mapId
     oldAreaName = self.parser.areaName
-    μMap.setPinSize(μSettings.profile.map.iconSize())
+    μMap.setPinSize(μSetup.profile.map.iconSize())
     ok, seen = self.parser.load(self)
 
     if self.parser.mapId != oldImageId:
@@ -651,7 +651,7 @@ class μMap(μToggler):
         self.lblAreaId.setText("")
         self.parser.mapId = -1
         return
-      μMap.setUpscale(int(μSettings.profile.map.upscale()/100))
+      μMap.setUpscale(int(μSetup.profile.map.upscale()/100))
       μMap.setMapSize(pix.width(), pix.height())
       self.setWindowTitle(f"Map - {self.parser.areaName}")
       self.lblAreaId.setText(str(self.parser.mapId))
@@ -659,7 +659,7 @@ class μMap(μToggler):
         Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
       self._scene.setSceneRect(0, 0, μMap.mapWidth, μMap.mapHeight)
       self.view.resetTransform()
-      zoom = μSettings.profile.map.mapZoom() / (100 * μMap.upscale)
+      zoom = μSetup.profile.map.mapZoom() / (100 * μMap.upscale)
       self.view.scale(zoom, zoom)
 
     if not ok: return
@@ -816,7 +816,7 @@ class μMap(μToggler):
     else:
       self.cartographer.addItems([b.capitalize() for b in bridges.keys()])
       if cartographers is None:
-        cartographers = [s.strip() for s in μSettings.profile.map.cartographers().split(',')]
+        cartographers = [s.strip() for s in μSetup.profile.map.cartographers().split(',')]
       elif not isinstance(cartographers, list):
         cartographers = [cartographers]
 
@@ -824,7 +824,7 @@ class μMap(μToggler):
         c = c.lower()
         if c in bridges:
           μMap.runningBridge = bridges[c]
-          interval = μSettings.profile.map.refreshInterval()
+          interval = μSetup.profile.map.refreshInterval()
           μMap.runningBridge.drawMap(True, interval)
           self._timer.start(interval)
           self.cartographer.setCurrentText(c.capitalize())

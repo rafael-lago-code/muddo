@@ -361,8 +361,8 @@ class μStrategy(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _saveDirectiveToSession(self, name: str):
-    from μSettings import μSettings
-    session = getattr(μSettings, 'session', None)
+    from μSettings import μSetup
+    session = getattr(μSetup, 'session', None)
     if session: session.setStrategyDirective(name)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -471,8 +471,8 @@ class μStrategy(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateStyle(self):
     if not μStrategy.partyMembers: return
-    from μSettings import μSettings
-    plugins = getattr(μSettings, 'plugins', None)
+    from μSettings import μSetup
+    plugins = getattr(μSetup, 'plugins', None)
     radius = plugins.strategyFrameSize() if plugins else 36
     self.board.setNodeStyle(fg=getPixmap("circular_frame_fg").scaledToWidth(80, Qt.TransformationMode.SmoothTransformation),
                             radius=radius, innerRadius=int(radius * 0.75),
@@ -533,8 +533,8 @@ class μStrategy(μToggler):
   # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
   @classmethod
   def strategyPath(cls) -> str:
-    from μSettings import μSettings
-    plugins = getattr(μSettings, 'plugins', None)
+    from μSettings import μSetup
+    plugins = getattr(μSetup, 'plugins', None)
     if plugins: return plugins.strategyPath().rstrip("/\\")
     return P_DEFAULT_CONFIGDIR + os.sep + "strategy"
 
@@ -546,8 +546,8 @@ class μStrategy(μToggler):
   @classmethod
   def restoreSession(cls):
     if cls._widget is None: return
-    from μSettings import μSettings
-    saved = getattr(getattr(μSettings, 'session', None), 'strategyDirective', "")
+    from μSettings import μSetup
+    saved = getattr(getattr(μSetup, 'session', None), 'strategyDirective', "")
     if saved:
       μStrategy._widget.populateDirectivesCombo()
       idx = cls._widget.directiveList.findText(saved)

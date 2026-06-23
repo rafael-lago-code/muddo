@@ -31,8 +31,9 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - follows recall
     - splitting of roles - assigning a commander and a captain to the party
     - advanced and fully functional shortcut configuration support for all of the above
- - NEW: Map
+ - Map
     - added basic support, still working icons and refresh rate
+    - shows usual map pins, plus entities (monsters, breakeables, etc)
 
 
 ## TODO
@@ -48,7 +49,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - UI improvements
       - vizualize keyboard with its macros
   - Map
-    - currently only detects entities nearby; should be possible to detect fixed entities (like all vendors in a public area) but I don't know how to extract that kind of info yet
     - figure out distinction between:
       - normal monsters vs bosses
         - boss, raid, mini-boss, rare encounters, etc
@@ -56,9 +56,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
         - between champion ranks
     - distinguish own pet from other pets
     - allow entering "commander" and "leader" in the list of sources
-    - select entity when selecting it on map widget
-      - make selection persistent (it currently resets on each refresh)
-      - make selection visual with a grow around icon, instead of rectangle
   - Milvian
     - Bug: if you log in a different characters with Milvian Plugin on, it doesn't update the bridge path
     - re-think initialization of Milvian Bridges; it should be done automatically when a character logs in
@@ -85,13 +82,10 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
   - MiniBrowser
     - a low-feature ad-blocking minibrowser that automatically opens to the wiki page of the current quest or currently selected item
   - Revamp/merge accounts/processmanager
-    - move accounts into settings?
-    - accounts selector in a dropdown menu in "summary" in the main UI?
     - aProcessItems refactor?
       - use a QTableWidget or QListWidget instead?
     - use keyring to store passwords instead of plain text format
   - Other 
-    - serverInfo needs to be collected in the background instead of blocking init
     - test the launcher with Wine (currently tested with Steam Proton)
     - add cmd line option for verbosity
     - maybe add support for downloading/installing DungeonHelper.exe and the game itself

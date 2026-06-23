@@ -23,6 +23,7 @@
 #
 from __future__ import annotations
 from helpers.util import *
+from μServerInfo import μServerInfo
 import os
 import xml.dom.minidom
 import urllib
@@ -63,7 +64,7 @@ class μAuthenticator():
 
     try:
       msg = SoapMessage.encode()
-      webservice, post = getConnection(self.credentials.serverInfo.authServer)
+      webservice, post = getConnection(μServerInfo.authServer)
 
       webservice.putrequest("POST", post)
       webservice.putheader("Content-type", "text/xml; charset=\"UTF-8\"")
@@ -84,7 +85,7 @@ class μAuthenticator():
         f.write(tempxml)
 
       if tempxml == "":
-        self.console.error(f"Failed to fetch information from \"{self.credentials.serverInfo.authServer}\"")
+        self.console.error(f"Failed to fetch information from \"{μServerInfo.authServer}\"")
         return False
       else:
         doc = xml.dom.minidom.parseString(tempxml)
@@ -133,9 +134,9 @@ class μAuthenticator():
     number  = None
     serving = None
     try:
-      webservice, post = getConnection(self.credentials.serverInfo.worldQueueURL)
+      webservice, post = getConnection(μServerInfo.worldQueueURL)
 
-      argComplete = self.credentials.serverInfo.worldQueueParam.replace("{0}", 
+      argComplete = μServerInfo.worldQueueParam.replace("{0}", 
         self.subscription).replace("{1}", urllib.parse.quote(self.ticket)).replace("{2}", 
         urllib.parse.quote(self.ddo.world.queueURL))
 

@@ -21,12 +21,15 @@
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
-from PyQt6.QtWidgets import QComboBox
-from PyQt6.QtCore import QRunnable, QObject, pyqtSignal
+from PyQt6.QtCore import QObject, pyqtSignal
+import threading
 from helpers.μImageFactory import *
+from helpers.μPrint import μPrint
 import xml.dom.minidom
-
 from widgets.μCombo import μCombo
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+   from μWorlds import μWorldList
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  W O R L D
@@ -78,98 +81,107 @@ class μWorld(QObject):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def checkStatus(self):
-    wc = tWorldChecker(self)
-    QtCore.QThreadPool.globalInstance().start(wc)
-
-# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖  W O R L D   L I S T 
-# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class cWorldList(μCombo):
-  sigWorldUpdated = pyqtSignal(bool)
-  defaultWorlds = ["Cormyr [US]", "Moonsea [EU]", "Shadowdale [US]", "Thrane [US]"]
-#   defaultWorlds += ["Argonnessen [Old]", "Cannith [Old]", "Ghallanda [Old]", "Khyber [Old]",
-#                    "Orien [Old]", "Sarlona [Old]", "Thelanis [Old]", "Wayfinder [Old]"]
-  def __init__(self, main):
-    super().__init__()
-    self.worlds : dict[str, μWorld] = {}
-    self.main = main
-    self.console = main.console
-
-    for w in self.defaultWorlds:
-      self.worlds[w] = μWorld(self, w,'','',self.count())
-      self.addItem(self.worlds[w])
-    
-    self.currentIndexChanged.connect(self.update)
+    threading.Thread(target=self._checkStatus, daemon=True).start()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def addItem(self, world : μWorld):
-    return super().addItem(getIcon(P_ICON_NONE), world.name, world)
-  
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def currentItem(self):
-    return self.currentData()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def update(self):
-    self.setToolTip(self.currentItem().tooltip)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def updateWorld(self, data : tuple):
-    name, chatServer, statusServer = data
-    if name in self.worlds.keys():
-        self.console.info(f"Updating \"{C_SILVER}{name}</font>\" world info...")
-        self.worlds[name].chatServer = chatServer
-        self.worlds[name].statusServer = statusServer
-    else:
-        self.console.info(f"Adding \"{C_SILVER}{name}</font>\" world info...")
-        self.worlds[name] = μWorld(self, name, chatServer, statusServer, self.count())
-        self.addItem(self.worlds[name])
-    self.worlds[name].checkStatus()
-    self.sigWorldUpdated.emit(True)
-
-
-# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   ❖  W O R L D   C H E C K E R
-#   
-#     TODO implement this using threading
-# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class tWorldChecker(QRunnable):
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def __init__(self, world):
-    super().__init__()
-    self.world = world
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def run(self):
+  def _checkStatus(self):
     try:
-      webservice, post = getConnection(self.world.statusServer)
+      webservice, post = getConnection(self.statusServer)
       webservice.putrequest("GET", post)
       webservice.endheaders()
       webresp = webservice.getresponse()
       tempxml = webresp.read().decode()
 
-      filename = P_DEFAULT_SERVERDIR+self.world.name+".xml"
+      filename = P_DEFAULT_SERVERDIR+self.name+".xml"
       with open(filename, "w") as f:
         f.write(tempxml)
 
       if tempxml == "":
-        self.world.status == μWorld.DOWN
+        self.status = μWorld.DOWN
       else:
         doc = xml.dom.minidom.parseString(tempxml)
         try:
-          self.world.nowServing = getNodeText(doc.getElementsByTagName("nowservingqueuenumber")[0].childNodes)
+          self.nowServing = getNodeText(doc.getElementsByTagName("nowservingqueuenumber")[0].childNodes)
         except:
-          self.world.nowServing = None
+          self.nowServing = None
         try:
-          self.world.queueURL = getNodeText(doc.getElementsByTagName("queueurls")[0].childNodes).split(";")[0]
+          self.queueURL = getNodeText(doc.getElementsByTagName("queueurls")[0].childNodes).split(";")[0]
         except:
-          self.world.queueURL = None
-        self.world.loginServer = getNodeText(doc.getElementsByTagName("loginservers")[0].childNodes).split(";")[0]
-        self.world.status = μWorld.UP
-        self.world.update()
+          self.queueURL = None
+        self.loginServer = getNodeText(doc.getElementsByTagName("loginservers")[0].childNodes).split(";")[0]
+        self.status = μWorld.UP
+        self.update()
     except Exception as e:
-      self.world.status = μWorld.DOWN
-      self.world.combo.console.error("Error trying to check world status", e)
+      self.status = μWorld.DOWN
+      μPrint.error("Error trying to check world status", e)
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  W O R L D   L I S T 
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μWorldList(μCombo):
+  _widget  : 'μWorldList'      = None
+  worlds  : dict[str, μWorld] = {}
+  sigWorldUpdated = pyqtSignal(bool)
+  defaultWorlds = ["Cormyr [US]", "Moonsea [EU]", "Shadowdale [US]", "Thrane [US]"]
+#   defaultWorlds += ["Argonnessen [Old]", "Cannith [Old]", "Ghallanda [Old]", "Khyber [Old]",
+#                    "Orien [Old]", "Sarlona [Old]", "Thelanis [Old]", "Wayfinder [Old]"]
+  def __init__(self):
+    super().__init__()
+    μWorldList._widget            = self
+    μWorldList.worlds             = {}
+    μWorldList.currentItem        = self.currentItem
+    μWorldList.updateWorld        = self.updateWorld
+    μWorldList.currentTextChanged = self.currentTextChanged
+
+    for w in self.defaultWorlds:
+      μWorldList.worlds[w] = μWorld(self, w,'','',self.count())
+      self.addItem(μWorldList.worlds[w])
+
+    self.currentIndexChanged.connect(self.update)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def addItem(self, world : μWorld):
+    return super().addItem(getIcon(P_ICON_DISCONNECTED_RED), world.name, world)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def currentItem(self):
+    return self.currentData()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def getSelectedWorld(cls):
+    out = cls._widget.currentItem() if cls._widget else None
+    return "" if out is None else out.name
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def selectWorld(cls, name):
+    if not name or not cls._widget: return
+    w = cls.worlds.get(name)
+    if w:
+      cls._widget.setCurrentIndex(w.index)
+    else:
+      μPrint.error(f"[μWorld]: world \"{name}\" not found in the list!")
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def update(self):
+    item = self.currentItem()
+    if item: self.setToolTip(item.tooltip)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def updateWorld(self, data : tuple):
+    name, chatServer, statusServer = data
+    if name in μWorldList.worlds:
+      μPrint.info(f"Updating \"{C_SILVER}{name}</font>\" world info...")
+      μWorldList.worlds[name].chatServer = chatServer
+      μWorldList.worlds[name].statusServer = statusServer
+    else:
+      μPrint.info(f"Adding \"{C_SILVER}{name}</font>\" world info...")
+      μWorldList.worlds[name] = μWorld(self, name, chatServer, statusServer, self.count())
+      self.addItem(μWorldList.worlds[name])
+    μWorldList.worlds[name].checkStatus()
+    self.sigWorldUpdated.emit(True)
+
+
 
 

@@ -32,7 +32,7 @@ from helpers.μYAML import μYAML
 from helpers.util import P_DEFAULT_CONFIGDIR
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-  from μSettings import μSettings
+  from μSettings import μSetup
 
 P_MILVIAN_DEBUG=True
 P_SHM_SIZE = 1024*1024
@@ -192,9 +192,9 @@ class μMilvian():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setup(cls):
-    from μSettings import μSettings
-    shmPath = μSettings.plugins.milvianSHMPath() or P_DEFAULT_SHM_DIR
-    dhPath  = os.path.dirname(μSettings.plugins.dhExec())
+    from μSettings import μSetup
+    shmPath = μSetup.plugins.milvianSHMPath() or P_DEFAULT_SHM_DIR
+    dhPath  = os.path.dirname(μSetup.plugins.dhExec())
     μPrint.debug(f"[μMilvian] shmPath={shmPath!r} | dhPath={dhPath!r}")
     cls.configPath = dhPath
     cls.setBridgePath(shmPath)

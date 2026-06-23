@@ -19,9 +19,11 @@
 #
 from PyQt6.QtWidgets import QMainWindow, QWidget
 from PyQt6.QtCore import Qt, QSettings, pyqtSignal, QPoint, QSize, Qt
-from μCredentials import cCredentials
+from μCredentials import μCredentials
+from μServerInfo import μServerInfo
+from μWorlds import μWorldList
 from μMap import μMap
-from μSettings import μSettings
+from μSettings import μSetup
 from μMacros import μMacros
 from μPatch import μPatch
 from μConsole import μConsole
@@ -59,9 +61,11 @@ class μMainWindow(QMainWindow):
 
     self.console = μConsole(P_DEFAULT_LOGSDIR+'/log')
     μPrint.attachConsole(self.console)
-    self.credentials = cCredentials(self)
+    μServerInfo()
+    μWorldList()
+    self.credentials = μCredentials(self)
     self.patch = μPatch(self)
-    self.settings = μSettings(self)
+    self.setup = μSetup(self)
     self.macros = μMacros(self)
     self.processManager = μProcessManager()
     self.dh = μDungeonHelper(self)
@@ -75,8 +79,8 @@ class μMainWindow(QMainWindow):
 
     μSummary.setup(self.credentials)
     lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.strategy.toggler, self.map.toggler, self.btnLaunch,
-                              μSummary.widget, self.credentials.toggler, self.processManager.toggler, self.storageManager.toggler,
-                              self.macros.toggler, self.settings.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
+                              μSummary.widget, self.processManager.toggler, self.storageManager.toggler,
+                              self.macros.toggler, self.setup.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
 
     aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
     aKillAll = self.btnLaunch.menu.addAction("Kill all")
@@ -87,12 +91,11 @@ class μMainWindow(QMainWindow):
     aKillAll.triggered.connect(self.processManager.terminateAll)
     aRestoreAll.triggered.connect(self.processManager.restoreWindowAll)
     aSaveAll.triggered.connect(self.processManager.saveWindowAll)
-    aConf.triggered.connect(self.credentials.toggle)
     aConf.triggered.connect(self.processManager.toggle)
 
     self.setCentralWidget(newVFrame([lButtonsBar]))
 
-    self._docks = [self.credentials, self.settings, self.macros, self.processManager,
+    self._docks = [self.setup, self.macros, self.processManager,
                    self.storageManager, self.patch, self.console, self.strategy, self.map]
     for dock in self._docks:
       self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
@@ -110,10 +113,9 @@ class μMainWindow(QMainWindow):
     from μMilvian import μMilvian
 
     μProcessManager.attachMain(self)
-    self.credentials.sigFetchedWorldsInfo.connect(self.processManager.captureOrphan)
 
-    self.settings.initialize()
-    if μSettings.profile is None:
+    self.setup.initialize()
+    if μSetup.profile is None:
       self.console.abort("No valid profile loaded!")
     μStrategy.restoreSession()
     self.credentials.initialize()
@@ -123,8 +125,8 @@ class μMainWindow(QMainWindow):
     μMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
     μToolbar.setup()
-    self._applyStrategyVisibility(μSettings.profile)
-    μSettings.widget.sigProfileChanged.connect(lambda profile, _: self._applyStrategyVisibility(profile))
+    self._applyStrategyVisibility(μSetup.profile)
+    μSetup.widget.sigProfileChanged.connect(lambda profile, _: self._applyStrategyVisibility(profile))
     # cToolbar.TESTITEMS()
 
   #----------------------------------------------------------------------------------------------------------
@@ -154,7 +156,7 @@ class μMainWindow(QMainWindow):
       return
     
     self.processManager.setVisible(True)
-    world = self.credentials.listWorlds.currentItem()
+    world = μWorldList.currentItem()
     for username in accs:
       if username in self.processManager.items.keys():
         proc = self.processManager.items[username]
@@ -194,12 +196,11 @@ class μMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def close(self):
     self.saveState()
-    self.settings.save()
-    self.settings.close()
+    self.setup.save()
+    self.setup.close()
     self.macros.close()
     self.processManager.close()
     self.patch.close()
-    self.credentials.close()
     self.console.close()
     self.storageManager.close()
     self.map.close()

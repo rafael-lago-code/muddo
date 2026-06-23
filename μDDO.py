@@ -20,8 +20,9 @@
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
 from μProcess import aProcessItem
-from μSettings import μSettings
+from μSettings import μSetup
 from μAuthenticator import μAuthenticator
+from μServerInfo import μServerInfo
 from helpers.χHelper import χHelper, windowData
 from helpers.χTop import χTop
 import subprocess
@@ -55,7 +56,7 @@ class μDDO(aProcessItem):
     # cDDO freezes profile and uses that one until the process is cleaned
     # The reason is that changing profiles during runtime cannot change the already
     # running instances
-    self.frozenProfile = μSettings.profile
+    self.frozenProfile = μSetup.profile
     
     self.profileID.setText(self.frozenProfile.name)
     self.worldname.setText(world.name)
@@ -282,13 +283,13 @@ class μDDO(aProcessItem):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseArguments(self):
-    arg = self.auth.credentials.serverInfo.gameClientArgTemplate
+    arg = μServerInfo.gameClientArgTemplate
     arg = arg.replace("{LOGIN}", self.world.loginServer)
-    arg = arg.replace("{AUTHSERVERURL}", self.auth.credentials.serverInfo.gameClientAuthServerURL)
+    arg = arg.replace("{AUTHSERVERURL}", μServerInfo.gameClientAuthServerURL)
     arg = arg.replace("{GLS}", self.auth.ticket)
     arg = arg.replace("{CHAT}", self.world.chatServer)
     arg = arg.replace("{LANG}", "English")
-    arg = arg.replace("{GLSTICKETLIFETIME}", self.auth.credentials.serverInfo.gameClientGLSTicketLifetime)
+    arg = arg.replace("{GLSTICKETLIFETIME}", μServerInfo.gameClientGLSTicketLifetime)
     arg = arg.replace("{SUBSCRIPTION}", self.auth.subscription)
     if not self.frozenProfile.launcher.useHighRes():
       arg += " --HighResOutOfDate"

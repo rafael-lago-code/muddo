@@ -17,20 +17,18 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
 #    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
+#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher
 #    script by SNy (<SNy@bmx-chemnitz.de>)
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QWidget, QGridLayout, QLabel, QLineEdit, QCheckBox, QListWidget, \
-  QSizePolicy, QListWidgetItem
-from PyQt6.QtCore import Qt, pyqtSignal, QThreadPool, QItemSelectionModel, QSize
+from PyQt6.QtWidgets import QWidget, QGridLayout, QListWidget, QSizePolicy, QListWidgetItem, QCheckBox, QLineEdit
+from PyQt6.QtCore import Qt, QSize
 from widgets.μCombo import μCheckCombo
-from μSettings import μSettings
-from μWorlds import cWorldList
+from μSettings import μSetup
+from μWorlds import μWorldList
 from μServerInfo import μServerInfo
 from helpers.μPrint import μPrint
-from widgets.μFloating import μToggler
 from widgets.μText import μDisplayLabel
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
@@ -41,54 +39,32 @@ if TYPE_CHECKING:
    from μMainWindow import μMainWindow
    from μSettings   import μSettingsProfile
 
-class cCredentials(μToggler):
-  sigFetchedGLS        = pyqtSignal(bool)
-  sigFetchedWorld      = pyqtSignal(tuple)
-  sigFetchedWorldsInfo = pyqtSignal(bool)
-  sigFetchedQueueInfo  = pyqtSignal(bool)
-  widgetID = "Credentials"
+class μCredentials(QWidget):
 
   def __init__(self, main : μMainWindow):
-    super().__init__("Accounts", P_ICON_LOGIN)
-    self.toggler.setToolTip("Toggle Accounts UI for selecting, adding or removing accounts and for changing the game World")
-
+    super().__init__()
     self.main = main
     self.accounts = {}
-    self.console = main.console
-    self.serverInfo = None
-
-    self.listAccounts = QListWidget()
-    self.accountsSummary = μCheckCombo()
-    self.loginSummary = μDisplayLabel()
-    self.loginSummary.setAlignment(Qt.AlignmentFlag.AlignCenter)
-    self.listWorlds = cWorldList(main)
-    self.username = QLineEdit()
-    self.password = QLineEdit()
+    self.accountsList  = QListWidget()
+    self.accountsCombo = μCheckCombo()
+    self.username       = QLineEdit()
+    self.password       = QLineEdit()
     self.password.setEchoMode(QLineEdit.EchoMode.Password)
-    self.showPassword = QCheckBox("Sho&w Password")
-    self.multiAccount = QCheckBox("&Multi Account")
-    
-    btnAdd = μOrbSmall(icon=P_ICON_ADD, tooltip="Add a new account with the username and password from current fields."\
-                                                "\nIf the username exists, it updates the password")
-    btnDel = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Delete currently selected account(s)")
-    btnClear = μOrbSmall(icon=P_ICON_CLEAR, tooltip="Deselects accounts and clear all text boxes")
-    
+    self.showPassword   = QCheckBox("Sho&w Password")
+
+    btnAdd   = μOrbSmall(icon=P_ICON_ADD,    tooltip="Add a new account with the username and password from current fields.\nIf the username exists, it updates the password")
+    btnDel   = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Delete currently selected account(s)")
+    btnClear = μOrbSmall(icon=P_ICON_CLEAR,  tooltip="Deselects accounts and clear all text boxes")
+
     btnAdd.clicked.connect(self.addAccount)
     btnDel.clicked.connect(self.delAccount)
     btnClear.clicked.connect(self.clearEdits)
-    
-    self.listAccounts.currentRowChanged.connect(self.updateUsernamePassword)
-    self.listAccounts.itemSelectionChanged.connect(self.updateSummary)
-    self.showPassword.clicked.connect(self.updateShowPassword)
-    self.multiAccount.clicked.connect(self.updateMultiAccount)
-    self.multiAccount.setChecked(True)
-    self.updateMultiAccount()
 
-    # logo = QLabel()
-    # logo.setPixmap(QPixmap(os.path.dirname(os.path.abspath(__file__))+'/images/DDOBanner.png'))
-    # logo.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+    self.accountsList.currentRowChanged.connect(self.updateUsernamePassword)
+    self.password.editingFinished.connect(self.addAccount)
+    self.showPassword.clicked.connect(self.updateShowPassword)
+
     g = QGridLayout()
-    # g.addWidget(logo, 0, 0, 1, 3)
     g.addWidget(newRQLabel("Username: "), 0, 0, 1, 1)
     g.addWidget(newRQLabel("Password: "), 1, 0, 1, 1)
     g.addWidget(self.username, 0, 1, 1, 2)
@@ -96,99 +72,77 @@ class cCredentials(μToggler):
     g.addWidget(btnAdd,   0, 3)
     g.addWidget(btnDel,   1, 3)
     g.addWidget(btnClear, 2, 3)
-    g.addLayout(newHLayout([self.showPassword, self.multiAccount]), 2, 0, 1, 3)
+    g.addWidget(self.showPassword, 2, 0, 1, 3)
 
-    self.setLayout(newHLayout([g, newVLayout(["Accounts:", self.listAccounts])]))
-                              
-    self.loadAccounts()
+    self.setLayout(newHLayout([g, newVLayout(["Accounts:", self.accountsList])]))
     self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
-    self.sigFetchedWorld.connect(self.listWorlds.updateWorld)
-    self.sigFetchedQueueInfo.connect(self.main.btnLaunch.setEnabled)
-    
+
+    self.loadAccounts()
+
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    super().initialize()
-    self.serverInfo = μServerInfo(self.main)
-    self.listAccounts.itemSelectionChanged.connect(lambda x = μSettings: x.session.setAccounts(self.getSelectedAccounts()))
-    self.listWorlds.currentTextChanged.connect(lambda x,y = μSettings : y.session.setWorld(x))
-    μSettings.widget.sigProfileChanged.connect(self.updateProfile)
-    self.updateProfile(μSettings.profile, μSettings.lastProfile)
+    μServerInfo.sigFetchedWorld.connect(μWorldList.updateWorld)
+    μServerInfo.sigFetchedQueueInfo.connect(self.main.btnLaunch.setEnabled)
+    μServerInfo.sigFetchedWorldsInfo.connect(self.main.processManager.captureOrphan)
+    self.accountsCombo.changed.connect(lambda x=μSetup: x.session.setAccounts(self.getSelectedAccounts()))
+    μWorldList.currentTextChanged.connect(lambda x, y=μSetup: y.session.setWorld(x))
+    μSetup.widget.sigProfileChanged.connect(self.updateProfile)
+    self.updateProfile(μSetup.profile, μSetup.lastProfile)
     μPrint.info("Launching server info collector...")
-    QThreadPool.globalInstance().start(self.serverInfo)
+    μServerInfo.collect()
 
   #----------------------------------------------------------------------------------------------------------
   def updateProfile(self, prof : μSettingsProfile, last : str):
-    if prof.session.world:    self.selectWorld(prof.session.world)
+    if prof.session.world:    μWorldList.selectWorld(prof.session.world)
     if prof.session.accounts: self.selectAccounts(prof.session.accounts)
 
   #----------------------------------------------------------------------------------------------------------
+  def _accountIcon(self, username):
+    return getIcon(P_ICON_LOCKCLOSE_RED) if self.accounts.get(username, "") == "" else getIcon(P_ICON_LOCKOPEN_GREEN)
+
+  #----------------------------------------------------------------------------------------------------------
   def addAccount(self):
-    self.accounts[self.username.text()] = self.password.text()
-    item = self.listAccounts.findItems(self.username.text(), Qt.MatchFlag.MatchExactly)
-    if not item: 
-      item = QListWidgetItem(self.username.text())
-      self.listAccounts.addItem(item)
+    name = self.username.text()
+    if not name: return
+    self.accounts[name] = self.password.text()
+    icon = self._accountIcon(name)
+
+    # Update listAccounts icon or add new item
+    items = self.accountsList.findItems(name, Qt.MatchFlag.MatchExactly)
+    if items:
+      items[0].setIcon(icon)
     else:
-      item = item[0]
-    item.setIcon(getIcon(P_ICON_LOCKCLOSE_RED) if self.password.text() == "" else getIcon(P_ICON_LOCKOPEN_GREEN))
-        
+      self.accountsList.addItem(QListWidgetItem(icon, name))
+
+    # Update accountsSummary icon or add new item
+    for i in range(1, self.accountsCombo.rowModel.rowCount()):
+      if self.accountsCombo.rowModel.item(i).text() == name:
+        self.accountsCombo.rowModel.item(i).setIcon(icon)
+        self.saveAccounts()
+        return
+    self.accountsCombo.addCheckItem(name, True, icon)
+
     if self.password.text() != "":
       μPrint.info(C_RED + "WARNING</font>: passwords are saved in plain text and not handled safely yet! Use it at your own risk!")
     self.saveAccounts()
-  
+
   #----------------------------------------------------------------------------------------------------------
   def updateUsernamePassword(self):
-    if self.listAccounts.currentRow() >= 0:
-      self.username.setText(self.listAccounts.currentItem().text())
+    if self.accountsList.currentRow() >= 0:
+      self.username.setText(self.accountsList.currentItem().text())
       self.password.setText(self.accounts[self.username.text()])
 
   #----------------------------------------------------------------------------------------------------------
-  def updateMultiAccount(self):
-    if self.multiAccount.isChecked():
-      self.listAccounts.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
-    else:
-      self.listAccounts.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-  
-  #----------------------------------------------------------------------------------------------------------
   def getSelectedAccounts(self) -> list:
-    acc = []
-    for i in self.listAccounts.selectedItems():
-      acc.append(i.text())
-    return acc
-
-  #----------------------------------------------------------------------------------------------------------
-  def getSelectedWorld(self):
-    out = self.listWorlds.currentItem()
-    return "" if out is None else out.name
-
-  #----------------------------------------------------------------------------------------------------------
-  def selectWorld(self, name):
-    if not name: return
-    w = self.listWorlds.worlds.get(name,None)
-    if w:
-      self.listWorlds.setCurrentIndex(w.index)
-    else:
-      μPrint.error(f"cLogin.selectWorld: world \"{name}\" not found in the list!")
+    return self.accountsCombo.getChecked()
 
   #----------------------------------------------------------------------------------------------------------
   def selectAccounts(self, accs : list):
     if not accs: return
-    self.listAccounts.clearSelection()
-    for name in accs:
-      try:
-        m = self.listAccounts.findItems(name, Qt.MatchFlag.MatchExactly)
-        self.listAccounts.setCurrentItem(m[0], QItemSelectionModel.SelectionFlag.Select)
-      except Exception as e:
-        μPrint.error(f"cLogin.selectAccounts: account \"{name}\" not found in the list!", e)
-        return
-    
-  #----------------------------------------------------------------------------------------------------------
-  def updateSummary(self):
-    accs = [i for i in self.listAccounts.selectedItems()]
-    if len(accs)==1:
-      self.loginSummary.setText(f"{accs[0].text()} account selected")
-    else:
-      self.loginSummary.setText(f"{len(accs)} accounts selected")
+    for i in range(1, self.accountsCombo.rowModel.rowCount()):
+      item = self.accountsCombo.rowModel.item(i)
+      item.setData(item.text() in accs, Qt.ItemDataRole.UserRole)
+    self.accountsCombo.refreshHeader()
 
   #----------------------------------------------------------------------------------------------------------
   def saveAccounts(self):
@@ -202,33 +156,34 @@ class cCredentials(μToggler):
   #----------------------------------------------------------------------------------------------------------
   def loadAccounts(self):
     self.accounts = μYAML(P_DEFAULT_CONFIGDIR+"/accounts.yaml").raw
-    
     for a in self.accounts.keys():
-      self.listAccounts.addItem(QListWidgetItem(getIcon(P_ICON_LOCKCLOSE_RED) if self.accounts[a] == ""\
-                                else getIcon(P_ICON_LOCKOPEN_GREEN), a))
-      self.accountsSummary.addItem(getIcon(P_ICON_LOCKCLOSE_RED) if self.accounts[a] == ""\
-                                else getIcon(P_ICON_LOCKOPEN_GREEN), a)
-      self.accountsSummary.refreshHeader()
+      icon = self._accountIcon(a)
+      self.accountsList.addItem(QListWidgetItem(icon, a))
+      self.accountsCombo.addCheckItem(a, True, icon)
 
   #----------------------------------------------------------------------------------------------------------
   def delAccount(self):
-    selected = self.listAccounts.selectedItems()
+    selected = self.accountsList.selectedItems()
     for i in selected:
-      del self.accounts[i.text()]
-      self.listAccounts.takeItem(self.listAccounts.row(i))
-    μPrint.info(f" {len(selected)} accounts removed successfully")
+      name = i.text()
+      del self.accounts[name]
+      self.accountsList.takeItem(self.accountsList.row(i))
+      for j in range(1, self.accountsCombo.rowModel.rowCount()):
+        if self.accountsCombo.rowModel.item(j).text() == name:
+          self.accountsCombo.rowModel.removeRow(j)
+          break
+    μPrint.info(f"{len(selected)} accounts removed successfully")
     self.saveAccounts()
 
   #----------------------------------------------------------------------------------------------------------
   def clearEdits(self):
     self.username.clear()
     self.password.clear()
-    self.listAccounts.clearSelection()
-  
+    self.accountsList.clearSelection()
+
   #----------------------------------------------------------------------------------------------------------
   def updateShowPassword(self):
     if self.showPassword.isChecked():
       self.password.setEchoMode(QLineEdit.EchoMode.Normal)
     else:
       self.password.setEchoMode(QLineEdit.EchoMode.Password)
-

@@ -22,49 +22,68 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtCore import QRunnable
-from PyQt6.QtCore import pyqtSignal
-from μSettings import μSettings
+from PyQt6.QtCore import QObject, pyqtSignal
+from μSettings import μSetup
+from helpers.μPrint import μPrint
 from helpers.util import *
-import os, time
+import os, time, threading
 import xml.dom.minidom
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-   from μMainWindow import μMainWindow
 
 P_DDO_LAUNCHERCONFIG='ddo.launcherconfig'
 
-class μServerInfo(QRunnable):
-  sigServerInfo = pyqtSignal(bool)
-  P_STATUS_ERROR = -1
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  S E R V E R   I N F O
+#                                  
+#   This is a hybrid class. Don't instantiate it unless you know what you're doing.
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μServerInfo(QObject):
+  _instance     : 'μServerInfo' = None
+  sigServerInfo        = pyqtSignal(bool)
+  sigFetchedGLS        = pyqtSignal(bool)
+  sigFetchedWorld      = pyqtSignal(tuple)
+  sigFetchedWorldsInfo = pyqtSignal(bool)
+  sigFetchedQueueInfo  = pyqtSignal(bool)
+  P_STATUS_ERROR   = -1
   P_STATUS_WORKING = 0
   P_STATUS_UNKNOWN = 1
-  P_STATUS_DONE = 2
+  P_STATUS_DONE    = 2
 
-  def __init__(self, main : μMainWindow):
+  authServer               = ""
+  patchServer              = ""
+  launchConfigServer       = ""
+  realmList                = []
+  urlGLSDataCenter         = ""
+  gameName                 = ""
+  gameClientFilename       = ""
+  gameClientArgTemplate    = ""
+  gameClientAuthServerURL  = ""
+  gameClientGLSTicketLifetime = ""
+  newsFeedURL              = ""
+  newsStyleSheetURL        = ""
+  patchProductCode         = ""
+  worldQueueURL            = ""
+  worldQueueParam          = ""
+  status                   = P_STATUS_UNKNOWN
+
+  def __init__(self):
     super().__init__()
-    self.main = main
-    self.console = main.console
-    self.authServer = ""
-    self.patchServer = ""
-    self.launchConfigServer = ""
-    self.realmList = []
+    μServerInfo._instance = self
+    μServerInfo.sigServerInfo        = self.sigServerInfo
+    μServerInfo.sigFetchedGLS        = self.sigFetchedGLS
+    μServerInfo.sigFetchedWorld      = self.sigFetchedWorld
+    μServerInfo.sigFetchedWorldsInfo = self.sigFetchedWorldsInfo
+    μServerInfo.sigFetchedQueueInfo  = self.sigFetchedQueueInfo
 
-    self.gameClientFilename = ""
-    self.gameClientArgTemplate = ""
-    self.newsFeedURL = ""
-    self.newsStyleSheetURL = ""
-    self.patchProductCode = ""
-    self.worldQueueURL = ""
-    self.worldQueueParam = ""
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def collect(cls):
+    threading.Thread(target=cls._instance.run, daemon=True).start()
 
-    self.status = self.P_STATUS_UNKNOWN
-
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def run(self):
-    self.status = self.P_STATUS_WORKING
+    μServerInfo.status = μServerInfo.P_STATUS_WORKING
 
-    gamePath = μSettings.launcher.gamePath()
+    gamePath = μSetup.launcher.gamePath()
     gameConfig = gamePath+os.sep+P_DDO_LAUNCHERCONFIG
     for i in range(4):
       if os.path.exists(gameConfig):
@@ -82,26 +101,26 @@ class μServerInfo(QRunnable):
         for node in nodes:
           if node.nodeType == node.ELEMENT_NODE:
             if node.getAttribute("key") == "Launcher.DataCenterService.GLS":
-              self.urlGLSDataCenter = node.getAttribute("value")
+              μServerInfo.urlGLSDataCenter = node.getAttribute("value")
             elif node.getAttribute("key") == "DataCenter.GameName":
-              self.gameName = node.getAttribute("value")
+              μServerInfo.gameName = node.getAttribute("value")
         
       except Exception as e:
-        self.main.credentials.sigFetchedGLS.emit(False)
-        self.status = self.P_STATUS_ERROR
-        self.console.error("Error fetching GLSData", e)
+        self.sigFetchedGLS.emit(False)
+        μServerInfo.status = μServerInfo.P_STATUS_ERROR
+        μPrint.error("Error fetching GLSData", e)
       else:
-        self.main.credentials.sigFetchedGLS.emit(True)
-        self.console.info("Fetched GLSData")
+        self.sigFetchedGLS.emit(True)
+        μPrint.info("Fetched GLSData")
     
     if self.getGLSData():
       if self.getQueue():
-        self.status = self.P_STATUS_DONE
-        self.console.info("Finished gathering server data")
-        return 
+        μServerInfo.status = μServerInfo.P_STATUS_DONE
+        μPrint.info("Finished gathering server data")
+        return
     self.status = self.P_STATUS_ERROR
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getGLSData(self):
     SM_TEMPLATE = "<?xml version=\"1.0\" encoding=\"utf-8\"?>\
 <soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">\
@@ -132,11 +151,11 @@ class μServerInfo(QRunnable):
       else:
         doc = xml.dom.minidom.parseString(tempxml)
 
-        self.authServer = getNodeText(doc.getElementsByTagName("AuthServer")[0].childNodes)
-        self.patchServer = getNodeText(doc.getElementsByTagName("PatchServer")[0].childNodes)
-        self.launchConfigServer = getNodeText(doc.getElementsByTagName("LauncherConfigurationServer")[0].childNodes)
+        μServerInfo.authServer = getNodeText(doc.getElementsByTagName("AuthServer")[0].childNodes)
+        μServerInfo.patchServer = getNodeText(doc.getElementsByTagName("PatchServer")[0].childNodes)
+        μServerInfo.launchConfigServer = getNodeText(doc.getElementsByTagName("LauncherConfigurationServer")[0].childNodes)
 
-        self.realmList = []
+        μServerInfo.realmList = []
 
         name = ""
         urlChatServer = ""
@@ -150,20 +169,20 @@ class μServerInfo(QRunnable):
               urlChatServer = realm.firstChild.nodeValue
             elif realm.nodeName == "StatusServerUrl":
               urlStatusServer = realm.firstChild.nodeValue
-          self.realmList.append((name, urlChatServer, urlStatusServer))
-          self.main.credentials.sigFetchedWorld.emit((name, urlChatServer, urlStatusServer))
-          
+          μServerInfo.realmList.append((name, urlChatServer, urlStatusServer))
+          self.sigFetchedWorld.emit((name, urlChatServer, urlStatusServer))
+
     except Exception as e:
-      self.console.error("Error fetching worlds data", e)
-      self.main.credentials.sigFetchedWorldsInfo.emit(False)
+      μPrint.error("Error fetching worlds data", e)
+      self.sigFetchedWorldsInfo.emit(False)
       return False
     else:
-      self.console.info("Fetched worlds data")
+      μPrint.info("Fetched worlds data")
       time.sleep(1)
-      self.main.credentials.sigFetchedWorldsInfo.emit(True)
+      self.sigFetchedWorldsInfo.emit(True)
       return True
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getQueue(self) -> bool:
     try:
       webservice, post = getConnection(self.launchConfigServer)
@@ -184,32 +203,30 @@ class μServerInfo(QRunnable):
         for node in nodes:
           if node.nodeType == node.ELEMENT_NODE:
             if node.getAttribute("key") == "GameClient.WIN64.Filename":
-              self.gameClientFilename = node.getAttribute("value")
+              μServerInfo.gameClientFilename = node.getAttribute("value")
             elif node.getAttribute("key") == "GameClient.WIN32.ArgTemplate": #there isn't one for WIN64!
-              self.gameClientArgTemplate = node.getAttribute("value")
+              μServerInfo.gameClientArgTemplate = node.getAttribute("value")
             elif node.getAttribute("key") == "GameClient.Arg.authserverurl":
-              self.gameClientAuthServerURL = node.getAttribute("value")
+              μServerInfo.gameClientAuthServerURL = node.getAttribute("value")
             elif node.getAttribute("key") == "GameClient.Arg.glsticketlifetime":
-              self.gameClientGLSTicketLifetime = node.getAttribute("value")
+              μServerInfo.gameClientGLSTicketLifetime = node.getAttribute("value")
             elif node.getAttribute("key") == "URL.NewsFeed":
-              self.newsFeedURL = node.getAttribute("value")
+              μServerInfo.newsFeedURL = node.getAttribute("value")
             elif node.getAttribute("key") == "URL.NewsStyleSheet":
-              self.newsStyleSheetURL = node.getAttribute("value")
+              μServerInfo.newsStyleSheetURL = node.getAttribute("value")
             elif node.getAttribute("key") == "Patching.ProductCode":
-              self.patchProductCode = node.getAttribute("value")
+              μServerInfo.patchProductCode = node.getAttribute("value")
             elif node.getAttribute("key") == "WorldQueue.LoginQueue.URL":
-              self.worldQueueURL = node.getAttribute("value")
+              μServerInfo.worldQueueURL = node.getAttribute("value")
             elif node.getAttribute("key") == "WorldQueue.TakeANumber.Parameters":
-              self.worldQueueParam = node.getAttribute("value")
-
-        self.loadSuccess = True
+              μServerInfo.worldQueueParam = node.getAttribute("value")
     except Exception as e:
-      self.console.error("Error fetching queue info", e)
-      self.main.credentials.sigFetchedQueueInfo.emit(False)
+      μPrint.error("Error fetching queue info", e)
+      self.sigFetchedQueueInfo.emit(False)
       return False
     else:
-      self.main.credentials.sigFetchedQueueInfo.emit(True)
-      self.console.info("Fetched queue info")
+      self.sigFetchedQueueInfo.emit(True)
+      μPrint.info("Fetched queue info")
       return True
 
 

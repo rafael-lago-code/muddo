@@ -18,7 +18,7 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QTabWidget, QWidget, QSlider
+from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QWidget, QSlider
 from PyQt6.QtCore import QSettings
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
@@ -352,7 +352,6 @@ class μSettingsProfile(QWidget):
   
   def __init__(self, name : str, parent = None):
     super().__init__(parent)
-    self.tab  = QTabWidget(self)
     self.name = name
     self._state   = QSettings(P_DEFAULT_CONFIGDIR + f"/profile_{self.name}.conf", QSettings.Format.IniFormat)
     self.launcher = dLauncher(self._state)
@@ -409,28 +408,15 @@ class μSettingsProfile(QWidget):
     gmap.appendRow(["Map Zoom:", self.map._mapZoom, "Defautl Cartographers:", self.map._cartographers])
     gmap.appendRow(["Upscale:", self.map._upscale, "Refresh Interval:", self.map._refreshInterval])
 
-    self.tab.addTab(newVFrame([glauncher, "__stretch__"]), "Launcher")
-    self.tab.addTab(newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"]), "X && Audio")
-    self.tab.addTab(newVFrame([gplugins, "__stretch__"]), "Plugins")
-    self.tab.addTab(newVFrame([gtoolbar, "__stretch__"]), "Toolbar")
-    self.tab.addTab(newVFrame([gmap, "__stretch__"]), "Map")
-    self.tab.setStyleSheet(f"""
-      QTabWidget::pane {{ background: rgba(40, 40, 40, 120); border: none; }}
-      QTabBar::tab {{
-          background: rgba(40, 40, 40, 120);                
-          color: white;
-          padding: 4px 8px;
-          border: none;
-      }}
-      QTabBar::tab:selected {{
-          background: rgba(84, 19, 8, 220);
-      }}
-      QTabBar::tab:hover:!selected {{
-          background: rgba(80, 80, 80, 180);
-      }}
-    """)
-    # setBGColour(self.table.viewport(), QColor(0, 0, 0, 210))
-    self.setLayout(newVLayout([self.tab]))
+    self.wLauncher  = newVFrame([glauncher, "__stretch__"])
+    self.wXAudio    = newVFrame([newHLayout([gbxl, gbxr]), "__stretch__"])
+    self.wPlugins   = newVFrame([gplugins, "__stretch__"])
+    self.wToolbar   = newVFrame([gtoolbar, "__stretch__"])
+    self.wMap       = newVFrame([gmap, "__stretch__"])
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def sectionWidgets(self):
+    return [self.wLauncher, self.wXAudio, self.wPlugins, self.wToolbar, self.wMap]
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def wireInternal(self):

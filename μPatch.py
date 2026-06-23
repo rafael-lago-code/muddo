@@ -25,7 +25,8 @@ from __future__ import annotations
 import cProfile
 from PyQt6.QtWidgets import QLabel, QTextBrowser, QTextEdit, QComboBox
 from PyQt6.QtCore import QRunnable, pyqtSignal, QThreadPool
-from μSettings import μSettings
+from μSettings import μSetup
+from μServerInfo import μServerInfo
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrb, μOrbSmall
 import subprocess, re
@@ -98,7 +99,7 @@ class μPatch(μToggler):
     # TODO - this is terrible. Some of the data is already in tServerInfo, but trickling the whole thing
     # through the credentials class is a pain. Maybe move the fetching/parsing of news to a separate class?
     # Need to make the whole thing a static class again...
-    newsURL=self.main.credentials.serverInfo.newsFeedURL
+    newsURL=μServerInfo.newsFeedURL
     if newsURL == "":
       μPrint.error(f"[cPatch] Error fetching news URL from server config file {P_DEFAULT_SERVERCONFIG}!")
       return
@@ -135,7 +136,7 @@ class μPatch(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateTimestamp(self):
-    timestampFilename = μSettings.launcher.gamePath()+os.sep+P_TIMESTAMP_FILE
+    timestampFilename = μSetup.launcher.gamePath()+os.sep+P_TIMESTAMP_FILE
     if os.path.exists(timestampFilename):
       try:
         with open(timestampFilename, 'r') as f:
@@ -171,7 +172,7 @@ class μPatch(μToggler):
   def fullLauncherThread(self):
     # self.sigChangeRequest.emit(self.P_STATUS_AUTHENTICATING)
 
-    cmd = f'cd \"{μSettings.launcher.gamePath()}\" ; {μSettings.launcher.command()} DNDLauncher.exe'
+    cmd = f'cd \"{μSetup.launcher.gamePath()}\" ; {μSetup.launcher.command()} DNDLauncher.exe'
 
     logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(
@@ -214,7 +215,7 @@ class tPatcher(QRunnable):
                                        [*] Patching completed!<br>------------------------------------------</b></font>")
 
     try:
-      timestampFilename = μSettings.launcher.gamePath()+os.sep+P_TIMESTAMP_FILE
+      timestampFilename = μSetup.launcher.gamePath()+os.sep+P_TIMESTAMP_FILE
       with open(timestampFilename, 'w') as f:
         f.write(f"{datetime.now().strftime("%Y-%m-%d, at %H:%M:%S")}")
     except Exception as e:
@@ -227,15 +228,15 @@ class tPatcher(QRunnable):
     # if usingProton:
     if True:
       # Cannot use protonrun here; need to use proton's wine, so we rewire it as follows:
-      protonWine = os.path.dirname(μSettings.launcher.protonExec()) + "/dist/bin/wine"
-      evars = {'WINEPREFIX': f"{μSettings.launcher.compatData()}/pfx"}
+      protonWine = os.path.dirname(μSetup.launcher.protonExec()) + "/dist/bin/wine"
+      evars = {'WINEPREFIX': f"{μSetup.launcher.compatData()}/pfx"}
       cmd  = f"\"{protonWine}\" rundll32.exe patchclient.dll,Patch "
-      cmd += f"{self.main.credentials.serverInfo.patchServer} "
-      cmd += f"--language {μSettings.launcher.language()} "
-      cmd += f"--productcode {self.main.credentials.serverInfo.patchProductCode} "
-      if μSettings.launcher.useHighRes(): cmd += " --highres "
+      cmd += f"{μServerInfo.patchServer} "
+      cmd += f"--language {μSetup.launcher.language()} "
+      cmd += f"--productcode {μServerInfo.patchProductCode} "
+      if μSetup.launcher.useHighRes(): cmd += " --highres "
 
-    out = subprocess.Popen([f"{cmd} {target}"], cwd=μSettings.launcher.gamePath(), env=evars, \
+    out = subprocess.Popen([f"{cmd} {target}"], cwd=μSetup.launcher.gamePath(), env=evars, \
                         stderr=subprocess.DEVNULL, stdout=subprocess.PIPE, shell=True)
     while True:
       line = out.stdout.readline().decode()

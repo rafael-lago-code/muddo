@@ -24,7 +24,7 @@
 from PyQt6.QtWidgets import QWidget
 from PyQt6.QtGui import QPainter, QPixmap, QColor
 from PyQt6.QtCore import Qt, QPoint
-from μSettings import μSettings
+from μSettings import μSetup
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from helpers.util import *
@@ -52,12 +52,12 @@ class μToolbar(QWidget):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def setup(cls):
-    μSettings.toolbar._macroNCols.valueChanged.connect(cls.grid.setColumns)
-    μSettings.toolbar._macroNRows.valueChanged.connect(cls.grid.setRows)
-    μSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.grid.setFillRowsFirst)
-    μSettings.toolbar._macroNCols.valueChanged.connect(cls.sortLayout)
-    μSettings.toolbar._macroNRows.valueChanged.connect(cls.sortLayout)
-    μSettings.toolbar._macroFillRowFirst.stateChanged.connect(cls.sortLayout)
+    μSetup.toolbar._macroNCols.valueChanged.connect(cls.grid.setColumns)
+    μSetup.toolbar._macroNRows.valueChanged.connect(cls.grid.setRows)
+    μSetup.toolbar._macroFillRowFirst.stateChanged.connect(cls.grid.setFillRowsFirst)
+    μSetup.toolbar._macroNCols.valueChanged.connect(cls.sortLayout)
+    μSetup.toolbar._macroNRows.valueChanged.connect(cls.sortLayout)
+    μSetup.toolbar._macroFillRowFirst.stateChanged.connect(cls.sortLayout)
     cls.grid.itemsSwapped.connect(cls.onItemsSwapped)
     cls.widget.setVisible(False)
 
@@ -122,11 +122,11 @@ class μToolbar(QWidget):
   def sortLayout(cls):
     cls.clearLayout()
     cls.widget.setVisible(True)
-    μSettings.toolbar.loadWidgetGeometry(cls.widget)
-    nrows = μSettings.toolbar.macroNRows()
-    ncols = μSettings.toolbar.macroNCols()
-    macroFillMissing = μSettings.toolbar.macroFillMissing()
-    fillRowsFirst= μSettings.toolbar.macroFillRowFirst()
+    μSetup.toolbar.loadWidgetGeometry(cls.widget)
+    nrows = μSetup.toolbar.macroNRows()
+    ncols = μSetup.toolbar.macroNCols()
+    macroFillMissing = μSetup.toolbar.macroFillMissing()
+    fillRowsFirst= μSetup.toolbar.macroFillRowFirst()
 
     cls.grid.setColumns(ncols)
     cls.grid.setRows(ncols)
@@ -147,7 +147,7 @@ class μToolbar(QWidget):
   @classmethod
   def clearLayout(cls):
     if cls.widget.isVisible():
-      μSettings.toolbar.saveWidgetGeometry(cls.widget)
+      μSetup.toolbar.saveWidgetGeometry(cls.widget)
     cls.grid.clear()
     cls.widget.setVisible(False)
 

@@ -18,7 +18,7 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox
+from PyQt6.QtWidgets import QComboBox, QTabWidget, QStackedWidget
 from PyQt6.QtCore import pyqtSignal
 from widgets.μCombo import μCheckCombo, μCombo
 from μSettingsProfile import μSettingsProfile
@@ -32,64 +32,84 @@ if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   🮿  S E T T I N G S 
-#                                  
+#   🮿  S E T T I N G S
+#
 #   This is a hybrid class.
 #   One instance lives in cMainWindow. __init__ calls cSettings.setup. Most of the time just use it as a
 #   static class, use cSettings.widget for the instance.
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μSettings(μToggler):
-  widget : μSettings = None
+class μSetup(μToggler):
+  widget : μSetup = None
   sigProfileChanged = pyqtSignal(μSettingsProfile, str)
-  widgetID = "Settings"
+  widgetID = "Setup"
   lastProfile : str = ""
-  multiAccount : bool = False
-  profiles : dict[str, μSettingsProfile] = {}  # This will hold all profiles
-  hiddenLayer = None # QVBoxLayout()
-  profileList = None # QComboBox()
-  profileMain = None # QComboBox()
+  profiles : dict[str, μSettingsProfile] = {}
+  tabs        = None  # QTabWidget
+  stacks      = []    # [QStackedWidget x5] — Launcher/XAudio/Plugins/Toolbar/Map
+  profileList = None  # QComboBox
+  profileMain = None  # QComboBox
   profile = None
 
 
+  SECTION_NAMES = ["Launcher", "X && Audio", "Plugins", "Toolbar", "Map"]
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def setup(cls, widget : μSettings):
+  def setup(cls, widget : μSetup):
     cls.widget = widget
-    cls.hiddenLayer = QVBoxLayout()
     cls.profileMain = μCombo()
     cls.profileMain.setMinimumWidth(200)
     cls.profileList = μCombo()
     cls.profileList.setEditable(True)
     cls.profileList.setMinimumWidth(200)
+    cls.stacks = [QStackedWidget() for _ in cls.SECTION_NAMES]
+    cls.tabs = QTabWidget()
+    cls.tabs.setStyleSheet("""
+      QTabWidget::pane { background: rgba(40, 40, 40, 120); border: none; }
+      QTabBar::tab {
+          background: rgba(40, 40, 40, 120);
+          color: white;
+          padding: 4px 8px;
+          border: none;
+      }
+      QTabBar::tab:selected {
+          background: rgba(84, 19, 8, 220);
+      }
+      QTabBar::tab:hover:!selected {
+          background: rgba(80, 80, 80, 180);
+      }
+    """)
+    for name, stack in zip(cls.SECTION_NAMES, cls.stacks):
+      cls.tabs.addTab(stack, name)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def addProfile(cls, name):
     if cls.profiles.get(name): return
     try:
-      newProfile = μSettingsProfile(name, cls.widget)
+      newProfile = μSettingsProfile(name)
       cls.profiles[name] = newProfile
-      cls.hiddenLayer.addWidget(newProfile)
+      for stack, w in zip(cls.stacks, newProfile.sectionWidgets()):
+        stack.addWidget(w)
       cls.profileList.addItem(name)
       cls.profileMain.addItem(name)
-      newProfile.setVisible(False)
     except Exception as e:
       μPrint.error(f"[cSettings] failed to load profile \"{name}\". Skipping it...", e)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def getWidget(cls) -> μSettings:
+  def getWidget(cls) -> μSetup:
     return cls.widget
-  
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def syncProfileLists(cls, source="settings"):
+  def syncProfileLists(cls, source="setup"):
     try:
       cls.profileList.currentIndexChanged.disconnect()
       cls.profileMain.currentIndexChanged.disconnect()
     except: pass
 
-    if source=="settings":
+    if source=="setup":
       name = cls.profileList.currentText()
       idx = cls.profileList.currentIndex()
       cls.profileMain.setCurrentIndex(idx)
@@ -98,12 +118,12 @@ class μSettings(μToggler):
       idx = cls.profileMain.currentIndex()
       cls.profileList.setCurrentIndex(idx)
 
-    cls.profileList.currentIndexChanged.connect(lambda : cls.syncProfileLists("settings"))
+    cls.profileList.currentIndexChanged.connect(lambda : cls.syncProfileLists("setup"))
     cls.profileMain.currentIndexChanged.connect(lambda : cls.syncProfileLists("main"))
 
     if not name: return
     if name in cls.profiles.keys():
-      μSettings.switchProfile(name)
+      μSetup.switchProfile(name)
     else:
       μPrint.warning(f"Trying to change to profile \"{name}\", but it was not found! Doing nothing instead...")
 
@@ -118,19 +138,19 @@ class μSettings(μToggler):
     cls.toolbar   = cls.profiles[name].toolbar
     cls.map       = cls.profiles[name].map
 
-    if cls.lastProfile in cls.profiles.keys():
-      cls.profiles[cls.lastProfile].setVisible(False)
-    cls.profiles[name].setVisible(True)
+    idx = cls.stacks[0].indexOf(cls.profiles[name].wLauncher)
+    for stack in cls.stacks:
+      stack.setCurrentIndex(idx)
     # cls.main.patch.updateTimestamp()
     cls.widget.sigProfileChanged.emit(cls.profiles[name], cls.lastProfile)
     cls.lastProfile = name
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, main : μMainWindow):
-    super().__init__("&Settings", P_ICON_GEARSTACK, main)
-    self.toggler.setToolTip("Toggle Settings UI")
+    super().__init__("&Setup", P_ICON_GEARSTACK, main)
+    self.toggler.setToolTip("Toggle Setup UI")
     self.main = main
-    μSettings.setup(self)
+    μSetup.setup(self)
 
     profileLbl = QLabel("Profile: ")
     profileLbl.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
@@ -138,9 +158,9 @@ class μSettings(μToggler):
     self.btnDuplicateProfile = μOrbSmall(icon=P_ICON_DUPDOC, tooltip="Duplicate current settings and profile into a new one.<br>You can rename it directly from the ComboBox after creating it.")
     self.btnRemoveProfile = μOrbSmall(icon=P_ICON_TRASH, tooltip="Delete current profile and its associated files (main settings remain untouched)")
 
-    self.setLayout(newVLayout([self.hiddenLayer, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnDuplicateProfile,
-                               self.btnRemoveProfile, "__stretch__"]), "__stretch__"]))
-    
+    self.setLayout(newVLayout([self.tabs, newHLayout(["__stretch__", "Profile: ", self.profileList, self.btnDuplicateProfile,
+                               self.btnRemoveProfile, "__stretch__"])]))
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def _confPath(name):
@@ -150,10 +170,12 @@ class μSettings(μToggler):
   def initialize(self):
     self.load()
     super().initialize()
+    self.tabs.insertTab(0, self.main.credentials, "Accounts")
+    self.tabs.setCurrentIndex(0)
     self.btnDuplicateProfile.clicked.connect(self.duplicateProfile)
     self.btnRemoveProfile.clicked.connect(self.removeProfile)
-    self.profileList.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("settings"))
-    self.profileMain.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("main"))
+    self.profileList.currentIndexChanged.connect(lambda : μSetup.syncProfileLists("settings"))
+    self.profileMain.currentIndexChanged.connect(lambda : μSetup.syncProfileLists("main"))
     self.profileList.lineEdit().editingFinished.connect(self.renameProfile)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -167,19 +189,22 @@ class μSettings(μToggler):
     self.profileList.setCurrentIndex(idx)
     self.profileMain.setCurrentIndex(-1)
     self.profileMain.setCurrentIndex(idx)
-    self.profileList.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("settings"))
-    self.profileMain.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("main"))
-    μSettings.switchProfile(name)
+    self.profileList.currentIndexChanged.connect(lambda : μSetup.syncProfileLists("settings"))
+    self.profileMain.currentIndexChanged.connect(lambda : μSetup.syncProfileLists("main"))
+    μSetup.switchProfile(name)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeProfile(self):
-    name = μSettings.lastProfile
+    name = μSetup.lastProfile
     if not name: return
     try:
+      profile = μSetup.profiles.pop(name, None)
+      if profile:
+        for stack, w in zip(μSetup.stacks, profile.sectionWidgets()):
+          stack.removeWidget(w)
       for combo in [self.profileList, self.profileMain]:
         idx = combo.findText(name)
         if idx >= 0: combo.removeItem(idx)
-      μSettings.profiles.pop(name, None)
       os.remove(self._confPath(name))
       μPrint.info(f"[cSettings] removed profile \"{name}\"")
     except Exception as e:
@@ -189,12 +214,12 @@ class μSettings(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def duplicateProfile(self):
-    src = μSettings.lastProfile
+    src = μSetup.lastProfile
     if not src: return
     dst = f"copyOf_{src}"
     try:
       shutil.copy2(self._confPath(src), self._confPath(dst))
-      μSettings.addProfile(dst)
+      μSetup.addProfile(dst)
       self._selectProfile(dst)
       μPrint.info(f"[cSettings] duplicated \"{src}\" → \"{dst}\"")
     except Exception as e:
@@ -203,18 +228,18 @@ class μSettings(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def renameProfile(self):
     newName = self.profileList.lineEdit().text().strip()
-    oldName = μSettings.lastProfile
+    oldName = μSetup.lastProfile
     if not newName or newName == oldName: return
-    if newName in μSettings.profiles: return
+    if newName in μSetup.profiles: return
     try:
       shutil.move(self._confPath(oldName), self._confPath(newName))
-      profile = μSettings.profiles.pop(oldName)
-      μSettings.profiles[newName] = profile
+      profile = μSetup.profiles.pop(oldName)
+      μSetup.profiles[newName] = profile
       for combo in [self.profileList, self.profileMain]:
         idx = combo.findText(oldName)
         if idx >= 0: combo.setItemText(idx, newName)
-      μSettings.lastProfile = newName
-      μSettings.profile.name = newName
+      μSetup.lastProfile = newName
+      μSetup.profile.name = newName
       μPrint.info(f"[cSettings] renamed \"{oldName}\" → \"{newName}\"")
     except Exception as e:
       μPrint.error(f"[cSettings] failed to rename profile \"{oldName}\"", e)
@@ -223,11 +248,6 @@ class μSettings(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self):
     self.lastProfile  = self._state.value("lastProfile", "")         # goes in the "General" section of the settings file
-    self.multiAccount = self._state.value("multiAccount") == "true"  # goes in the "General" section of the settings file
-
-    self.main.credentials.multiAccount.setChecked(self.multiAccount)
-    self.main.credentials.updateMultiAccount()
-    
     try:
       files = glob.glob(P_DEFAULT_CONFIGDIR+os.sep+"profile_*.conf")
       files = [ os.path.splitext(os.path.basename(f))[0][8:].strip() for f in files ]
@@ -239,9 +259,9 @@ class μSettings(μToggler):
       self.profileList.clear()
       self.profileMain.clear()
       for p in files:
-        if p != "": μSettings.addProfile(p)
-      self.profileList.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("settings"))
-      self.profileMain.currentIndexChanged.connect(lambda : μSettings.syncProfileLists("main"))
+        if p != "": μSetup.addProfile(p)
+      self.profileList.currentIndexChanged.connect(lambda : μSetup.syncProfileLists("settings"))
+      self.profileMain.currentIndexChanged.connect(lambda : μSetup.syncProfileLists("main"))
 
       lpIdx = self.profileList.findText(self.lastProfile)
       if lpIdx == -1:
@@ -253,7 +273,7 @@ class μSettings(μToggler):
         self.profileList.setCurrentIndex(lpIdx)
         self.profileMain.setCurrentIndex(-1)
         self.profileMain.setCurrentIndex(lpIdx)
-      
+
     except Exception as e:
       μPrint.error(f"[cSettings] error loading settings from \"{C_SILVER}{self._state.fileName()}</font>\"", e)
     else:
@@ -262,13 +282,8 @@ class μSettings(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def save(self):
     try:
-      self._state.setValue("multiAccount", self.main.credentials.multiAccount.isChecked()) # goes in the "General" section of the settings file
       self._state.setValue("lastProfile", self.profileList.currentText())                  # goes in the "General" section of the settings file
     except Exception as e:
       μPrint.error(f"[cSettings] could not create \"{C_SILVER}{self._state.fileName()}</font>\" to store settings!",e)
     else:
       μPrint.info(f"[cSettings] saved in \"{C_SILVER}{self._state.fileName()}</font>\"")
-    
-  
-
-

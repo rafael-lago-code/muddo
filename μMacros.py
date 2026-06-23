@@ -25,7 +25,7 @@ from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
 from helpers.μPrint import μPrint
 from helpers.μImageFactory import *
 from helpers.μStrings import *
-from μSettings import μSettings
+from μSettings import μSetup
 from μSettingsProfile import μSettingsProfile
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
@@ -532,10 +532,10 @@ class μMacros(μToggler):
       name = os.path.splitext(os.path.basename(n))[0]
       self.appendMacroSet(name)
     self.initialized = True
-    self.setListWidget.itemChanged.connect(lambda sset: μSettings.session.setMacroSets(self.getActiveSets()))
+    self.setListWidget.itemChanged.connect(lambda sset: μSetup.session.setMacroSets(self.getActiveSets()))
     self.setListWidget.itemChanged.connect(lambda sset: sset.setActive(sset.isActive()))
-    μSettings.widget.sigProfileChanged.connect(self.updateProfile)
-    self.updateProfile(μSettings.profile, μSettings.lastProfile)
+    μSetup.widget.sigProfileChanged.connect(self.updateProfile)
+    self.updateProfile(μSetup.profile, μSetup.lastProfile)
     if self.toActivate:
       self.setActiveSets(self.toActivate)
       self.toActivate = None

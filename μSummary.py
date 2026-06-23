@@ -22,9 +22,10 @@ from PyQt6.QtWidgets import QWidget
 from PyQt6.QtCore import Qt
 from widgets.μGrid import μGridLayout
 from widgets.μText import μDisplayLabel
+from μWorlds import μWorldList
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-  from μCredentials import cCredentials
+  from μCredentials import μCredentials
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -35,12 +36,12 @@ class μSummary:
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def setup(cls, credentials: cCredentials):
-    from μSettings import μSettings
+  def setup(cls, credentials: μCredentials):
+    from μSettings import μSetup
     cls.widget = QWidget()
     cls.widget.setMaximumWidth(480)
     g = μGridLayout()
-    g.appendRow([μDisplayLabel("Accounts:"), '>', credentials.accountsSummary])
-    g.appendRow([μDisplayLabel("World:"),   '>', credentials.listWorlds])
-    g.appendRow([μDisplayLabel("Profile:"), '>', μSettings.profileMain])
+    g.appendRow([μDisplayLabel("Accounts:"), '>', credentials.accountsCombo])
+    g.appendRow([μDisplayLabel("World:"),   '>', μWorldList._widget])
+    g.appendRow([μDisplayLabel("Profile:"), '>', μSetup.profileMain])
     cls.widget.setLayout(g)

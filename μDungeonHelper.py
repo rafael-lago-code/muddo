@@ -19,7 +19,7 @@
 #
 from __future__ import annotations
 from μProcess import aProcessItem
-from μSettings import μSettings
+from μSettings import μSetup
 from helpers.χHelper import χHelper
 from helpers.χTop import χTop
 import subprocess
@@ -76,7 +76,7 @@ class μDungeonHelper(aProcessItem):
 
   #----------------------------------------------------------------------------------------------------------
   def initialize(self):
-    μSettings.plugins._useDH.stateChanged.connect(lambda x: self.setEnabled(x))
+    μSetup.plugins._useDH.stateChanged.connect(lambda x: self.setEnabled(x))
 
   #----------------------------------------------------------------------------------------------------------
   def launch(self):
@@ -94,7 +94,7 @@ class μDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def _launchThread(self):
     
-    cmd = f'{μSettings.launcher.command()} "{μSettings.plugins.dhExec()}"'
+    cmd = f'{μSetup.launcher.command()} "{μSetup.plugins.dhExec()}"'
 
     logFile = open(self.getLogFilename(), "w")
     proc = subprocess.Popen(
@@ -139,7 +139,7 @@ class μDungeonHelper(aProcessItem):
           μPrint.error(f"cDungeonHelper.watchPID: timeout error while looking for PID")
           return None
         time.sleep(0.1)
-    baseExec = os.path.basename(μSettings.plugins.dhExec())
+    baseExec = os.path.basename(μSetup.plugins.dhExec())
     t = threading.Thread(target=_watchPIDThread, args=(self,baseExec), daemon=True)
     t.start()
 
@@ -177,7 +177,7 @@ class μDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def terminate(self):
     super().terminate()
-    baseExec = os.path.basename(μSettings.plugins.dhExec())
+    baseExec = os.path.basename(μSetup.plugins.dhExec())
     χTop.terminateAll(baseExec)
     self.clear()
   
@@ -220,7 +220,7 @@ class μDungeonHelper(aProcessItem):
   #----------------------------------------------------------------------------------------------------------
   def kill(self):
     super().kill()
-    baseExec = os.path.basename(μSettings.plugins.dhExec())
+    baseExec = os.path.basename(μSetup.plugins.dhExec())
     μPrint.warning(f"Killing all processes containing {baseExec}...")
     χTop.killAll(baseExec)
     self.clear()
