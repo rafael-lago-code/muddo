@@ -1,5 +1,5 @@
 # μDDO
-![](./docs/mainOrbUI.png)
+![](./docs/mainUI.png)
 
 ## Overview
 
@@ -16,13 +16,19 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - quick patching or full patching (calls original launcher)
     - displays same news as the original launcher
  - basic [Dungeon Helper](https://dungeonhelper.com/) integration (must be installed separately)
- - [Macro'ing](docs/Macros.md) via Milvian Bridges, see docs for details on capabilities. Requires [Dungeon Helper](https://dungeonhelper.com/) and μDDO's custom Milvian plugin
- - Storage management via Milvian
+ - Milvian Bridges Plugin integration
+   - a powerful custom [Dungeon Helper](https://dungeonhelper.com/) plugin which implements an IPC for communicating with the game, specifically developed for μDDO
+ - [Macro'ing](docs/Macros.md) via Milvian
+   - set global shortcuts for in-game actions
+   - configure chains of actions
+   - configure dynamic targetting (e.g. heal whoever has less than 50% HP)
+   - see docs for details on capabilities
+ - [Storage](docs/Storage.md) management via Milvian
     - fetches current inventory information
     - batch-dissolving, selling (mark as junk), storing or using of selected items
     - repair-all, sell gems also enabled
     - advanced filtering in the local UI
- - Strategy management via Milvian
+ - [Strategy](docs/Strategy.md) management via Milvian
     - basic follow (analogous to Dungeon Helper's AAF)
     - follows jump, swim, direction (but not camera pitch), target selection and ladder behaviour
     - accept quest share, party invite and ressurrection
@@ -31,10 +37,12 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - follows recall
     - splitting of roles - assigning a commander and a captain to the party
     - advanced and fully functional shortcut configuration support for all of the above
- - Map
-    - added basic support, still working icons and refresh rate
+ - [Map](docs/Map.md) management via Milvian
     - shows usual map pins, plus entities (monsters, breakeables, etc)
-
+    - shows many extra icons (soul binders, lost souls, useables, sockets)
+    - natural mouse gestures (ctrl+scroll to zoom) and smooth lightweight controls
+    - allow for selecting game targets directly from the map
+    - allow for searching game targets by their name
 
 ## TODO
   - Macros Daemon
@@ -50,8 +58,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - vizualize keyboard with its macros
   - Map
     - figure out distinction between:
-      - normal monsters vs bosses
-        - boss, raid, mini-boss, rare encounters, etc
       - champions and normal monsters
         - between champion ranks
     - distinguish own pet from other pets

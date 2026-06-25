@@ -2,7 +2,7 @@
 
 **μDDO** together with **DungeonHelper+Milvian** plugin enable the configuration of macros and macro sets. They are **very** flexible but as we all know, with great power comes great income tax (only until a certain point, then it drops to zero).
 
-All macros are tied to JSON files stored by default in `${HOME}/.config/muDDO/macros`. μDDO provides a full GUI to manage and edit them anyways.
+All macros are tied to YAML files stored by default in `${HOME}/.config/muDDO/macros`. μDDO provides a full GUI to manage and edit them anyways.
 
 >**⚠️ Do not modify files externally while μDDO is running**. It will not detect the changes (incredible that I even have to say this...)
 
@@ -45,14 +45,14 @@ Shortcuts must have the following syntax: `<modifier1>+<modifier2>+...+<key>`. E
 
 ## Macro Sets
 ---------------------------------
-A set is a JSON file in `${HOME}/.config/muDDO/macros`, with `.macro` extension. Create sets by pressing the "+" button, and then edit its name in-place in the list. This will rename the file to `${HOME}/.config/muDDO/macros/<macro name>.macro`, so don't use strange characters.
+A set is a YAML file in `${HOME}/.config/muDDO/macros`, with `.macro` extension. Create sets by pressing the "+" button, and then edit its name in-place in the list. This will rename the file to `${HOME}/.config/muDDO/macros/<macro name>.macro`, so don't use strange characters.
 
 Example:
 
   *A player has two characters, John and Michelangelo. John is the main character, Michelangelo is a support bard who can also heal a bit. The player then creates 4 macro sets: johnCore, michiCore, michiHeal and michiDPS. The player then configures the core abilities for John and Michelangelo in their "core" sets.
   As for Michelangelo, the player sets ctrl+h to a healing spell in the michiHeal set, and to michiDPS he sets it to Greater Shout. The can then "toggle" the behaviour by switching one set on or off. The player may also leave both active at the same time; Michelangelo will perform BOTH ACTIONS, one after another (see [Consolidation](#consolidation) section later).*
 
-You can toggle sets on/off by ticking the checkbox next to their names. Both Active and Inactive sets can be editted in the GUI, but only Active sets are parsed and executed by Milvian. 
+You can toggle sets on/off by ticking the checkbox next to their names. Both Active and Inactive sets can be edited in the GUI, but only Active sets are parsed and executed by Milvian. 
 
 To view and edit a macro set, select it from the list (i.e. highlight it, nothing to do with the checkbox).
 
@@ -112,15 +112,15 @@ Example:
        "",
        "HP<0.75")
 
-Assume that Michelangelo, John, Donatello and Mary are currently online, this will be sent to all 4 characters. However, Michelangelo and Donatello are immediatelly discarded because they are not in the list of actors. There are no actor filters, so John and Mary remain actors. Next, they check which targets match the filter: HP<0.75 means HP below 75%. Assume that John, Donatello and Mary pass this filter. 
+Assume that Michelangelo, John, Donatello and Mary are currently online, this will be sent to all 4 characters. However, Michelangelo and Donatello are immediately discarded because they are not in the list of actors. There are no actor filters, so John and Mary remain actors. Next, they check which targets match the filter: HP<0.75 means HP below 75%. Assume that John, Donatello and Mary pass this filter. 
 
 The next step, pairs are created: John->John, Mary->Donatello. Mary is discarded as target. Now John selects himself and Mary selects Donatello and then execute "b4k5", which could be, for instance, a Cure Serious Wound spell. 
 
 Possible actor/target filters:
 
  - **SP, HP comparison against an integer**: compares the *absolute value* of the HP/SP, i.e. HP<50 means HP smaller than 50 health, not percentage
- - **SP, HP comparisong against a float**: compares the *percentage* of the HP/SP, i.e. HP>0.5 means HP larger than 50%
- - **isAlive, isDead, isCouncious**: self explanatory. Uncouncious/Dead actors (but not targets) are ALWAYS discarded, since they can't act
+ - **SP, HP comparison against a float**: compares the *percentage* of the HP/SP, i.e. HP>0.5 means HP larger than 50%
+ - **isAlive, isDead, isConscious**: self explanatory. Unconscious/Dead actors (but not targets) are ALWAYS discarded, since they can't act
  - **isConnected, isValid**: always checked regardless; invalid/disconnected actors and targets are always discarded
  - **hasEffect(*)**: stubbed but untested (soon?)
 
@@ -132,22 +132,22 @@ These are keywords that are resolved (automatically) before executing a macro. T
    - `all`: is resolved to a comma-separated list of all characters currently hooked to the Milvian Bridge framework
    - `self`: always resolve to the name of the character currently trying to execute the action, e.g. `all: select(self)`, each character will select itself
    - `etal`: resolves to all other party members not listed. Currently only useful in ordered: `all: ordered("mary, john", "donatello, etal", ...)` basically means that this command will priorize to target Donatello over all other characters, but don't care about the order of the others.
-   - `focus`: resolves to the character whose window (i.e. the actual game client) currently has the focus. e.g. `mary: select(focus), Cure Serious Wound`. Incredibly useful if you're switching clients i.e. EFFECTIVELLY multiaccounting
+   - `focus`: resolves to the character whose window (i.e. the actual game client) currently has the focus. e.g. `mary: select(focus), Cure Serious Wound`. Incredibly useful if you're switching clients i.e. EFFECTIVELY multiaccounting
    - `any`: resolves to a random character with an active Milvian Bridge
    - `none`: no character; used to explicitly target nobody (e.g. disabling captain in strategy(*))
 
 
 ## Aliases
 ---------------------------------
-As their name implies, they are just nicknames for longer commands. Click the "+" sign to add a new alias and edit it in-line in the table. Aliases are always saved in the same file: `${HOME}/.config/muDDO/macros/aliases.json`. They are global for all sets and even all μDDO profiles (but local to each Linux user).
+As their name implies, they are just nicknames for longer commands. Click the "+" sign to add a new alias and edit it in-line in the table. Aliases are always saved in the same file: `${HOME}/.config/muDDO/macros/aliases.YAML`. They are global for all sets and even all μDDO profiles (but local to each Linux user).
 
 Aliases are applied **last**, after script splitting or actor/action parsing. Aliases are saved automatically on every edit.
 
   - **simple alias**: replaced 1 to 1, always respecting word boundaries. Example: `petOwners → john, michelangelo`, then the macro `petOwners: b5k1` translates to `john, michelangelo: b5k1`
   - **parametrized alias**: these aliases expect a parameter. The syntax is `<aliasPrefix>$X<aliasSuffix>` where X is a number from 1 to 9. It replaces the value passed as a literal. Example: `castJump$1 → target_fellow_$1_key, jump`, then the macro `michelangelo: castJump1, castJump5` will select Party Member 1, cast Jump, then select Party Member 5 and cast Jump again. 
-  - **bracers expansion**: crème de la crème, these copy a value while parametrizing it. Example: `mary: b4k{1-3}` expands to `mary: b4k1, b4k2, b4k3`. Syntax is `{start-end}`, or a list like `{value1, value2, value3}`. It does accept single-characters `{a-c}` which expands to `a, b, c` but I haven't found a use for that in DDO yet (but maybe you do have characters named JohnA, JohnB and JohnC, so who knows).
+  - **braces expansion**: crème de la crème, these copy a value while parametrizing it. Example: `mary: b4k{1-3}` expands to `mary: b4k1, b4k2, b4k3`. Syntax is `{start-end}`, or a list like `{value1, value2, value3}`. It does accept single-characters `{a-c}` which expands to `a, b, c` but I haven't found a use for that in DDO yet (but maybe you do have characters named JohnA, JohnB and JohnC, so who knows).
 
-You may combine bracers expansion with parametrized aliases to create powerful combinations like `michelangelo: castJump{1-12}`. The macro is blind to the current game state, though; if there are only 9 players, it will cast jump on the first 8 once and then 4 times on the last player. 
+You may combine braces expansion with parametrized aliases to create powerful combinations like `michelangelo: castJump{1-12}`. The macro is blind to the current game state, though; if there are only 9 players, it will cast jump on the first 8 once and then 4 times on the last player. 
 
 >**⚠️ Avoid using aliases within aliases**. It may work or not, depending on the order they are defined, but it is always a bad idea.
 
@@ -173,9 +173,9 @@ Macros can only be used once the Milvian Bridge (big red button in the main UI w
 
 The app will figure out which macros sets are active, discard invalid actors (not hooked to an existing Bridge) and then discard macros without actors. 
 
-> **⚠️ Changes in sets and macros** only take effect after you restart the Milvian Bridge. You may edit all macros and/or active sets while the Brdige is running, but the changes only take effect after you restart it.
+> **⚠️ Changes in sets and macros** only take effect after you restart the Milvian Bridge. You may edit all macros and/or active sets while the Bridge is running, but the changes only take effect after you restart it.
 
-Most importantly, the daemons will **merge all macros sharing the same shortcut**. Example:
+Most importantly, the daemons will **merge all macros sharing the same shortcut**.  Example:
 
     ctrl+a from setA trigger "all: b4k1, b4k2"
     ctrl+a from setB trigger "john: b5k4; mary: castJump3; all: b4k1"
@@ -188,14 +188,14 @@ After consolidation, not only the global shortcuts will be enabled, but also the
 
 ## Toolbar
 ---------------------------------
-This is an UI which appears after consolidation. All macros from the consolidated set whose trigger is some `toolbar_X` keyword will be displayed here, along with their icon and their name. If multiple macros were mapped to the same toolbar, only the icon of the last macro will be displayed, but all of their names will displayed in the tooltip.
+This is an UI which appears after consolidation. All macros from the consolidated set whose trigger is some `toolbar_X` keyword will be displayed here, along with their icon and their name. If multiple macros were mapped to the same toolbar, only the icon of the last macro will be displayed, but all of their names will be displayed in the tooltip.
 
 Toolbar buttons always display their number. The behaviour of the toolbar is highly configurable in the settings UI. You can determine the number of columns and rows (it auto-expands it if doesn't fit) and if it should display unassigned toolbar buttons too, or just the buttons which are assigned in the consolidated set. 
 
 ![Toolbar example](toolbarExample.png)
 🖼️ *Top: toolbar example. It is a floating widget so you can drag and place it wherever it is more convenient. Bottom: toolbar tab in the settings panel*
 
-Notice that you may reorder the toolbar icons by drag-and-dropping them, even with the Milvian Bridge running. It reassings the shortcuts (and saves them to the file).
+Notice that you may reorder the toolbar icons by drag-and-dropping them, even with the Milvian Bridge running. It reassigns the shortcuts (and saves them to the file).
 
 When creating your toolbar layout, you might find it useful to assign meaningful icons to your macros. Click the "edit icon" button to the right side of the panel, or double-click the icons of the macro directly in the table to open the icon selection dialogue.
 

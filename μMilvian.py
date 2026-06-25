@@ -174,7 +174,7 @@ def _buildOrdered(bridge, actors, targets, action, filterActors="", filterTarget
   inData += cPacker.pack(filterActors)
   inData += cPacker.pack(filterTargets)
   inData += cPacker.pack(action)
-  return μMilvianPacket(packetCommand.ordered(), bridge, inData)
+  return μMilvianPacket(packetCommand.ordered, bridge, inData)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  M I L V I A N 

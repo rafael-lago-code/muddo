@@ -125,12 +125,14 @@ P_ENTITY_PINS: dict[int, str] = {
   1050: "usable",
   1051: "control_panel",
   1052: "collectible",
-  1053: "item_dropped",
+  1053: "coins",
+  1054: "item_dropped",
   1060: "trap",
   1061: "secret",
   1070: "ladder",
   1071: "door_grey",
   1075: "collectible_taken",
+  1076: "coins_taken",
   # Block - Enemies
   1100: "champion_yellow",
   1101: "champion_orange",
@@ -145,6 +147,7 @@ P_ENTITY_PINS: dict[int, str] = {
   1160: "breakeable",
   1170: "token_red",
   1180: "token_other",
+  1190: "door_unknown",
 }
 
 P_STATIC_PINS_SHIFT=500
@@ -320,13 +323,17 @@ class μMapParser:
         if poff + _PLAYER.size > len(data): break
         (pid, cx, cy, heading, name_b) = _PLAYER.unpack_from(data, poff)
         name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
+        pin_type = P_TYPE_MAIN if i == 0 else (P_TYPE_PET if hex(pid).startswith("0x3") else P_TYPE_PLAYER)
         if pid in map.playerPins:
           p = map.playerPins[pid]
           p.cx, p.cy = cx, cy
           if i == 0 and p.heading != heading:
             p.rotateTo(heading, μSetup.profile.map.refreshInterval())
+          if p.pinType != pin_type:
+            p.pinType = pin_type
+            p.setZValue(-pin_type)
+            p.setup()
         else:
-          pin_type = P_TYPE_MAIN if i == 0 else (P_TYPE_PET if hex(pid).startswith("0x3") else P_TYPE_PLAYER)
           map.playerPins[pid] = μMapPin(pid, cx, cy, name, pinType=pin_type, heading=heading)
         seen.add(pid)
         poff += _PLAYER.size
@@ -359,7 +366,12 @@ class μMapParser:
         (eid, cx, cy, name_b, pin_type) = _ENTITY.unpack_from(data, eoff)
         name = name_b.rstrip(b'\x00').decode('utf-8', errors='replace')
         if eid in map.entityPins:
-          map.entityPins[eid].cx, map.entityPins[eid].cy = cx, cy
+          pin = map.entityPins[eid]
+          pin.cx, pin.cy = cx, cy
+          if pin.pinType != pin_type:
+            pin.pinType = pin_type
+            pin.setZValue(-pin_type)
+            pin.setup()
         else:
           map.entityPins[eid] = μMapPin(eid, cx, cy, name, pinType=pin_type)
           μMap.applyPinFilter(map.filter.text(), map.entityPins[eid])
@@ -619,6 +631,15 @@ class μMap(μToggler):
     if clearCache: μMapPin.cache.clear()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def reset(self):
+    self.clear(clearCache=True)
+    self.parser.mapId    = 0
+    self.parser.areaName = ''
+    self.parser.ext      = ''
+    self._bgItem.setPixmap(QPixmap())
+    self.refresh()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setMapOpacity(self, val : int):
     self._bgItem.setOpacity(val/100.0)
 
@@ -632,6 +653,10 @@ class μMap(μToggler):
     if entity:
       for pin in self.entityPins.values(): pin.setOpacity(val)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def reset(self):
+
+    self.refresh()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refresh(self):
@@ -773,7 +798,9 @@ class μMap(μToggler):
   @staticmethod
   def pushToEdge(ep, px, py, ox, oy, inner):
     dx, dy = px - ox, py - oy
-    ex, ey = μMap._edgeIntersect(ox, oy, dx, dy, inner)
+    icx = (inner.left() + inner.right()) / 2
+    icy = (inner.top() + inner.bottom()) / 2
+    ex, ey = μMap._edgeIntersect(icx, icy, dx, dy, inner)
     ep.setPos(ex, ey)
     ep.setRotation(math.degrees(math.atan2(dx, -dy)) % 360)
 

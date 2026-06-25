@@ -1,18 +1,18 @@
 # Strategy
 
-This is the module from μDDO that allows complex strategies to be defined, including most functionalities of Dungeon Helper's "Awesome Auto Follower" (AAF). *Note: I legit felt compelled to call this here MAAF, but I held myself back.*
+This is the module from μDDO that allows complex strategies to be defined, including most functionalities of Dungeon Helper's "Awesome Auto Follower" (AAF).
 
-It can already be used via Macros via `strategy()` command. An UI is under construction, but even when it is done, it cannot possibly expose all the flexibility of the `strategy()`, so you might as well learn how to use it too.
+It can already be used via Macros via `strategy()` command. There is an UI  but it cannot possibly expose all the flexibility of the `strategy()`, so you might as well learn how to use it too. If you just want the UI stuff, skip to the last section.
 
 Like most of the cool features of μDDO, this depends on **DungeonHelper + Milvian**. 
 
-All "directives" (or rather, strategy configuration file) is stored in `.directives` files at `${HOME}/.config/muDDO/strategy/`. They are all in JSON format and as of now, must be manually configured. At least one directive must be present and they just acts as defaults and fallbacks. 
+All "directives" (or rather, strategy configuration file) are stored as `.directives` files at `${HOME}/.config/muDDO/strategy/`. They are all in YAML format and as of now, must be manually configured. At least one directive must be present and they just acts as defaults and fallbacks. 
 
 ## Directives File
 ---------------------------------
-Strategy files live in `${HOME}/.config/muDDO/strategy/` with a `.directives` extension. They are plain JSON:
+Strategy files live in `${HOME}/.config/muDDO/strategy/` with a `.directives` extension. They are plain YAML:
 
-```json
+```YAML
 {
   "directives":        "μDefaultStrategy",
   "captain":           "leader",
@@ -47,7 +47,7 @@ Missing keys in the file fall back to the defaults shown above. The `directives`
 | `captain` | string | `"leader"` | Character this character physically follows (movement, jump, ladder, target selection). |
 | `commander` | string | `"leader"` | Character whose recall/portal events this character mirrors. Usually same as captain. |
 
-**captain** and **commander** are distinct. Captain is whoever is being effectivelly followed. Commanders give upper level orders - recall, enter portal, etc. They may be assigned to the same character. 
+**captain** and **commander** are distinct. Captain is whoever is being effectively followed. Commanders give upper level orders - recall, enter portal, etc. They may be assigned to the same character. 
 
 An important distinction is that a Commander MUST be a character running in the local machine - not a player in another computer. If none exists, then nobody can be a commander. Captains also MUST be running in the local machine but the runtime checks for that. If they are not local characters they are demoted to Sergeant. 
 
@@ -201,7 +201,7 @@ First press → pause. Second press → resume.
 ```
 all: strategy(basic, toggle, captain=focus|none)
 ```
-`focus` resolves to the currenct client's character at call time. This has a very interesting behaviour.
+`focus` resolves to the current client's character at call time. This has a very interesting behaviour.
 
 > No captain is assigned. John has focus; triggering this macro causes John to become captain and all characters follow him.
 > Right after, Mary has focus and triggers the macro too. The runtime compares current captain (john) against the list (mary|none) and doesn't find it there. Therefore, Mary is the new Captain and all characters (including John) follow Mary now.
@@ -250,3 +250,47 @@ alan: strategy(basic, set, captain=mary, stopDistance=3.0);
 alice: strategy(basic, set, captain=alan, stopDistance=3.0);
 bob: strategy(basic, set, captain=alice, stopDistance=3.0);
 ```
+
+## The UI
+
+The UI provides a quick way to do non-canonical things you may not want to assign a shortcut for, or to visualize if what your shortcuts are doing what you think they are (though you also have the logs for that). In the image below, I censored the names of the characters.
+
+![Strategies panel](strategyPanel.png)
+
+### Customizing your Party 
+When opening the UI for the first time, all character frames will be empty, showing only a circular frame and a name. That is expected. The UI does not know the appearance of your character, you need to provide that yourself. Double-click one of the frames to open the panel to the top-right side. There you can edit the Nickname for this character and its image (it opens an image selection dialogue; it also allows you to paste from clipboard). 
+
+The UI can display pets (but not summons) too since it is a weird but fun thing to tell a character to follow a pet. Notice that pets cannot follow anybody but their owners. 
+
+### Assigning Arrows
+An arrow shows who is the captain of a specific player. A player may have no captain too and cycles are allowed (e.g. A follows B, B follows A). This is fine and intentional, and quite handy because Milvian implements the autonomy time.
+
+Assignments are as follow:
+ - draw a rectangle on the board: select all nodes within the rectangle
+ - drag and drop from node A to node B: player A follows player B
+   - if multiple nodes are selected, all selected follow player B
+ - drag and drop node A to the board: player A follows nobody
+ - ctrl+click multiple nodes: select each clicked node
+
+Pets always have a dashed grey line towards their owner and their arrow cannot be changed. There is an option to hide pets if you find them unnecessary.
+
+### Decorations - Party Member role
+The role of the characters is also displayed on the frame, via a yellow insignia to the top-left of the circular frame. Those are set automatically according to that character's role.
+ - a star with three horizontal lines: commander & captain
+ - three horizontal lines with a loop: commander
+ - three stars: captain
+ - three chevrons: sergeant
+
+Additionally:
+ - pawns on the bottom-left: pet
+ - cloud on the bottom left: non-local player
+ - circled star on the top-right: party leader
+ 
+ ### Actions
+ Currently there are only 2 implemented actions out of 5 planned. 
+  - Refresh: re-check party members and update decorations accordingly.
+  - Toggle: pause/resume all selected players. Non-local players and pets are ignored. If no player is selected, then targets all. 
+  - Offensive, Defensive, Passive: TODO
+
+ ### Directives Editor:
+ You can also conveniently change your directives right in the panel. On the bottom-right there is a combo box with all existing directives, plus buttons for duplicating, deleting and editing them. Clicking the edit button opens up the textbox with a syntax highlighter. 
