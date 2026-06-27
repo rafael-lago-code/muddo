@@ -385,6 +385,9 @@ class μMilvian():
 
   def selectEntity(self, nameOrId) -> μMilvianPacket:
     return self.send(μMilvianPacket(packetCommand.selectEntity, self, cPacker.packString(str(nameOrId))))
+  
+  def selectItem(self, id: int) -> μMilvianPacket:
+    return self.send(μMilvianPacket(packetCommand.selectItem, self, struct.pack('<Q', id)))
 
   def drawMap(self, enable: bool, intervalMs: int = 500) -> μMilvianPacket:
     return self.send(μMilvianPacket(packetCommand.drawMap, self, struct.pack('<?I', enable, intervalMs)))

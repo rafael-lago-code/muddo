@@ -76,7 +76,7 @@ class μStorage(μToggler):
     self.btnSell      = μOrbTask("Sell",        icon=getIcon('cannith_vendor_lean'),
                              tooltip="Sell all selected items to the currently open vendor UI. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
     self.btnUse       = μOrbTask("Use",        icon=getIcon('use_gears'),
-                             tooltip="Use selected items. <b><i>Ctrl+Click</i></b> for auto-accepting confirmation dialogues")
+                             tooltip="Use selected items. Shortcut: <b><i>enter</i></b>. <b><i>Ctrl+Click</i></b> for auto-accepting confirmation dialogues. Shortcut: <b><i>Ctrl+Enter</i></b>")
     self.btnStore     = μOrbTask("Store",       icon=getIcon('cannith_bank_lean'),
                              tooltip="Store selected items in the currently open bank/chest. <br><b><i>Ctrl+click</i></b> to send to character bank (guild or shared banks preferred otherwise)")
     self.btnSort      = μOrbTask("Sort",       icon=getIcon('sort'),
@@ -164,6 +164,8 @@ class μStorage(μToggler):
     self.btnRefresh.executeCtrl = lambda : self.requestRefreshStorage(True)
     self.btnUse.execute = self.requestUse
     self.btnUse.executeCtrl = lambda : self.requestUse(True)
+    self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+    self.table.customContextMenuRequested.connect(self._showTableContextMenu)
     self.btnSell.execute = self.requestSell
     self.btnSell.executeCtrl = lambda : self.requestSell(True, True)
     self.btnDissolve.execute = self.requestDissolve
@@ -196,8 +198,15 @@ class μStorage(μToggler):
       sc.setContext(Qt.ShortcutContext.WidgetShortcut)
       sc.activated.connect(slot)
 
-    # self.setListWidget.itemChanged.connect(self.updateMacroSetFile)
-    # self.setListWidget.itemSelectionChanged.connect(self.updateTable)
+    for seq, slot in [("Esc",    self.table.clearSelection),
+                      ("Return", self.requestUse),
+                      ("Enter",  self.requestUse),
+                      ("Ctrl+Return", lambda : self.requestUse(True)),
+                      ("Ctrl+Enter",  lambda : self.requestUse(True))]:
+      sc = QShortcut(QKeySequence(seq), self.table)
+      sc.setContext(Qt.ShortcutContext.WidgetShortcut)
+      sc.activated.connect(slot)
+    self.table.itemDoubleClicked.connect(self.requestUseViaDoubleClick)
 
     self.sigAppendItem.connect(self.table.append)
     self.sigAppendItem.connect(self.updateDynamicFilters)
@@ -420,7 +429,41 @@ class μStorage(μToggler):
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def getSelectedIDs(self) -> list:
+  def _showTableContextMenu(self, pos):
+    menu = QMenu(self)
+    menu.addAction("In-Game Select",         self.requestSelectItem)
+    menu.addAction("Examine",                self._contextMenuExamine)
+    menu.addSeparator()
+    menu.addAction("Cleanup selected items", self._contextMenuCleanupSelected)
+    menu.addAction("Clear selection",        self.table.clearSelection)
+    menu.exec(QCursor.pos())
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def requestSelectItem(self):
+    selectedItems = self.getSelectedIDs()
+    bridges = μMilvianMeta.getBridges()
+    for c, items in selectedItems.items():
+      if not items or c not in bridges: continue
+      bridges[c].selectItem(items[0]._id)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _contextMenuExamine(self):
+    pass  # stub: pending C# implementation
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _contextMenuCleanupSelected(self):
+    rows = sorted(
+      {item.row() for item in self.table.selectedItems() if not self.table.isRowHidden(item.row())},
+      reverse=True)
+    for row in rows:
+      col0 = self.table.item(row, 0)
+      if col0 is not None:
+        try: del self.table.itemsById[col0._id]
+        except KeyError: pass
+      self.table.removeRow(row)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def getSelectedIDs(self) -> dict:
     selectedItems = {b : [] for b in μMilvianMeta.getBridges().keys()}
     for item in self.table.selectedItems():
       if item.column()==0:
@@ -431,15 +474,24 @@ class μStorage(μToggler):
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def requestUse(self, confirm=False):
-    # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
-    selectedItems = self.getSelectedIDs()
+    self._requestUse(self.getSelectedIDs(), confirm)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def requestUseViaDoubleClick(self, item: μItemData):
+    if item.column() != 0: return
+    selectedItems = {b: [] for b in μMilvianMeta.getBridges().keys()}
+    selectedItems[item.owner().lower()].append(item)
+    self._requestUse(selectedItems)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _requestUse(self, selectedItems: dict, confirm=False):
     if not selectedItems: return
     packets = {}
     bridges : μMilvian = μMilvianMeta.getBridges()
     for c in selectedItems.keys():
       inData  = struct.pack('<?',True)  # sendStatus flag, requests frequent status update always for now
       inData += struct.pack('<?',confirm)
-      inData += struct.pack('<I',3)     # number of retries
+      inData += struct.pack('<I',1)     # number of retries
       inData += struct.pack('<I',len(selectedItems[c]))
       for item in list(selectedItems[c]):
         inData += struct.pack('<Q',item._id)
