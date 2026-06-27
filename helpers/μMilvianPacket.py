@@ -65,6 +65,7 @@ class packetCommand(Enum):
   confirmDialog        = struct.pack('<I', 49)
   drawMap              = struct.pack('<I', 51)
   selectItem           = struct.pack('<I', 52)
+  examineItems         = struct.pack('<I', 53)
   unrequested    = struct.pack('<I', 100)
   none           = struct.pack('<I', 200)
 

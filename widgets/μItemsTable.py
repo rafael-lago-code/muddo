@@ -93,16 +93,18 @@ P_ITEM_EQUIPPED_SLOT = {
       1<<15: "Arrow",
       1<<16: "Quiver",
       1<<17: "Runearm",
-      1<<18: "Cosmetic Weapon1?",
+      1<<18: "Cosmetic Weapon1",
       1<<19: "Cosmetic Weapon2",
       1<<20: "?1<<20?",
       1<<21: "Cosmetic Armor",
       1<<22: "Cosmetic Helmet",
       1<<23: "?1<<23?",
       1<<24: "Cosmetic Cloak",
-      3229614081: "Pet Armor",
-      3229614082: "Pet Collar",
-      3254779905: "?3254779905?",
+     -1065353214: "Pet Collar/Armor",
+     -1065353215: "Pet Collar/Armor",
+      3229614081: "Pet Armor",      # 2^0 + 2^23 + 2^30 + 2^31 = 1 + 8388608 + 1073741824 + 2147483648
+      3229614082: "Pet Collar",     # 2^1 + 2^23 + 2^30 + 2^31 = 2 + 8388608 + 1073741824 + 2147483648
+      3254779905: "?3254779905?",   # 2^0 + 2^25 + 2^30 + 2^31
     }
 
 P_STATUS_UNKNOWN = 0
@@ -213,8 +215,11 @@ class μItemData(QTableWidgetItem):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def slot(self):
-    if int(self._currentSlot) >= P_ITEM_EQUIPPED_SLOT_BASE:
-      return P_ITEM_EQUIPPED_SLOT.get(int(self._currentSlot)-P_ITEM_EQUIPPED_SLOT_BASE, f"?{self._currentSlot-P_ITEM_EQUIPPED_SLOT_BASE}?")
+    correctedSlot = int(self._currentSlot) - P_ITEM_EQUIPPED_SLOT_BASE
+    if correctedSlot in P_ITEM_EQUIPPED_SLOT:
+      return P_ITEM_EQUIPPED_SLOT[correctedSlot]
+    elif correctedSlot>0: # just to detect something which should be in the dictionary but is not yet
+      return f"?{correctedSlot}?"
     else:
       # Tab / Row / Col
       return (self._currentSlot//20, (self._currentSlot % 20) // 5, (self._currentSlot % 20) % 5)

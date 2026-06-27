@@ -45,6 +45,7 @@ if TYPE_CHECKING:
    from μMilvianBridge import μMilvianBridge
    
 
+P_DEFAULT_EXAMINE_DELAY=100
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #
@@ -312,127 +313,10 @@ class μStorage(μToggler):
     self.filterScriptList.setCurrentItem(noneItem)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def newFilterScript(self):
-    i = 1
-    while f"NewSet{i}" in self.allFilterScripts:
-      i += 1
-    newFilter = μFilterItem(f"NewSet{i}", "")
-    newFilter.save()
-    self.appendFilterScript(newFilter)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def appendFilterScript(self, filter : μFilterItem):
-    if filter.name in self.allFilterScripts: return
-    filter.load()
-    self.allFilterScripts[filter.name] = filter
-    self.filterScriptList.addItem(filter)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def renameFilterScript(self, item : μFilterItem):
-    if item.name == "<None>": return
-    oldName = item.name
-    item.rename()
-    self.allFilterScripts[item.name] = item
-    del self.allFilterScripts[oldName]
-    
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def setActiveFilterScript(self):
-    cfilter = self.filterScriptList.selectedItems()
-    isEditable = bool(cfilter) and cfilter[0].name != "<None>"
-    self.filterScriptEdit.setEnabled(isEditable)
-    self.filterBtnApplyScript.setEnabled(isEditable)
-    self.filterBtnDelScript.setEnabled(isEditable)
-    self.filterScriptEdit.setText(cfilter[0].content if isEditable else "")
-    self.applyFilters()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def saveFilterScript(self):
-    cfilter = self.filterScriptList.selectedItems()
-    if len(cfilter)>0 and cfilter[0].name != "<None>": cfilter[0].save()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def saveAllFilterScripts(self):
-    for f in self.allFilterScripts.values():
-      f.save()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def syncFilterScript(self):
-    cfilter = self.filterScriptList.selectedItems()
-    if len(cfilter)>0 and cfilter[0].name != "<None>":
-      cfilter[0].sync(self.filterScriptEdit.toPlainText())
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def reloadFilterScript(self):
-    cfilter = self.filterScriptList.selectedItems()
-    if len(cfilter)>0 and cfilter[0].name != "<None>":
-      cfilter[0].load()
-    self.setActiveFilterScript()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def reloadAllFilterScripts(self):
-    for f in self.allFilterScripts.values():
-      f.load()
-    self.setActiveFilterScript()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def deleteFilterScript(self):
-    selected = self.filterScriptList.selectedItems()
-    if not selected: return
-    filter : μFilterItem = selected[0]
-    μPrint.info(f"Removing filter script \"{C_SILVER}{filter.name}</font>\"...")
-    self.allFilterScripts.pop(filter.name, None)
-    filename = P_DEFAULT_FILTERSDIR + os.sep + filter.name + P_DEFAULT_FILTEREXT
-    try:
-      os.remove(filename)
-    except FileNotFoundError:
-      pass
-    except OSError as e:
-      μPrint.error(f"[cStorage] failed to remove filter file \"{filename}\":", e)
-    self.filterScriptList.takeItem(self.filterScriptList.row(filter))
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def updateDynamicFilters(self, item: μItemData):
-    if item.owner():
-      self.filterOwner.addCheckItem(item.owner())
-    if item._type:
-      self.filterType.addCheckItem(item._type)
-    if item._qualifier:
-      self.filterQualifier.addCheckItem(item._qualifier)
-  
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def requestRefreshStorage(self, detailed: bool = False):
-    printStatus = True                        # for now always true 
-    inData = struct.pack('?', detailed)       # provide detailed information
-    inData += struct.pack('?', printStatus)   # provide status updates
-
-    self.table.staleData = {}
-    for bridge in μMilvianMeta.getBridges().values():
-      bridge : μMilvian
-      try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
-      except: pass
-      self.table.staleData[bridge.charName] = []
-      p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
-      p.χigResponse.connect(lambda data, p=p: self.storageStatusUpdate(p, data))
-      # cDispatcher.fate((bridge.id, p.id, packetSignal.running), self.loadStorageData)
-      bridge.send(p)
-      self.refreshStorage(bridge)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def storageStatusUpdate(self, packet : μMilvianPacket, rawData : bytes):
-    packet.status = packetStatus(rawData[4:8])
-    packet.outData = rawData[12:]
-    if packet.status == packetStatus.success:
-      μPrint.info(f"[cStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
-      packet.χigResponse.disconnect()
-    else:
-      μPrint.info(f"[cStorage] {C_ORANGE}{packet.outData.decode('utf-8', errors='replace')}</font>")
-    # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _showTableContextMenu(self, pos):
     menu = QMenu(self)
     menu.addAction("In-Game Select",         self.requestSelectItem)
-    menu.addAction("Examine",                self._contextMenuExamine)
+    menu.addAction("Examine",                self.requestExamine)
     menu.addSeparator()
     menu.addAction("Cleanup selected items", self._contextMenuCleanupSelected)
     menu.addAction("Clear selection",        self.table.clearSelection)
@@ -445,10 +329,6 @@ class μStorage(μToggler):
     for c, items in selectedItems.items():
       if not items or c not in bridges: continue
       bridges[c].selectItem(items[0]._id)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def _contextMenuExamine(self):
-    pass  # stub: pending C# implementation
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _contextMenuCleanupSelected(self):
@@ -472,7 +352,9 @@ class μStorage(μToggler):
           selectedItems[item.owner().lower()].append(item)
     return selectedItems
   
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E Q U E S T   U S E 
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestUse(self, confirm=False):
     self._requestUse(self.getSelectedIDs(), confirm)
 
@@ -518,7 +400,9 @@ class μStorage(μToggler):
       iID = struct.unpack('<Q', packet.outData[1:9])[0]
       μPrint.info(f"[cStorage] {"used" if used else "failed to use"} {C_ORANGE}{iID}</font>")
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E Q U E S T   D I S S O L V E
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestDissolve(self, force=False):
     # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
     selectedItems = self.getSelectedIDs()
@@ -554,7 +438,9 @@ class μStorage(μToggler):
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
       μPrint.info(f"[cStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E Q U E S T   S T O R E
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestStore(self, destUI : int = 0, force=False):
     # TO IMPLEMENT: force ignores checks if item is no bankeable
     selectedItems = self.getSelectedIDs()
@@ -591,14 +477,17 @@ class μStorage(μToggler):
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
       μPrint.info(f"[cStorage] {"stored" if stored else "failed to store"} {C_ORANGE}{iID}</font>")
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E Q U E S T   T R A D E
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestTrade(self, force=False):
     # force ignores checks if item is tradeable e.g. bound items
     pass
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E Q U E S T   S E L L
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestSell(self, sellGems : bool = True, repair : bool = False):
-    # TO IMPLEMENT: force ignores checks if item is deconstructeable e.g. named items cannot be deconstructed
     selectedItems = self.getSelectedIDs()
     if not selectedItems: return
     packets = {}
@@ -632,19 +521,118 @@ class μStorage(μToggler):
       iID = struct.unpack('<Q',packet.outData[0:8])[0]
       μPrint.info(f"[cStorage] sold {C_ORANGE}{iID}</font>")
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E Q U E S T   F E E D   J E W E L
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestFeedJewel(self, force=False):
     # force ignores checks if item is feedable e.g. random loot
     pass
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E Q U E S T   E X A M I N E
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  def requestExamine(self, delay : int = P_DEFAULT_EXAMINE_DELAY):
+    selectedItems = self.getSelectedIDs()
+    if not selectedItems: return
+    bridges : μMilvian = μMilvianMeta.getBridges()
+    for c in selectedItems.keys():
+      if not selectedItems[c]: continue
+      bridge = bridges[c]
+      inData  = struct.pack('<?', True)              # sendStatus flag
+      inData += struct.pack('<I', delay)             # ms delay between examines
+      inData += struct.pack('<I', len(selectedItems[c]))
+      for item in list(selectedItems[c]):
+        inData += struct.pack('<Q', item._id)
+      try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
+      except: pass
+      self.table.staleData[bridge.charName] = []
+      p = μMilvianPacket(packetCommand.examineItems, bridge, inData)
+      p.χigResponse.connect(lambda data, p=p: self.storageStatusUpdate(p, data))
+      bridge.send(p)
+      self.refreshStorage(bridge)
   
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  R E F R E S H   S T U F F
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  def requestRefreshStorage(self, detailed: bool = False, delay: int = P_DEFAULT_EXAMINE_DELAY):
+    printStatus = True                        # for now always true
+    inData  = struct.pack('?', detailed)      # provide detailed information
+    inData += struct.pack('?', printStatus)   # provide status updates
+    inData += struct.pack('<I', delay)        # ms delay between examines (only used when detailed=True)
+
+    self.table.staleData = {}
+    for bridge in μMilvianMeta.getBridges().values():
+      bridge : μMilvian
+      try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
+      except: pass
+      self.table.staleData[bridge.charName] = []
+      p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
+      p.χigResponse.connect(lambda data, p=p: self.storageStatusUpdate(p, data))
+      bridge.send(p)
+      self.refreshStorage(bridge)
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def storageStatusUpdate(self, packet : μMilvianPacket, rawData : bytes):
+    packet.status = packetStatus(rawData[4:8])
+    packet.outData = rawData[12:]
+    if packet.status == packetStatus.success:
+      μPrint.info(f"[cStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
+      packet.χigResponse.disconnect()
+    else:
+      μPrint.info(f"[cStorage] {C_ORANGE}{packet.outData.decode('utf-8', errors='replace')}</font>")
+    # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def refreshStorage(self, bridge : μMilvian):
+    self.table.staleData[bridge.charName] = []
+    for i in range(self.table.rowCount()):
+      if self.table.item(i,P_ITEM_COLUMNS.index("Owner")).text() == bridge.charName:
+        self.table.staleData[bridge.charName].append(self.table.item(i,P_ITEM_COLUMNS.index("Name")))
+    
+    def _refreshStorageThread(self : μStorage, bridge : μMilvian):
+      filename = f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin'
+      while not os.path.exists(filename) or os.path.getsize(filename) < 13:
+        time.sleep(0.1)
+
+      with open(filename, 'rb') as f:
+        requestId  = struct.unpack('<I', f.read(4))[0]
+        nItems     = struct.unpack('<I', f.read(4))[0]
+        itemAvail  = struct.unpack('<I', f.read(4))[0]
+        favail     = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+
+        itemsCount = 0
+        while True:
+          itemAvail = struct.unpack('<I', favail[8:12])[0]
+          if itemAvail > itemsCount:
+            item = μItemData()
+            try:
+              item.readFromBin(f)
+            except Exception as e:
+              μPrint.error(f"[cStorage] readFromBin failed at item {itemsCount}/{nItems}:", e)
+              break
+            itemsCount += 1
+            item.digest()
+            self.sigAppendItem.emit(item)
+          else:
+            time.sleep(0.05)
+          if itemsCount>=nItems: break
+      self.sigSetStatus.emit(bridge, P_STATUS_IDLE)
+      self.sigPurgeStale.emit(bridge.charName)
+
+    self.setStatus(bridge, P_STATUS_BUSY_REFRESH)
+    t = threading.Thread(target=_refreshStorageThread, args=(self, bridge), daemon=True)
+    t.start()
+  
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  F I L T E R   S T U F F
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def applyFilters(self, item : μItemData = None):
     scriptText = self.filterScriptEdit.toPlainText().lower()
     scriptText = " ".join(scriptText.strip().split())
 
     safeContext = {
       "__builtins__": {},
-
       # Common functions
       "len": len,
       "any": any,
@@ -755,69 +743,98 @@ class μStorage(μToggler):
     else:
       for row in range(self.table.rowCount()):
         _filterItem(self.table.item(row, 0))
-        
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def refreshStorage(self, bridge : μMilvian):
-    self.table.staleData[bridge.charName] = []
-    for i in range(self.table.rowCount()):
-      if self.table.item(i,P_ITEM_COLUMNS.index("Owner")).text() == bridge.charName:
-        self.table.staleData[bridge.charName].append(self.table.item(i,P_ITEM_COLUMNS.index("Name")))
+  def newFilterScript(self):
+    i = 1
+    while f"NewSet{i}" in self.allFilterScripts:
+      i += 1
+    newFilter = μFilterItem(f"NewSet{i}", "")
+    newFilter.save()
+    self.appendFilterScript(newFilter)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def appendFilterScript(self, filter : μFilterItem):
+    if filter.name in self.allFilterScripts: return
+    filter.load()
+    self.allFilterScripts[filter.name] = filter
+    self.filterScriptList.addItem(filter)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def renameFilterScript(self, item : μFilterItem):
+    if item.name == "<None>": return
+    oldName = item.name
+    item.rename()
+    self.allFilterScripts[item.name] = item
+    del self.allFilterScripts[oldName]
     
-    def _refreshStorageThread(self : μStorage, bridge : μMilvian):
-      filename = f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin'
-      while not os.path.exists(filename) or os.path.getsize(filename) < 13:
-        time.sleep(0.1)
-
-      with open(filename, 'rb') as f:
-        requestId  = struct.unpack('<I', f.read(4))[0]
-        nItems     = struct.unpack('<I', f.read(4))[0]
-        itemAvail  = struct.unpack('<I', f.read(4))[0]
-        favail     = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
-
-        itemsCount = 0
-        while True:
-          itemAvail = struct.unpack('<I', favail[8:12])[0]
-          if itemAvail > itemsCount:
-            item = μItemData()
-            try:
-              item.readFromBin(f)
-            except Exception as e:
-              μPrint.error(f"[cStorage] readFromBin failed at item {itemsCount}/{nItems}:", e)
-              break
-            itemsCount += 1
-            item.digest()
-            self.sigAppendItem.emit(item)
-          else:
-            time.sleep(0.05)
-          if itemsCount>=nItems: break
-      self.sigSetStatus.emit(bridge, P_STATUS_IDLE)
-      self.sigPurgeStale.emit(bridge.charName)
-
-    self.setStatus(bridge, P_STATUS_BUSY_REFRESH)
-    t = threading.Thread(target=_refreshStorageThread, args=(self, bridge), daemon=True)
-    t.start()
-  
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def showRefreshMenu(self):
-    menu = QMenu(self)
-    actRefresh  = QAction("Refresh",           self)
-    actDetailed = QAction("Refresh (Detailed)", self)
-    actPurge    = QAction("Purge All",          self)
-    actCancel   = QAction("Cancel",             self)
-    actCancel.setEnabled(False) # TODO implement
-    actRefresh.triggered.connect(lambda: self.requestRefreshStorage(False))
-    actDetailed.triggered.connect(lambda: self.requestRefreshStorage(True))
-    actPurge.triggered.connect(self.table.clearAll)
-    menu.addAction(actRefresh)
-    menu.addAction(actDetailed)
-    menu.addSeparator()
-    menu.addAction(actPurge)
-    menu.addSeparator()
-    menu.addAction(actCancel)
-    menu.exec(QCursor.pos())
-  
+  def setActiveFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    isEditable = bool(cfilter) and cfilter[0].name != "<None>"
+    self.filterScriptEdit.setEnabled(isEditable)
+    self.filterBtnApplyScript.setEnabled(isEditable)
+    self.filterBtnDelScript.setEnabled(isEditable)
+    self.filterScriptEdit.setText(cfilter[0].content if isEditable else "")
+    self.applyFilters()
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def saveFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    if len(cfilter)>0 and cfilter[0].name != "<None>": cfilter[0].save()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def saveAllFilterScripts(self):
+    for f in self.allFilterScripts.values():
+      f.save()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def syncFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    if len(cfilter)>0 and cfilter[0].name != "<None>":
+      cfilter[0].sync(self.filterScriptEdit.toPlainText())
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def reloadFilterScript(self):
+    cfilter = self.filterScriptList.selectedItems()
+    if len(cfilter)>0 and cfilter[0].name != "<None>":
+      cfilter[0].load()
+    self.setActiveFilterScript()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def reloadAllFilterScripts(self):
+    for f in self.allFilterScripts.values():
+      f.load()
+    self.setActiveFilterScript()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def deleteFilterScript(self):
+    selected = self.filterScriptList.selectedItems()
+    if not selected: return
+    filter : μFilterItem = selected[0]
+    μPrint.info(f"Removing filter script \"{C_SILVER}{filter.name}</font>\"...")
+    self.allFilterScripts.pop(filter.name, None)
+    filename = P_DEFAULT_FILTERSDIR + os.sep + filter.name + P_DEFAULT_FILTEREXT
+    try:
+      os.remove(filename)
+    except FileNotFoundError:
+      pass
+    except OSError as e:
+      μPrint.error(f"[cStorage] failed to remove filter file \"{filename}\":", e)
+    self.filterScriptList.takeItem(self.filterScriptList.row(filter))
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def updateDynamicFilters(self, item: μItemData):
+    if item.owner():
+      self.filterOwner.addCheckItem(item.owner())
+    if item._type:
+      self.filterType.addCheckItem(item._type)
+    if item._qualifier:
+      self.filterQualifier.addCheckItem(item._qualifier)
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  O T H E R
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def showHelpWindow(self):
     dlg = QDialog(self)
     dlg.setWindowTitle("Shortcuts Help")

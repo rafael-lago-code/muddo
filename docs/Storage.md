@@ -19,11 +19,13 @@ There are two options for that:
 
 You can perform a thorough refresh after a quick refresh, and it should automagically replace all items by their more detailed version.
 
-From now on, you can select any number of items from the table, reorder it (click the column names), etc. You cannot drag-and-drop, drag operations simply select items from the table. Apart from that, all usual Qt bindings apply (ctrl+click toggles selection, shift+click selects a range, ctrl+a selects all, etc)
+From now on, you can select any number of items from the table, re-sort it (click the column names), etc. You cannot drag-and-drop, drag operations simply select items from the table. Apart from that, all usual Qt bindings apply (`ctrl+click` toggles selection, `shift+click` selects a range, `ctrl+a` selects all, `esc` deselects all, etc).
 
-You can also filter them via UI (subframe to the bottom right) or filter scripts (subframe to the bottom left). You can even save filters that you use often (see [Filters](#filters---ui)), rename them and create file lists (e.g. list of scrolls to keep, list of filigrees to sell, see [Lists](#lists)).
+`Right-click` the table to show a context menu with some few more options, including in-game selection, examining and refreshing data of selected items only.
 
-> ⚠️ **This only reads items in a character's inventory**, not in its bank or guild chests. There are plans to implement those, but definitely not any time soon.
+You can also filter talbe items via UI (subframe to the bottom right) or filter scripts (subframe to the bottom left). You can even save filters that you use often (see [Filters](#filters---ui)), rename them and create file lists (e.g. list of scrolls to keep, list of filigrees to sell, see [Lists](#lists)).
+
+> ⚠️ **This only reads items in a character's inventory**, not in its bank, containers such as bags or guild chests. There are plans to implement those, but definitely not any time soon.
 
 ## Storing
 For this action to be performed, open a bank (personal or shared) or a guild chest (any). If both shared and personal bank are open, it will select shared bank.
@@ -31,7 +33,7 @@ For this action to be performed, open a bank (personal or shared) or a guild che
 Select all items you want to store from the table and click the big red button "Store" and that's it.
 
 ## Use
-This action does not require any UI intervention (except for clicking a confirmation dialog). It uses the selected item (or equips them if that's a thing). Ctrl+Click to automatically accept potential confirmation dialogs. 
+This action does not require any UI intervention (except for clicking a confirmation dialog). It uses the selected item (or equips them if that's a thing). `Ctrl+Click` to automatically accept potential confirmation dialogs. This also has keyboard shortcuts: press `Enter` to use all selected items, or `Ctrl+Enter` to use and confirm dialogues. Double-clicking on an item also uses it (but not all selected items).
 
 ## Selling
 Open a vendor UI and select your items in μDDO. Left-click "Sell" and voila, it marks all selected items as junk and adds them to the cart.
