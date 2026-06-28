@@ -18,19 +18,38 @@
 #
 #
 from __future__ import annotations
+import os
 from io import BufferedReader
 from PyQt6.QtWidgets import QAbstractItemView, QTableWidget, QTableWidgetItem, QHeaderView
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QImage
 from helpers.μImageFactory import *
 from helpers.μPrint import μPrint
 from typing import TYPE_CHECKING
+
+from helpers.μStrings import μString
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-P_ITEM_COLUMNS = ["Name", "Owner", "Type", "Equips To", "Binding", "👤", "🔒"]
+P_ITEM_COLUMNS   = ["Name", "Owner", "Type", "Equips To", "Binding", "👤", "🔒"]
+P_VAULT_COLUMNS  = ["Name", "Owner", "Storage", "Type", "Equips To", "Binding", "👤", "🔒"]
 P_ITEM_UKNOWN_ICON = None
+P_ICON_CACHE_DIR = os.path.join(P_DEFAULT_CONFIGDIR, ".cache")
+P_STORAGE_NAMES  = {
+    0:  "",
+    1:  "Inventory",
+    2:  "Character Bank",
+    3:  "Shared Bank",
+    4:  "Reincarnation",
+    5:  "Guild General 1",
+    6:  "Guild General 2",
+    7:  "Guild Officer 1",
+    8:  "Guild Officer 2",
+    9:  "Guild Chest (S)",
+    10: "Guild Chest (L)",
+}
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 # Augments logic is based on which colors they accept:
@@ -100,8 +119,8 @@ P_ITEM_EQUIPPED_SLOT = {
       1<<22: "Cosmetic Helmet",
       1<<23: "?1<<23?",
       1<<24: "Cosmetic Cloak",
-     -1065353214: "Pet Collar/Armor",
-     -1065353215: "Pet Collar/Armor",
+      2155872256: "Pet Collar",     #       2^23        + 2^31 =     8388608 +              2147483648
+      2155872257: "Pet Collar",     # 2^0 + 2^23        + 2^31 = 1 + 8388608 +              2147483648
       3229614081: "Pet Armor",      # 2^0 + 2^23 + 2^30 + 2^31 = 1 + 8388608 + 1073741824 + 2147483648
       3229614082: "Pet Collar",     # 2^1 + 2^23 + 2^30 + 2^31 = 2 + 8388608 + 1073741824 + 2147483648
       3254779905: "?3254779905?",   # 2^0 + 2^25 + 2^30 + 2^31
@@ -158,30 +177,6 @@ class μItemData(QTableWidgetItem):
     return f.read(count).decode('utf-8', errors='replace')
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @staticmethod
-  def readIcon(f) -> QImage:
-    import numpy as np
-    # bg_color=(210, 180, 140)
-    bg_color=(74, 119, 157)
-    width  = int.from_bytes(f.read(4), byteorder='little', signed=False)
-    height = int.from_bytes(f.read(4), byteorder='little', signed=False)
-    count  = int.from_bytes(f.read(4), byteorder='little', signed=False)
-    rawData = f.read(count)
-    if width == 0 or height == 0 or count != width*height*4:
-      return None
-
-    arr = np.frombuffer(rawData, dtype=np.uint8).reshape(height, width, 4).copy()
-    arr[:, :, [0, 2]] = arr[:, :, [2, 0]] # inverts red and blue channels
-    bg_arr = np.full((height, width, 4), [*bg_color, 255], dtype=np.uint8)
-    alpha = arr[:, :, 3:4] / 255.0        # Normalize alpha to 0-1
-    result = (bg_arr[:, :, :3] * (1 - alpha) + arr[:, :, :3] * alpha).astype(np.uint8)
-    result = np.dstack([result, np.full((height, width), 255, dtype=np.uint8)])
-
-    # img = Image.frombytes('RGBA', (width, height), rawData)
-    qimage = QImage(result, width, height, QImage.Format.Format_RGBA8888)
-    return qimage
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self):
       global P_ITEM_UKNOWN_ICON
       P_ITEM_UKNOWN_ICON = getIcon(P_ICON_PLACEHOLDER)
@@ -209,10 +204,20 @@ class μItemData(QTableWidgetItem):
   
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def icon(self) -> QIcon:
+    if self._icon is None and self._iconId:
+      path = os.path.join(P_ICON_CACHE_DIR, f"{self._iconId:016X}.png")
+      if os.path.exists(path):
+        self._icon = QImage(path)
     if self._icon:
       return getIcon(self._icon)
-    else:
-      return P_ITEM_UKNOWN_ICON
+    return P_ITEM_UKNOWN_ICON
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # This needs some massaging because the string comes full of crap
+  def itemType(self):
+    text = μString(self._type)
+    return text
+    
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def slot(self):
@@ -263,7 +268,6 @@ class μItemData(QTableWidgetItem):
     self._hardness    = int.from_bytes(file.read(4), byteorder='little', signed=False)
     self._durability  = int.from_bytes(file.read(4), byteorder='little', signed=False)
     self._iconId      = int.from_bytes(file.read(4), byteorder='little', signed=False)
-    self._icon        = μItemData.readIcon(file)
     self._description = μItemData.readString(file)
     self._minLevel    = int.from_bytes(file.read(4), byteorder='little', signed=False)
     self._material    = int.from_bytes(file.read(4), byteorder='little', signed=False)
@@ -299,16 +303,13 @@ class μItemsTable(QTableWidget):
   itemsById = {}
   staleData = {}
 
-  def __init__(self, parent):
-    super().__init__(0, 7, parent)
+  def __init__(self, parent, columns=None):
+    self.columns = columns if columns is not None else P_ITEM_COLUMNS
+    super().__init__(0, len(self.columns), parent)
     self.setColumnWidth(0, 300)
-    self.setColumnWidth(1, 100)
-    self.setColumnWidth(2, 100)
-    self.setColumnWidth(3, 100)
-    self.setColumnWidth(4, 50)
-    self.setColumnWidth(5, 10)
-    self.setColumnWidth(6, 10)
-    self.setHorizontalHeaderLabels(P_ITEM_COLUMNS)
+    for i in range(1, len(self.columns)):
+      self.setColumnWidth(i, 100 if i < len(self.columns) - 2 else 10)
+    self.setHorizontalHeaderLabels(self.columns)
     self.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
     self.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
     self.setIconSize(QtCore.QSize(36,36))
@@ -318,8 +319,10 @@ class μItemsTable(QTableWidget):
   def getColumnWidget(self, item, col: str) -> QTableWidgetItem:
     if col == "Name": return item
 
-    if col == "Owner":
-      return newCell(item.owner())
+    if col == "Storage":
+      return newCell(P_STORAGE_NAMES.get(item._storageType, f"?{item._storageType}?"))
+    elif col == "Owner":
+      return newCell(item._ownerName)
     elif col == "Type":
       return newCell(item._type)
     elif col == "Equips To":
@@ -328,7 +331,8 @@ class μItemsTable(QTableWidget):
       return newCell(item.binding())
     elif col == "👤":
       text = item.slot()
-      cell = newCell("" if isinstance(text, tuple) else "✓")
+      if item._storageType != 1: cell = newCell("")
+      else : cell = newCell("" if isinstance(text, tuple) else "✓")
       ttip = ""
       if isinstance(text, tuple):
         ttip = f"<b>In Backpack</b><br> ● Tab {text[0]}<br> ● Row {text[1]}<br> ● Col {text[2]}"
@@ -355,7 +359,7 @@ class μItemsTable(QTableWidget):
       crow = self.rowCount()
       self.insertRow(crow)
 
-    for i, col in enumerate(P_ITEM_COLUMNS):
+    for i, col in enumerate(self.columns):
         self.setItem(crow, i, self.getColumnWidget(item, col))
     self.itemsById[item._id] = item
 

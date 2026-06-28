@@ -155,6 +155,12 @@ class μWorldList(μCombo):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
+  def getServerName(cls):
+    out = cls._widget.currentItem() if cls._widget else None
+    return "" if out is None else out.name.split()[0]
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
   def selectWorld(cls, name):
     if not name or not cls._widget: return
     w = cls.worlds.get(name)

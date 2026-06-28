@@ -23,6 +23,7 @@ import sqlite3
 import struct
 import threading
 import time
+import yaml
 from types import SimpleNamespace
 
 from PyQt6.QtCore import Qt, pyqtSignal
@@ -38,12 +39,18 @@ from widgets.μItemsTable import *
 from widgets.μOrb import μOrb, μOrbSmall, μOrbTask
 from widgets.μOrb import μBoxCheck
 from μMilvian import *
+from μWorlds import μWorldList
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from μMilvianBridge import μMilvianBridge
 
-P_VAULT_DB = os.path.join(P_DEFAULT_CONFIGDIR, "storage.db")
+def _vaultDBPath() -> str:
+    try:
+        server = μWorldList.getServerName()
+    except Exception:
+        server = "default"
+    return os.path.join(P_DEFAULT_CONFIGDIR, f"storage{server}.db")
 
 # StorageType values must match C# enum
 STORAGE_INVALID          = 0
@@ -58,29 +65,47 @@ STORAGE_GUILD_OFFICER2   = 8
 STORAGE_GUILD_CHEST_SM   = 9
 STORAGE_GUILD_CHEST_LG   = 10
 
-STORAGE_NAMES = {
-    STORAGE_INVENTORY:      "Inventory",
-    STORAGE_CHARACTER_BANK: "Character Bank",
-    STORAGE_SHARED_BANK:    "Shared Bank",
-    STORAGE_REINCARNATION:  "Reincarnation Bank",
-    STORAGE_GUILD_GENERAL1: "Guild General 1",
-    STORAGE_GUILD_GENERAL2: "Guild General 2",
-    STORAGE_GUILD_OFFICER1: "Guild Officer 1",
-    STORAGE_GUILD_OFFICER2: "Guild Officer 2",
-    STORAGE_GUILD_CHEST_SM: "Guild Chest (Small)",
-    STORAGE_GUILD_CHEST_LG: "Guild Chest (Large)",
-}
+P_DEFAULT_EXAMINE_DELAY  = 100
+P_EXTENDED_SETTINGS_FILE = os.path.join(P_DEFAULT_CONFIGDIR, "extendedSettings.yaml")
 
 # Fields that only inventory can reliably provide — bank UPSERT must not overwrite these
-_INVENTORY_ONLY_COLS = {"durability", "is_junk", "is_locked", "is_sellable", "equips_to",
-                        "current_slot", "effects"}
+_INVENTORY_ONLY_COLS = {"current_slot", "effects"}
+
+def _loadExtendedSettings() -> dict:
+    try:
+        with open(P_EXTENDED_SETTINGS_FILE, "r") as f:
+            return yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+
+def resolveOwnerName(ownerName: str) -> str:
+    """Map guild hex ID → guildName, else return ownerName as-is."""
+    if not ownerName.startswith("0x"):
+        return ownerName
+    try:
+        server = μWorldList.getServerName()
+    except Exception:
+        return ownerName
+    settings = _loadExtendedSettings()
+    server_data = settings.get(server, {})
+    if not isinstance(server_data, dict):
+        return ownerName
+    # YAML parses hex literals as ints — normalize keys to uppercase hex strings
+    normalized = {
+        (f"0x{k:X}" if isinstance(k, int) else k): v
+        for k, v in server_data.items()
+    }
+    entry = normalized.get(ownerName.upper(), normalized.get(ownerName, {}))
+    if isinstance(entry, dict) and "guildName" in entry:
+        return entry["guildName"]
+    return ownerName
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 #   D B   H E L P E R S
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
 def _openDB() -> sqlite3.Connection:
     os.makedirs(P_DEFAULT_CONFIGDIR, exist_ok=True)
-    conn = sqlite3.connect(P_VAULT_DB, timeout=10)
+    conn = sqlite3.connect(_vaultDBPath(), timeout=10)
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA busy_timeout=5000")
     conn.execute("""
@@ -209,13 +234,13 @@ def _upsertItem(conn: sqlite3.Connection, item: μItemData, storageType: int):
               item._binding, item._equipsTo, augments_str, effects_str))
 
 
-def _purgeStale(conn: sqlite3.Connection, storageType: int, freshIds: set):
+def _purgeStale(conn: sqlite3.Connection, storageType: int, ownerName: str, freshIds: set):
     if not freshIds:
         return
     placeholders = ",".join("?" * len(freshIds))
     conn.execute(
-        f"DELETE FROM items WHERE storage_type=? AND id NOT IN ({placeholders})",
-        [storageType] + list(freshIds)
+        f"DELETE FROM items WHERE storage_type=? AND owner_name=? AND id NOT IN ({placeholders})",
+        [storageType, ownerName] + list(freshIds)
     )
 
 
@@ -226,8 +251,9 @@ def _purgeStale(conn: sqlite3.Connection, storageType: int, freshIds: set):
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μVault(μToggler):
     sigAppendItem        = pyqtSignal(μItemData)
-    sigPurgeStale        = pyqtSignal(int, set)   # (storageType, freshIds)
+    sigPurgeStale        = pyqtSignal(int, str, set)  # (storageType, ownerName, freshIds)
     sigSetStatus         = pyqtSignal(str)
+    sigVaultDone         = pyqtSignal()
     widgetID = "Vault"
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -235,12 +261,16 @@ class μVault(μToggler):
         self.main = main
         super().__init__("Vault", P_ICON_CHEST)
         self.toggler.setToolTip("Toggle Vault — cross-character item browser")
-        self.table = μItemsTable(self)
+        self.table = μItemsTable(self, columns=P_VAULT_COLUMNS)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         setBGColour(self.table.viewport(), P_DEFAULT_BG)
 
-        self.btnSnapshot = μOrbTask("Snapshot", icon=P_ICON_REFRESH,
-                                    tooltip="Register a one-shot bank event listener.<br>Open any bank in-game to capture its contents.")
+        self.btnToggle = μOrb("Toggle", icon=P_ICON_REFRESH, checkable=True,
+                              tooltip="Toggle bank event watching.<br>When active, opening any bank in-game captures its contents.")
+        self.btnRefresh = μOrbTask("Refresh", icon=P_ICON_REFRESH,
+                                   tooltip="Refresh inventory for all active characters.")
+        self._pendingThreads = 0
+        self._pendingLock    = threading.Lock()
 
         self.filterCB = SimpleNamespace()
         for f in ["Name", "Description"]:
@@ -265,8 +295,8 @@ class μVault(μToggler):
         self.filterOwner    = μCheckCombo("Owner")
         self.filterType     = μCheckCombo("Type")
         self.filterStorage  = μCheckCombo("Storage")
-        for v in STORAGE_NAMES.values():
-            self.filterStorage.addCheckItem(v)
+        for v in P_STORAGE_NAMES.values():
+            if v: self.filterStorage.addCheckItem(v)
 
         self.filterText            = QLineEdit()
         self.filterClearSelection  = μOrbSmall(icon=P_ICON_CLEAR, tooltip="Clear whole selection")
@@ -296,16 +326,19 @@ class μVault(μToggler):
         self.filterText.textEdited.connect(self.applyFilters)
         self.filterClearSelection.clicked.connect(self.table.clearSelection)
 
-        self.btnSnapshot.execute = self.requestSnapshot
+        self.btnToggle.clicked.connect(self._onToggle)
+        self.btnRefresh.execute = self._requestRefreshInventory
+        self.btnRefresh.executeCtrl = lambda : self._requestRefreshInventory(True)
 
         self.sigAppendItem.connect(self.table.append)
         self.sigAppendItem.connect(self._updateDynamicFilters)
         self.sigAppendItem.connect(self.applyFilters)
         self.sigPurgeStale.connect(self._purgeStaleSlot)
+        self.sigVaultDone.connect(lambda: self.btnToggle.setChecked(False))
 
         allSplitters = newVSplitter([self.table, advFilters])
         allSplitters.setSizes([800, 150])
-        self.setLayout(newVLayout([allSplitters, newHLayout([self.btnSnapshot])]))
+        self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnToggle])]))
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
     def initialize(self, daemon):
@@ -335,7 +368,7 @@ class μVault(μToggler):
             item._storageType    = d["storage_type"]
             item._name           = d["name"]
             item._ownerID        = d["owner_id"]
-            item._ownerName      = d["owner_name"]
+            item._ownerName      = resolveOwnerName(d["owner_name"])
             item._weenieID       = d["weenie_id"]
             item._type           = d["type"]
             item._quantity       = d["quantity"]
@@ -362,22 +395,104 @@ class μVault(μToggler):
             self.sigAppendItem.emit(item)
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-    def requestSnapshot(self):
+    def _onToggle(self, checked: bool):
+        bridges = μMilvianMeta.getBridges()
+        if not bridges:
+            μPrint.warning("[μVault] No active bridges")
+            self.btnToggle.setChecked(False)
+            return
+        inData = struct.pack('<I', 1 if checked else 0)
+        if checked:
+            with self._pendingLock:
+                self._pendingThreads = len(bridges)
+        for bridge in bridges.values():
+            p = μMilvianPacket(packetCommand.queryvault, bridge, inData)
+            bridge.send(p)
+            if checked:
+                charName = bridge.charName.lower()
+                pathFile = f"/dev/shm/milvian/{charName}/vault.bin"
+                try: os.remove(pathFile)
+                except: pass
+                μPrint.info(f"[μVault] Watching started for {bridge.charName} — open a bank in-game")
+                t = threading.Thread(target=self._readVaultThread, args=(bridge,), daemon=True)
+                t.start()
+            else:
+                μPrint.info(f"[μVault] Watching stopped for {bridge.charName}")
+
+    # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def _requestRefreshInventory(self, detailed: bool = False, delay: int = P_DEFAULT_EXAMINE_DELAY):
         bridges = μMilvianMeta.getBridges()
         if not bridges:
             μPrint.warning("[μVault] No active bridges")
             return
+        inData  = struct.pack('?', detailed) # detailed=False
+        inData += struct.pack('?', True)     # printStatus=True
+        inData += struct.pack('<I', delay)   # delay (unused when not detailed)
         for bridge in bridges.values():
             charName = bridge.charName.lower()
-            pathFile = f"/dev/shm/milvian/{charName}/vault.bin"
-            try: os.remove(pathFile)
+            try: os.remove(f"/dev/shm/milvian/{charName}/inventory.bin")
             except: pass
-
-            p = μMilvianPacket(packetCommand.queryvault, bridge, b'')
+            p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
             bridge.send(p)
-            μPrint.info(f"[μVault] Snapshot requested for {bridge.charName} — open a bank in-game")
-            t = threading.Thread(target=self._readVaultThread, args=(bridge,), daemon=True)
+            μPrint.info(f"[μVault] Inventory refresh requested for {bridge.charName}")
+            t = threading.Thread(target=self._readInventoryThread, args=(bridge,), daemon=True)
             t.start()
+
+    # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def _readInventoryThread(self, bridge):
+        import mmap as _mmap
+        charName = bridge.charName.lower()
+        pathFile = f"/dev/shm/milvian/{charName}/inventory.bin"
+
+        while not os.path.exists(pathFile) or os.path.getsize(pathFile) < 13:
+            time.sleep(0.1)
+
+        freshIds = set()
+        ownerName = bridge.charName
+
+        with open(pathFile, 'rb') as f:
+            _requestId = struct.unpack('<I', f.read(4))[0]
+            nItems     = struct.unpack('<I', f.read(4))[0]
+            _avail0    = struct.unpack('<I', f.read(4))[0]
+            favail     = _mmap.mmap(f.fileno(), 0, access=_mmap.ACCESS_READ)
+
+            itemsCount = 0
+            while True:
+                avail = struct.unpack('<I', favail[8:12])[0]
+                if avail > itemsCount:
+                    item = μItemData()
+                    try:
+                        item.readFromBin(f)
+                    except Exception as e:
+                        μPrint.error(f"[μVault] inventory readFromBin failed at {itemsCount}/{nItems}:", e)
+                        break
+                    item._storageType = STORAGE_INVENTORY
+                    item.digest()
+                    freshIds.add(item._id)
+                    try:
+                        conn = _openDB()
+                        _upsertItem(conn, item)
+                        conn.commit()
+                        conn.close()
+                    except Exception as e:
+                        μPrint.error("[μVault] DB upsert failed:", e)
+                    self.sigAppendItem.emit(item)
+                    itemsCount += 1
+                else:
+                    time.sleep(0.05)
+                if itemsCount >= nItems:
+                    break
+
+        try:
+            conn = _openDB()
+            _purgeStale(conn, STORAGE_INVENTORY, ownerName, freshIds)
+            self.sigPurgeStale.emit(STORAGE_INVENTORY, ownerName, freshIds)
+            conn.commit()
+            conn.close()
+        except Exception as e:
+            μPrint.error("[μVault] DB purge failed:", e)
+
+        μPrint.info(f"[μVault] Inventory refresh complete for {bridge.charName}")
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
     def _readVaultThread(self, bridge):
@@ -388,6 +503,7 @@ class μVault(μToggler):
             time.sleep(0.1)
 
         freshIds: dict[int, set] = {}
+        ownerNames: dict[int, str] = {}
 
         def read_exactly(f, n) -> bytes:
             data = b''
@@ -432,6 +548,9 @@ class μVault(μToggler):
                             μPrint.error(f"[μVault] readFromBin failed at item {itemsRead}/{nItems}:", e)
                             break
                         item._storageType = storageType
+                        item._ownerName   = resolveOwnerName(item._ownerName)
+                        if storageType not in ownerNames:
+                            ownerNames[storageType] = item._ownerName
                         freshIds[storageType].add(item._id)
                         item.digest()
                         self.sigAppendItem.emit(item)
@@ -452,21 +571,27 @@ class μVault(μToggler):
         try:
             conn = _openDB()
             for st, ids in freshIds.items():
-                _purgeStale(conn, st, ids)
-                self.sigPurgeStale.emit(st, ids)
+                owner = ownerNames.get(st, "")
+                _purgeStale(conn, st, owner, ids)
+                self.sigPurgeStale.emit(st, owner, ids)
             conn.commit()
             conn.close()
         except Exception as e:
             μPrint.error("[μVault] DB purge failed:", e)
 
         μPrint.info(f"[μVault] Snapshot complete for {bridge.charName}")
+        with self._pendingLock:
+            self._pendingThreads -= 1
+            done = self._pendingThreads <= 0
+        if done:
+            self.sigVaultDone.emit()
 
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-    def _purgeStaleSlot(self, storageType: int, freshIds: set):
+    def _purgeStaleSlot(self, storageType: int, ownerName: str, freshIds: set):
         toRemove = []
         for row in range(self.table.rowCount()):
             item = self.table.item(row, 0)
-            if item and item._storageType == storageType and item._id not in freshIds:
+            if item and item._storageType == storageType and item._ownerName == ownerName and item._id not in freshIds:
                 toRemove.append(row)
         for row in reversed(toRemove):
             col0 = self.table.item(row, 0)
@@ -511,7 +636,7 @@ class μVault(μToggler):
             if item.owner().lower() not in checkedOwners:     return self.table.setRowHidden(row, True)
             if item._type.lower() not in checkedTypes:        return self.table.setRowHidden(row, True)
 
-            storageName = STORAGE_NAMES.get(item._storageType, "").lower()
+            storageName = P_STORAGE_NAMES.get(item._storageType, "").lower()
             if storageName not in checkedStorage:             return self.table.setRowHidden(row, True)
 
             self.table.setRowHidden(row, False)
