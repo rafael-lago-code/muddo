@@ -122,6 +122,7 @@ P_STATUS_BUSY_USE       = 8
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μItemData(QTableWidgetItem):
   _id = 0
+  _storageType = 0
   _name = ""
   _ownerID = 0
   _ownerName = ""

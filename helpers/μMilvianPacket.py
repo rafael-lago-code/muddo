@@ -47,6 +47,7 @@ class packetCommand(Enum):
   queryparty     = struct.pack('<I', 5)
   queryselected  = struct.pack('<I', 6)
   queryinventory = struct.pack('<I', 8)
+  queryvault     = struct.pack('<I', 9)
   debug          = struct.pack('<I', 7)
   dissolveItems  = struct.pack('<I', 20)
   sellItems      = struct.pack('<I', 21)

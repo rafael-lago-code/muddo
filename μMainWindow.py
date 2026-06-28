@@ -30,6 +30,7 @@ from μConsole import μConsole
 from μDungeonHelper import μDungeonHelper
 from μProcess import μProcessManager
 from μStorage import μStorage
+from μVault import μVault
 from μDDO import μDDO
 from μStrategy import μStrategy
 from μSummary import μSummary
@@ -70,6 +71,7 @@ class μMainWindow(QMainWindow):
     self.processManager = μProcessManager()
     self.dh = μDungeonHelper(self)
     self.storageManager = μStorage(self)
+    self.vault = μVault(self)
     self.toolbar = μToolbar(self)
     self.strategy = μStrategy(self)
     self.map = μMap(self)
@@ -79,7 +81,7 @@ class μMainWindow(QMainWindow):
 
     μSummary.setup(self.credentials)
     lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.strategy.toggler, self.map.toggler, self.btnLaunch,
-                              μSummary.widget, self.processManager.toggler, self.storageManager.toggler,
+                              μSummary.widget, self.processManager.toggler, self.storageManager.toggler, self.vault.toggler,
                               self.macros.toggler, self.setup.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
 
     aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
@@ -96,7 +98,7 @@ class μMainWindow(QMainWindow):
     self.setCentralWidget(newVFrame([lButtonsBar]))
 
     self._docks = [self.setup, self.macros, self.processManager,
-                   self.storageManager, self.patch, self.console, self.strategy, self.map]
+                   self.storageManager, self.vault, self.patch, self.console, self.strategy, self.map]
     for dock in self._docks:
       self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
       dock.setFloating(True)
@@ -124,6 +126,7 @@ class μMainWindow(QMainWindow):
     χHelper.setup()
     μMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
+    self.vault.initialize(self.macros.daemon)
     μToolbar.setup()
     self._applyStrategyVisibility(μSetup.profile)
     μSetup.widget.sigProfileChanged.connect(lambda profile, _: self._applyStrategyVisibility(profile))
