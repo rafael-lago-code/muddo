@@ -19,16 +19,15 @@
 #
 from __future__ import annotations
 import os
-import sqlite3
 import struct
 import threading
 import time
-import yaml
 from types import SimpleNamespace
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QGridLayout, QLineEdit
 
+from helpers.χDB import *
 from helpers.μImageFactory import *
 from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus
 from helpers.μPrint import μPrint
@@ -39,210 +38,12 @@ from widgets.μItemsTable import *
 from widgets.μOrb import μOrb, μOrbSmall, μOrbTask
 from widgets.μOrb import μBoxCheck
 from μMilvian import *
-from μWorlds import μWorldList
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from μMilvianBridge import μMilvianBridge
 
-def _vaultDBPath() -> str:
-    try:
-        server = μWorldList.getServerName()
-    except Exception:
-        server = "default"
-    return os.path.join(P_DEFAULT_CONFIGDIR, f"storage{server}.db")
-
-# StorageType values must match C# enum
-STORAGE_INVALID          = 0
-STORAGE_INVENTORY        = 1
-STORAGE_CHARACTER_BANK   = 2
-STORAGE_SHARED_BANK      = 3
-STORAGE_REINCARNATION    = 4
-STORAGE_GUILD_GENERAL1   = 5
-STORAGE_GUILD_GENERAL2   = 6
-STORAGE_GUILD_OFFICER1   = 7
-STORAGE_GUILD_OFFICER2   = 8
-STORAGE_GUILD_CHEST_SM   = 9
-STORAGE_GUILD_CHEST_LG   = 10
-
-P_DEFAULT_EXAMINE_DELAY  = 100
-P_EXTENDED_SETTINGS_FILE = os.path.join(P_DEFAULT_CONFIGDIR, "extendedSettings.yaml")
-
-# Fields that only inventory can reliably provide — bank UPSERT must not overwrite these
-_INVENTORY_ONLY_COLS = {"current_slot", "effects"}
-
-def _loadExtendedSettings() -> dict:
-    try:
-        with open(P_EXTENDED_SETTINGS_FILE, "r") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
-
-def resolveOwnerName(ownerName: str) -> str:
-    """Map guild hex ID → guildName, else return ownerName as-is."""
-    if not ownerName.startswith("0x"):
-        return ownerName
-    try:
-        server = μWorldList.getServerName()
-    except Exception:
-        return ownerName
-    settings = _loadExtendedSettings()
-    server_data = settings.get(server, {})
-    if not isinstance(server_data, dict):
-        return ownerName
-    # YAML parses hex literals as ints — normalize keys to uppercase hex strings
-    normalized = {
-        (f"0x{k:X}" if isinstance(k, int) else k): v
-        for k, v in server_data.items()
-    }
-    entry = normalized.get(ownerName.upper(), normalized.get(ownerName, {}))
-    if isinstance(entry, dict) and "guildName" in entry:
-        return entry["guildName"]
-    return ownerName
-
-# ─────────────────────────────────────────────────────────────────────────────────────────────────
-#   D B   H E L P E R S
-# ─────────────────────────────────────────────────────────────────────────────────────────────────
-def _openDB() -> sqlite3.Connection:
-    os.makedirs(P_DEFAULT_CONFIGDIR, exist_ok=True)
-    conn = sqlite3.connect(_vaultDBPath(), timeout=10)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS items (
-            id            INTEGER PRIMARY KEY,
-            storage_type  INTEGER NOT NULL DEFAULT 0,
-            name          TEXT    NOT NULL DEFAULT '',
-            owner_id      INTEGER NOT NULL DEFAULT 0,
-            owner_name    TEXT    NOT NULL DEFAULT '',
-            weenie_id     INTEGER NOT NULL DEFAULT 0,
-            type          TEXT    NOT NULL DEFAULT '',
-            quantity      INTEGER NOT NULL DEFAULT 0,
-            qualifier     TEXT    NOT NULL DEFAULT '',
-            value_copper  INTEGER NOT NULL DEFAULT 0,
-            hardness      INTEGER NOT NULL DEFAULT 0,
-            durability    INTEGER NOT NULL DEFAULT 0,
-            icon_id       INTEGER NOT NULL DEFAULT 0,
-            description   TEXT    NOT NULL DEFAULT '',
-            min_level     INTEGER NOT NULL DEFAULT 0,
-            material      INTEGER NOT NULL DEFAULT 0,
-            is_junk       INTEGER NOT NULL DEFAULT 0,
-            is_locked     INTEGER NOT NULL DEFAULT 0,
-            is_minor_artifact INTEGER NOT NULL DEFAULT 0,
-            is_sellable   INTEGER NOT NULL DEFAULT 0,
-            set_bonus_1   TEXT    NOT NULL DEFAULT '',
-            set_bonus_2   TEXT    NOT NULL DEFAULT '',
-            current_slot  INTEGER NOT NULL DEFAULT 0,
-            binding       INTEGER NOT NULL DEFAULT 0,
-            equips_to     TEXT    NOT NULL DEFAULT '',
-            augments      TEXT    NOT NULL DEFAULT '',
-            effects       TEXT    NOT NULL DEFAULT ''
-        )
-    """)
-    conn.commit()
-    return conn
-
-
-def _upsertItem(conn: sqlite3.Connection, item: μItemData, storageType: int):
-    """
-    Upsert item into DB.
-    Bank sources (non-inventory) do NOT overwrite inventory-only fields if a
-    richer inventory row already exists.
-    """
-    is_bank = storageType != STORAGE_INVENTORY
-
-    augments_str = ",".join(str(a) for a in item._augments)
-    effects_str  = "|".join(f"{k}={v}" for k, v in item._effects.items())
-
-    if is_bank:
-        conn.execute("""
-            INSERT INTO items
-              (id, storage_type, name, owner_id, owner_name, weenie_id, type,
-               quantity, qualifier, value_copper, hardness, icon_id,
-               description, min_level, material, is_minor_artifact,
-               set_bonus_1, set_bonus_2, binding, augments,
-               durability, is_junk, is_locked, is_sellable, equips_to,
-               current_slot, effects)
-            VALUES (?,?,?,?,?,?,?, ?,?,?,?,?, ?,?,?,?, ?,?,?,?, 0,0,0,0,'', 4294967295,'')
-            ON CONFLICT(id) DO UPDATE SET
-              storage_type  = excluded.storage_type,
-              name          = excluded.name,
-              owner_id      = excluded.owner_id,
-              owner_name    = excluded.owner_name,
-              weenie_id     = excluded.weenie_id,
-              type          = excluded.type,
-              quantity      = excluded.quantity,
-              qualifier     = excluded.qualifier,
-              value_copper  = excluded.value_copper,
-              hardness      = excluded.hardness,
-              icon_id       = excluded.icon_id,
-              description   = excluded.description,
-              min_level     = excluded.min_level,
-              material      = excluded.material,
-              is_minor_artifact = excluded.is_minor_artifact,
-              set_bonus_1   = excluded.set_bonus_1,
-              set_bonus_2   = excluded.set_bonus_2,
-              binding       = excluded.binding,
-              augments      = excluded.augments
-        """, (item._id, storageType, item._name, item._ownerID, item._ownerName,
-              item._weenieID, item._type, item._quantity, item._qualifier,
-              item._valueCopper, item._hardness, item._iconId,
-              item._description, item._minLevel, item._material, item._isMinorArtifact,
-              item._setBonus1, item._setBonus2, item._binding, augments_str))
-    else:
-        conn.execute("""
-            INSERT INTO items
-              (id, storage_type, name, owner_id, owner_name, weenie_id, type,
-               quantity, qualifier, value_copper, hardness, durability, icon_id,
-               description, min_level, material, is_junk, is_locked, is_sellable,
-               is_minor_artifact, set_bonus_1, set_bonus_2, current_slot,
-               binding, equips_to, augments, effects)
-            VALUES (?,?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?,?,?, ?,?,?,?, ?,?,?,?)
-            ON CONFLICT(id) DO UPDATE SET
-              storage_type  = excluded.storage_type,
-              name          = excluded.name,
-              owner_id      = excluded.owner_id,
-              owner_name    = excluded.owner_name,
-              weenie_id     = excluded.weenie_id,
-              type          = excluded.type,
-              quantity      = excluded.quantity,
-              qualifier     = excluded.qualifier,
-              value_copper  = excluded.value_copper,
-              hardness      = excluded.hardness,
-              durability    = excluded.durability,
-              icon_id       = excluded.icon_id,
-              description   = excluded.description,
-              min_level     = excluded.min_level,
-              material      = excluded.material,
-              is_junk       = excluded.is_junk,
-              is_locked     = excluded.is_locked,
-              is_sellable   = excluded.is_sellable,
-              is_minor_artifact = excluded.is_minor_artifact,
-              set_bonus_1   = excluded.set_bonus_1,
-              set_bonus_2   = excluded.set_bonus_2,
-              current_slot  = excluded.current_slot,
-              binding       = excluded.binding,
-              equips_to     = excluded.equips_to,
-              augments      = excluded.augments,
-              effects       = excluded.effects
-        """, (item._id, storageType, item._name, item._ownerID, item._ownerName,
-              item._weenieID, item._type, item._quantity, item._qualifier,
-              item._valueCopper, item._hardness, item._durability, item._iconId,
-              item._description, item._minLevel, item._material,
-              item._isJunk, item._isLocked, item._isSellable, item._isMinorArtifact,
-              item._setBonus1, item._setBonus2, item._currentSlot,
-              item._binding, item._equipsTo, augments_str, effects_str))
-
-
-def _purgeStale(conn: sqlite3.Connection, storageType: int, ownerName: str, freshIds: set):
-    if not freshIds:
-        return
-    placeholders = ",".join("?" * len(freshIds))
-    conn.execute(
-        f"DELETE FROM items WHERE storage_type=? AND owner_name=? AND id NOT IN ({placeholders})",
-        [storageType, ownerName] + list(freshIds)
-    )
-
+P_DEFAULT_EXAMINE_DELAY = 100
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #
@@ -261,7 +62,7 @@ class μVault(μToggler):
         self.main = main
         super().__init__("Vault", P_ICON_CHEST)
         self.toggler.setToolTip("Toggle Vault — cross-character item browser")
-        self.table = μItemsTable(self, columns=P_VAULT_COLUMNS)
+        self.table = μItemsTable(self, columns=P_STORAGE_COLUMNS)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         setBGColour(self.table.viewport(), P_DEFAULT_BG)
 
@@ -348,21 +149,15 @@ class μVault(μToggler):
     # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
     def _loadFromDB(self):
         try:
-            conn = _openDB()
+            conn = openVaultDB()
             rows = conn.execute("SELECT * FROM items").fetchall()
             conn.close()
         except Exception as e:
             μPrint.error("[μVault] DB load failed:", e)
             return
 
-        cols = ["id","storage_type","name","owner_id","owner_name","weenie_id","type",
-                "quantity","qualifier","value_copper","hardness","durability","icon_id",
-                "description","min_level","material","is_junk","is_locked","is_minor_artifact",
-                "is_sellable","set_bonus_1","set_bonus_2","current_slot","binding","equips_to",
-                "augments","effects"]
-
         for row in rows:
-            d = dict(zip(cols, row))
+            d = dict(zip(DB_ITEM_COLS, row))
             item = μItemData()
             item._id             = d["id"]
             item._storageType    = d["storage_type"]
@@ -470,8 +265,8 @@ class μVault(μToggler):
                     item.digest()
                     freshIds.add(item._id)
                     try:
-                        conn = _openDB()
-                        _upsertItem(conn, item)
+                        conn = openVaultDB()
+                        upsertVaultItem(conn, item, STORAGE_INVENTORY)
                         conn.commit()
                         conn.close()
                     except Exception as e:
@@ -484,8 +279,8 @@ class μVault(μToggler):
                     break
 
         try:
-            conn = _openDB()
-            _purgeStale(conn, STORAGE_INVENTORY, ownerName, freshIds)
+            conn = openVaultDB()
+            purgeStaleVault(conn, STORAGE_INVENTORY, ownerName, freshIds)
             self.sigPurgeStale.emit(STORAGE_INVENTORY, ownerName, freshIds)
             conn.commit()
             conn.close()
@@ -556,8 +351,8 @@ class μVault(μToggler):
                         self.sigAppendItem.emit(item)
 
                         try:
-                            conn = _openDB()
-                            _upsertItem(conn, item, storageType)
+                            conn = openVaultDB()
+                            upsertVaultItem(conn, item, storageType)
                             conn.commit()
                             conn.close()
                         except Exception as e:
@@ -569,10 +364,10 @@ class μVault(μToggler):
 
         # purge stale per storageType
         try:
-            conn = _openDB()
+            conn = openVaultDB()
             for st, ids in freshIds.items():
                 owner = ownerNames.get(st, "")
-                _purgeStale(conn, st, owner, ids)
+                purgeStaleVault(conn, st, owner, ids)
                 self.sigPurgeStale.emit(st, owner, ids)
             conn.commit()
             conn.close()

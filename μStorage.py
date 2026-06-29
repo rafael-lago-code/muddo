@@ -16,10 +16,6 @@
 #    You should have received a copy of the GNU General Public License
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 #
-#    This software is heavily based on PyLotRO (credits to AJackson
-#    <ajackson@bcs.org.uk>), which in turn is based on a lotrolauncher 
-#    script by SNy (<SNy@bmx-chemnitz.de>)
-#
 #
 from __future__ import annotations
 import glob
@@ -39,7 +35,9 @@ from helpers.μPrint import μPrint
 from helpers.μStrings import *
 from widgets.μText import μTextEdit
 from μMilvian import *
-import time, struct, mmap
+import os, time, struct, mmap
+from helpers import χDB
+from helpers.χDB import P_STORAGE_INVENTORY
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMilvianBridge import μMilvianBridge
@@ -54,8 +52,9 @@ P_DEFAULT_EXAMINE_DELAY=100
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μStorage(μToggler):
   sigAppendItem  = pyqtSignal(μItemData)
-  sigPurgeStale  = pyqtSignal(str)
+  sigPurgeStale  = pyqtSignal(int, str, set)  # (storageType, ownerName, freshIds)
   sigSetStatus = pyqtSignal(object,int)
+  vaultMode = False
   widgetID = "StorageManager"
   daemon : μMilvianBridge = None
   status : dict = {}
@@ -66,26 +65,32 @@ class μStorage(μToggler):
     self.main = main
     super().__init__("Storage\nManager", P_ICON_CHEST)
     self.toggler.setToolTip("Toggle Storage Manager UI")
-    self.table = μItemsTable(self)
+    self.table = μItemsTable(self, columns=P_STORAGE_COLUMNS)
     self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
     setBGColour(self.table.viewport(), P_DEFAULT_BG)
-    
+
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
-    self.btnRefresh   = μOrbTask("Refresh",     icon=P_ICON_REFRESH, tooltip="Fetch data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.<br><i>Right-click for more options</i>")
-    self.btnDissolve  = μOrbTask("Dissolve",    icon=getIcon('cannith_dissolve_lean'),
+    self.btnRefresh   = μOrbTask("Refresh\nInventory",  icon=getIcon('backpack'), tooltip="Fetch inventory data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.")
+    self.btnDissolve  = μOrbTask("Dissolve", icon=getIcon('cannith_dissolve_lean'),
                              tooltip="Dissolve all selected items. Item Deconstruction UI must be open.")
-    self.btnSell      = μOrbTask("Sell",        icon=getIcon('cannith_vendor_lean'),
+    self.btnSell      = μOrbTask("Sell",     icon=getIcon('cannith_vendor_lean'),
                              tooltip="Sell all selected items to the currently open vendor UI. <br><b>Ctrl+Click</b> to repair equipment too<b>.<br><b><i>Right-click for more options</i></b>")
-    self.btnUse       = μOrbTask("Use",        icon=getIcon('use_gears'),
+    self.btnUse       = μOrbTask("Use",      icon=getIcon('use_gears'),
                              tooltip="Use selected items. Shortcut: <b><i>enter</i></b>. <b><i>Ctrl+Click</i></b> for auto-accepting confirmation dialogues. Shortcut: <b><i>Ctrl+Enter</i></b>")
-    self.btnStore     = μOrbTask("Store",       icon=getIcon('cannith_bank_lean'),
+    self.btnStore     = μOrbTask("Store",    icon=getIcon('cannith_bank_lean'),
                              tooltip="Store selected items in the currently open bank/chest. <br><b><i>Ctrl+click</i></b> to send to character bank (guild or shared banks preferred otherwise)")
-    self.btnSort      = μOrbTask("Sort",       icon=getIcon('sort'),
+    self.btnSort      = μOrbTask("Sort",     icon=getIcon('sort'),
                              tooltip="<b><i>Not Implemented Yet</b></i><br>Sort selected items by type. <br><i><b>Ctrl+Click</b></i> to sort by name<b>.<br><b><i>Right-click for more options</i></b>")
+    self.btnTrade     = μOrbTask("Trade",    icon=getIcon('cannith_trade_lean'),
+                             tooltip="<b><i>Not Implemented Yet</b></i><br>Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
     self.btnFeedJewel = μOrbTask("Feed\nJewel", icon=getIcon('cannith_feed_jewel'),
                              tooltip="<b><i>Not Implemented Yet</b></i><br>Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
-    self.btnTrade     = μOrbTask("Trade",       icon=getIcon('cannith_trade_lean'),
-                             tooltip="<b><i>Not Implemented Yet</b></i><br>Trade selected items with selected player. <br><b>Ctrl+Click</b> to add platinum too<b>.<br><b><i>Right-click for more options</i></b>")
+    self.btnToggleVault = μOrb("Vault\nMode", icon=getIcon('vault'),
+                             tooltip="Toggles between inventory (managing current inventory) and vault mode (tracking banks and guild chests).")
+    self.btnToggleRecord = μOrbTask("Record\nVault", icon=getIcon('camera'),
+                             tooltip="Toggles data collection on/off")
+    self.btnToggleVault.setCheckable(True)
+    self.lblExplanation = QLabel("Some explanation")
 
     self.filterCB = SimpleNamespace()
     for f in ["Equipped", "Unequipped", "Unbound", "Bound", "Locked", "Unlocked", "Sellable", "Unsellable", "Name", "Description"]:
@@ -106,10 +111,17 @@ class μStorage(μToggler):
     self.filterAugments = μCheckCombo("Augments")
     for n,i in zip(P_ITEM_AUGMENTS_NAME.values(), P_ITEM_AUGMENTS_ICON.values()):
       self.filterAugments.addCheckItem(f"{n} {i}")
+    
+    self.filterStorage = μCheckCombo("Storage")
+    for n in P_STORAGE_NAMES.values():
+      self.filterStorage.addCheckItem(f"{n}")
+    
+    self.filterAccountSet = μBoxCheck('Accounts as sets')
+    self.filterAccountSet.setToolTip("Controls behaviour when filtering by an account in the \"Owners\" dropdown menu.<br><b>✓</b> includes all known characters in that account. <br><b>✗</b> only show items in this account's shared bank.<br>Update $HOME/.config/muDDO/extendedPreferences.yaml with accounts info.")
 
     self.filterOwner = μCheckCombo("Owner")
     self.filterType  = μCheckCombo("Type")
-    self.filterText = QLineEdit()
+    self.filterText  = QLineEdit()
     self.filterClearSelection  = μOrbSmall(icon=P_ICON_CLEAR, tooltip="Clear whole selection")
 
     hline = QFrame()
@@ -136,8 +148,8 @@ class μStorage(μToggler):
                             # newHLayout([self.filterCB.equipped,   self.filterCB.locked  , self.filterCB.sellable,   self.filterCB.bound  ]), 
                             # newHLayout([self.filterCB.unequipped, self.filterCB.unlocked, self.filterCB.unsellable, self.filterCB.unbound]),
                             newHFrame(["Augments Count:", self.filterCB.aug0, self.filterCB.aug1, self.filterCB.aug2, self.filterCB.aug3p]),
-                            newHLayout([self.filterQualifier, self.filterType]),
-                            newHLayout([self.filterAugments, self.filterOwner, ])])
+                            newHLayout([self.filterQualifier, self.filterType, self.filterStorage]),
+                            newHLayout([self.filterAugments, self.filterOwner, self.filterAccountSet ])])
 
     self.filterScriptList      = QListWidget()
     self.filterScriptLabel     = QLabel("Selected Filter Script:")
@@ -156,17 +168,17 @@ class μStorage(μToggler):
     self.filterClearSelection.clicked.connect(self.table.clearSelection)
     self.filterQualifier.changed.connect(self.applyFilters)
     self.filterOwner.changed.connect(self.applyFilters)
+    self.filterStorage.changed.connect(self.applyFilters)
     self.filterType.changed.connect(self.applyFilters)
     self.filterAugments.changed.connect(self.applyFilters)
     self.filterText.textEdited.connect(self.applyFilters)
 
 
-    self.btnRefresh.execute = lambda : self.requestRefreshStorage(False)
-    self.btnRefresh.executeCtrl = lambda : self.requestRefreshStorage(True)
+    self.btnRefresh.execute = lambda : self.refreshInventory(False)
+    self.btnRefresh.executeCtrl = lambda : self.refreshInventory(True)
     self.btnUse.execute = self.requestUse
     self.btnUse.executeCtrl = lambda : self.requestUse(True)
     self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-    self.table.customContextMenuRequested.connect(self._showTableContextMenu)
     self.btnSell.execute = self.requestSell
     self.btnSell.executeCtrl = lambda : self.requestSell(True, True)
     self.btnDissolve.execute = self.requestDissolve
@@ -174,6 +186,7 @@ class μStorage(μToggler):
     self.btnStore.executeCtrl = lambda : self.requestStore(destUI=3)
     self.btnFeedJewel.execute = self.requestFeedJewel
     self.btnFeedJewel.executeCtrl = lambda : self.requestFeedJewel(force=True)
+    self.btnToggleVault.clicked.connect(self.toggleVaultMode)
 
     self.btnSort.setEnabled(False)
     self.btnFeedJewel.setEnabled(False)
@@ -212,12 +225,14 @@ class μStorage(μToggler):
     self.sigAppendItem.connect(self.table.append)
     self.sigAppendItem.connect(self.updateDynamicFilters)
     self.sigAppendItem.connect(self.applyFilters)
-    self.sigPurgeStale.connect(self.table.clearStale)
+    self.sigPurgeStale.connect(self.purgeStale)
     self.sigSetStatus.connect(self.setStatus)
     allSplitters = newVSplitter([self.table, filtersContainer])
     allSplitters.setSizes([800,100])
    
-    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnUse, self.btnStore, self.btnSell, self.btnDissolve, self.btnTrade, self.btnSort])]))
+    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnToggleRecord, self.lblExplanation, self.btnUse, self.btnStore, self.btnSell,
+                                                         self.btnDissolve, self.btnTrade, self.btnSort, self.btnFeedJewel, self.btnToggleVault])]))
+    self.setInventoryMode()
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setStatus(self, bridge, newStatus):
@@ -298,7 +313,6 @@ class μStorage(μToggler):
   def initialize(self, daemon : μMilvianBridge):
     super().initialize()
     self.daemon = daemon
-    self.table.staleData = {}
 
     noneItem = μFilterItem("<None>", "")
     noneItem.setFlags(noneItem.flags() & ~Qt.ItemFlag.ItemIsEditable)
@@ -311,6 +325,67 @@ class μStorage(μToggler):
       self.appendFilterScript(μFilterItem(name, ""))
 
     self.filterScriptList.setCurrentItem(noneItem)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def toggleVaultMode(self):
+    if self.vaultMode: self.setInventoryMode()
+    else: self.setVaultMode()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _inventoryModeFilter(self, item: μItemData) -> bool:
+    if item._storageType != P_STORAGE_INVENTORY:
+      return True
+    liveNames = {b.charName for b in μMilvianMeta.getBridges().values()}
+    return item._ownerName not in liveNames
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setVaultMode(self):
+    self.vaultMode = True
+    self.modeFilter = lambda x : False
+    self.applyFilters()
+    self.btnDissolve.setVisible(False)
+    self.btnFeedJewel.setVisible(False)
+    self.btnSell.setVisible(False)
+    self.btnSort.setVisible(False)
+    self.btnStore.setVisible(False)
+    self.btnTrade.setVisible(False)
+    self.btnUse.setVisible(False)
+    self.lblExplanation.setVisible(True)
+    self.btnToggleRecord.setVisible(True)
+    self.btnToggleVault.setChecked(True)
+    self.filterStorage.setEnabled(True)
+    self.filterAccountSet.setEnabled(True)
+    self.table.customContextMenuRequested.disconnect()
+    self.loadDBData()
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def show(self):
+    super().show()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def hide(self):
+    super().hide()
+    # if it is recording, stop
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setInventoryMode(self):
+    self.vaultMode = False
+    self.modeFilter = self._inventoryModeFilter
+    self.applyFilters()
+    # if is recording, stop recording
+    self.btnDissolve.setVisible(True)
+    self.btnFeedJewel.setVisible(True)
+    self.btnSell.setVisible(True)
+    self.btnSort.setVisible(True)
+    self.btnTrade.setVisible(True)
+    self.btnStore.setVisible(True)
+    self.btnUse.setVisible(True)
+    self.lblExplanation.setVisible(False)
+    self.btnToggleRecord.setVisible(False)
+    self.btnToggleVault.setChecked(False)
+    self.filterStorage.setEnabled(False)
+    self.filterAccountSet.setEnabled(False)
+    self.table.customContextMenuRequested.connect(self._showTableContextMenu)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _showTableContextMenu(self, pos):
@@ -349,8 +424,54 @@ class μStorage(μToggler):
       if item.column()==0:
         item : μItemData
         if item.isSelected() and not self.table.isRowHidden(item.row()):
-          selectedItems[item.owner().lower()].append(item)
+          selectedItems[item._ownerName.lower()].append(item)
     return selectedItems
+  
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  L O A D   D B   D A T A 
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  def loadDBData(self):
+    def _thread():
+      try:
+        conn = χDB.openVaultDB()
+        rows = conn.execute("SELECT * FROM items").fetchall()
+        conn.close()
+      except Exception as e:
+        μPrint.error("[μStorage] DB load failed:", e)
+        return
+      for row in rows:
+        d = dict(zip(χDB.DB_ITEM_COLS, row))
+        item = μItemData()
+        item._id              = d["id"]
+        item._storageType     = d["storage_type"]
+        item._name            = d["name"]
+        item._ownerID         = d["owner_id"]
+        item._ownerName       = χDB.resolveOwnerName(d["owner_name"])
+        item._weenieID        = d["weenie_id"]
+        item._type            = d["type"]
+        item._quantity        = d["quantity"]
+        item._qualifier       = d["qualifier"]
+        item._valueCopper     = d["value_copper"]
+        item._hardness        = d["hardness"]
+        item._durability      = d["durability"]
+        item._iconId          = d["icon_id"]
+        item._description     = d["description"]
+        item._minLevel        = d["min_level"]
+        item._material        = d["material"]
+        item._isJunk          = d["is_junk"]
+        item._isLocked        = d["is_locked"]
+        item._isSellable      = d["is_sellable"]
+        item._isMinorArtifact = d["is_minor_artifact"]
+        item._setBonus1       = d["set_bonus_1"]
+        item._setBonus2       = d["set_bonus_2"]
+        item._currentSlot     = d["current_slot"]
+        item._binding         = d["binding"]
+        item._equipsTo        = d["equips_to"]
+        item._augments        = [int(x) for x in d["augments"].split(",") if x] if d["augments"] else []
+        item._effects         = dict(p.split("=", 1) for p in d["effects"].split("|") if "=" in p) if d["effects"] else {}
+        item.digest()
+        self.sigAppendItem.emit(item)
+    threading.Thread(target=_thread, daemon=True).start()
   
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   U S E 
@@ -362,7 +483,7 @@ class μStorage(μToggler):
   def requestUseViaDoubleClick(self, item: μItemData):
     if item.column() != 0: return
     selectedItems = {b: [] for b in μMilvianMeta.getBridges().keys()}
-    selectedItems[item.owner().lower()].append(item)
+    selectedItems[item._ownerName.lower()].append(item)
     self._requestUse(selectedItems)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -388,17 +509,17 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[cStorage] Finished using requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.info(f"[μStorage] Finished using requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[cStorage] Error using items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.error(f"[μStorage] Error using items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       used = packet.outData[0]
       iID = struct.unpack('<Q', packet.outData[1:9])[0]
-      μPrint.info(f"[cStorage] {"used" if used else "failed to use"} {C_ORANGE}{iID}</font>")
+      μPrint.info(f"[μStorage] {"used" if used else "failed to use"} {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   D I S S O L V E
@@ -426,17 +547,17 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[cStorage] Finished dissolving requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.info(f"[μStorage] Finished dissolving requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[cStorage] Error dissolving items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.error(f"[μStorage] Error dissolving items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       dissolved = packet.outData[0]
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
-      μPrint.info(f"[cStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
+      μPrint.info(f"[μStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   S T O R E
@@ -465,17 +586,17 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[cStorage] Finished storing requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.info(f"[μStorage] Finished storing requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[cStorage] Error storing items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.error(f"[μStorage] Error storing items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       stored = packet.outData[0]
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
-      μPrint.info(f"[cStorage] {"stored" if stored else "failed to store"} {C_ORANGE}{iID}</font>")
+      μPrint.info(f"[μStorage] {"stored" if stored else "failed to store"} {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   T R A D E
@@ -510,16 +631,16 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[cStorage] Finished selling requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.info(f"[μStorage] Finished selling requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[cStorage] Error selling items for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.error(f"[μStorage] Error selling items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       iID = struct.unpack('<Q',packet.outData[0:8])[0]
-      μPrint.info(f"[cStorage] sold {C_ORANGE}{iID}</font>")
+      μPrint.info(f"[μStorage] sold {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   F E E D   J E W E L
@@ -545,84 +666,115 @@ class μStorage(μToggler):
         inData += struct.pack('<Q', item._id)
       try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
       except: pass
-      self.table.staleData[bridge.charName] = []
       p = μMilvianPacket(packetCommand.examineItems, bridge, inData)
-      p.χigResponse.connect(lambda data, p=p: self.storageStatusUpdate(p, data))
+      p.χigResponse.connect(lambda data, p=p: self.inventoryStatusUpdate(p, data))
       bridge.send(p)
-      self.refreshStorage(bridge)
-  
+      self.readInventoryBin(bridge)
+
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E F R E S H   S T U F F
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  def requestRefreshStorage(self, detailed: bool = False, delay: int = P_DEFAULT_EXAMINE_DELAY):
+  def refreshInventory(self, detailed: bool = False, delay: int = P_DEFAULT_EXAMINE_DELAY):
     printStatus = True                        # for now always true
     inData  = struct.pack('?', detailed)      # provide detailed information
     inData += struct.pack('?', printStatus)   # provide status updates
     inData += struct.pack('<I', delay)        # ms delay between examines (only used when detailed=True)
 
-    self.table.staleData = {}
     for bridge in μMilvianMeta.getBridges().values():
       bridge : μMilvian
       try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
       except: pass
-      self.table.staleData[bridge.charName] = []
       p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
-      p.χigResponse.connect(lambda data, p=p: self.storageStatusUpdate(p, data))
+      p.χigResponse.connect(lambda data, p=p: self.inventoryStatusUpdate(p, data))
       bridge.send(p)
-      self.refreshStorage(bridge)
+      μPrint.info(f"[μStorage] Inventory refresh requested for {C_ORANGE}{bridge.charName}</font>")
+      self.readInventoryBin(bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def storageStatusUpdate(self, packet : μMilvianPacket, rawData : bytes):
+  def inventoryStatusUpdate(self, packet : μMilvianPacket, rawData : bytes):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[cStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
+      μPrint.info(f"[μStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
     else:
-      μPrint.info(f"[cStorage] {C_ORANGE}{packet.outData.decode('utf-8', errors='replace')}</font>")
+      μPrint.info(f"[μStorage] {C_ORANGE}{packet.outData.decode('utf-8', errors='replace')}</font>")
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def refreshStorage(self, bridge : μMilvian):
-    self.table.staleData[bridge.charName] = []
-    for i in range(self.table.rowCount()):
-      if self.table.item(i,P_ITEM_COLUMNS.index("Owner")).text() == bridge.charName:
-        self.table.staleData[bridge.charName].append(self.table.item(i,P_ITEM_COLUMNS.index("Name")))
-    
+  def readInventoryBin(self, bridge : μMilvian):
     def _refreshStorageThread(self : μStorage, bridge : μMilvian):
-      filename = f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin'
+      filename  = f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin'
+      ownerName = bridge.charName
+      freshIds  = set()
+
       while not os.path.exists(filename) or os.path.getsize(filename) < 13:
         time.sleep(0.1)
 
       with open(filename, 'rb') as f:
-        requestId  = struct.unpack('<I', f.read(4))[0]
+        _requestId = struct.unpack('<I', f.read(4))[0]
         nItems     = struct.unpack('<I', f.read(4))[0]
-        itemAvail  = struct.unpack('<I', f.read(4))[0]
+        _avail0    = struct.unpack('<I', f.read(4))[0]
         favail     = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
 
         itemsCount = 0
         while True:
-          itemAvail = struct.unpack('<I', favail[8:12])[0]
-          if itemAvail > itemsCount:
+          if struct.unpack('<I', favail[8:12])[0] > itemsCount:
             item = μItemData()
             try:
               item.readFromBin(f)
             except Exception as e:
-              μPrint.error(f"[cStorage] readFromBin failed at item {itemsCount}/{nItems}:", e)
+              μPrint.error(f"[μStorage] readFromBin failed at item {itemsCount}/{nItems}:", e)
               break
-            itemsCount += 1
+            item._storageType = P_STORAGE_INVENTORY
+            item._ownerName   = ownerName
             item.digest()
+            freshIds.add(item._id)
+            try:
+              conn = χDB.openVaultDB()
+              χDB.upsertVaultItem(conn, item, P_STORAGE_INVENTORY)
+              conn.commit()
+              conn.close()
+            except Exception as e:
+              μPrint.error(f"[μStorage] DB upsert failed:", e)
             self.sigAppendItem.emit(item)
+            itemsCount += 1
           else:
             time.sleep(0.05)
-          if itemsCount>=nItems: break
+          if itemsCount >= nItems: break
+
+      try:
+        conn = χDB.openVaultDB()
+        χDB.purgeStaleVault(conn, P_STORAGE_INVENTORY, ownerName, freshIds)
+        conn.commit()
+        conn.close()
+      except Exception as e:
+        μPrint.error(f"[μStorage] DB purge failed:", e)
+
       self.sigSetStatus.emit(bridge, P_STATUS_IDLE)
-      self.sigPurgeStale.emit(bridge.charName)
+      self.sigPurgeStale.emit(P_STORAGE_INVENTORY, ownerName, freshIds)
 
     self.setStatus(bridge, P_STATUS_BUSY_REFRESH)
     t = threading.Thread(target=_refreshStorageThread, args=(self, bridge), daemon=True)
     t.start()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def purgeStale(self, storageType: int, ownerName: str, freshIds: set):
+    toRemove = []
+    for row in range(self.table.rowCount()):
+      item = self.table.item(row, 0)
+      if item and item._storageType == storageType and item._ownerName == ownerName and item._id not in freshIds:
+        toRemove.append(row)
+    npurged = len(toRemove)
+    for row in reversed(toRemove):
+      col0 = self.table.item(row, 0)
+      if col0:
+        try: del self.table.itemsById[col0._id]
+        except: pass
+      self.table.removeRow(row)
+    if npurged:
+      μPrint.info(f"[μStorage] cleaned {npurged} stale items from {C_ORANGE}{ownerName}</font>")
   
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  F I L T E R   S T U F F
@@ -654,6 +806,9 @@ class μStorage(μToggler):
     checkedAugs   = [q.lower() for q in self.filterAugments.getChecked()]
 
     def _filterItem(item : μItemData):
+      # --- baseline filter (always runs first, mode-dependent)
+      if self.modeFilter(item): return self.table.setRowHidden(row, True)
+
       # --- script filter (runs first)
       if len(scriptText) > 0:
         try:
@@ -662,7 +817,7 @@ class μStorage(μToggler):
             "id"              : item._id               ,
             "name"            : S(item._name.lower())  ,
             "ownerid"         : item._ownerID          ,
-            "owner"           : S(item.owner().lower()),
+            "owner"           : S(item._ownerName.lower()),
             # "container"       : item._container      ,
             "weenieid"        : item._weenieID       ,
             "type"            : S(item._type.lower())  ,
@@ -698,7 +853,7 @@ class μStorage(μToggler):
           if not bool(eval(scriptText, itemContext)):
             return self.table.setRowHidden(row, True)
         except Exception as e:
-          μPrint.error("[cStorage]: error while evaluating filter script:",e)
+          μPrint.error("[μStorage]: error while evaluating filter script:",e)
           return
 
       # --- checkbox filter (runs after script passes)
@@ -729,7 +884,7 @@ class μStorage(μToggler):
 
       qualKey = item._qualifier.lower() if item._qualifier else "<empty>"
       if qualKey not in checkedQuals: return self.table.setRowHidden(row, True)
-      if item.owner().lower()    not in checkedOwners: return self.table.setRowHidden(row, True)
+      if item._ownerName.lower()    not in checkedOwners: return self.table.setRowHidden(row, True)
       if item._type.lower()      not in checkedTypes:  return self.table.setRowHidden(row, True)
 
       self.table.setRowHidden(row, False)
@@ -820,13 +975,13 @@ class μStorage(μToggler):
     except FileNotFoundError:
       pass
     except OSError as e:
-      μPrint.error(f"[cStorage] failed to remove filter file \"{filename}\":", e)
+      μPrint.error(f"[μStorage] failed to remove filter file \"{filename}\":", e)
     self.filterScriptList.takeItem(self.filterScriptList.row(filter))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateDynamicFilters(self, item: μItemData):
-    if item.owner():
-      self.filterOwner.addCheckItem(item.owner())
+    if item._ownerName:
+      self.filterOwner.addCheckItem(item._ownerName)
     if item._type:
       self.filterType.addCheckItem(item._type)
     if item._qualifier:

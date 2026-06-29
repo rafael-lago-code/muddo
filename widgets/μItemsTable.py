@@ -33,8 +33,7 @@ from helpers.μStrings import μString
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-P_ITEM_COLUMNS   = ["Name", "Owner", "Type", "Equips To", "Binding", "👤", "🔒"]
-P_VAULT_COLUMNS  = ["Name", "Owner", "Storage", "Type", "Equips To", "Binding", "👤", "🔒"]
+P_STORAGE_COLUMNS  = ["Name", "Owner", "Storage", "Type", "Equips To", "Binding", "👤", "🔒"]
 P_ITEM_UKNOWN_ICON = None
 P_ICON_CACHE_DIR = os.path.join(P_DEFAULT_CONFIGDIR, ".cache")
 P_STORAGE_NAMES  = {
@@ -232,7 +231,7 @@ class μItemData(QTableWidgetItem):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def owner(self):
-    return self._ownerName.split()[0]
+    return self._ownerName
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def binding(self):
@@ -256,6 +255,7 @@ class μItemData(QTableWidgetItem):
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def readFromBin(self, file : BufferedReader):
+    from helpers.χDB import P_STORAGE_GUILD_GENERAL1
     self._id          = int.from_bytes(file.read(8), byteorder='little', signed=False)
     self._name        = μItemData.readString(file) # f.read(count).decode('utf-8')
     self._ownerID     = int.from_bytes(file.read(8), byteorder='little', signed=False)
@@ -294,6 +294,9 @@ class μItemData(QTableWidgetItem):
       key = file.read(countKey).decode('utf-8')
       countVal = int.from_bytes(file.read(2), byteorder='little', signed=False)
       self._effects[key] = file.read(countVal).decode('utf-8')
+    
+    if self._storageType < P_STORAGE_GUILD_GENERAL1:
+      self._ownerName = self._ownerName.split()[0]
     return self
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -301,10 +304,9 @@ class μItemData(QTableWidgetItem):
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μItemsTable(QTableWidget):
   itemsById = {}
-  staleData = {}
 
   def __init__(self, parent, columns=None):
-    self.columns = columns if columns is not None else P_ITEM_COLUMNS
+    self.columns = columns if columns is not None else P_STORAGE_COLUMNS
     super().__init__(0, len(self.columns), parent)
     self.setColumnWidth(0, 300)
     for i in range(1, len(self.columns)):
@@ -353,8 +355,6 @@ class μItemsTable(QTableWidget):
     if item._id in self.itemsById:
       oldItem = self.itemsById[item._id]
       crow = oldItem.row()
-      try: self.staleData[item.owner()].remove(oldItem)
-      except: pass
     else:
       crow = self.rowCount()
       self.insertRow(crow)
@@ -366,21 +366,6 @@ class μItemsTable(QTableWidget):
     self.setSortingEnabled(True)
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def clearStale(self, charName : str):
-    npurged = 0
-    for item in list(self.staleData[charName]):
-      try: del self.itemsById[item._id]
-      except: pass
-      try:
-        self.removeRow(item.row())
-        npurged += 1
-      except RuntimeError:
-        pass  # item was already replaced/deleted by Qt via setItem in append()
-    self.staleData[charName] = []
-    if (npurged): μPrint.info(f"[cItemsTable] cleaned {npurged} stale items from {C_ORANGE}{charName}</font>")
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clearAll(self):
     self.setRowCount(0)
     self.itemsById = {}
-    self.staleData = {}

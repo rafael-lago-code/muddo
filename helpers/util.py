@@ -25,8 +25,7 @@ from PyQt6.QtGui import QColor, QIcon, QPainter, QPixmap, QImage
 from PyQt6.QtCore import QEvent, QObject, Qt
 from PyQt6 import QtCore
 from http.client import HTTPConnection, HTTPSConnection
-import ssl
-import json
+import ssl, json, yaml
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  D E F A U L T S
@@ -58,6 +57,14 @@ P_CERTFILE = None
 P_CERTCTX = None
 
 P_DEFAULT_BG = QColor(27, 30, 32, 240)
+P_EXTENDED_SETTINGS_FILE = os.path.join(P_DEFAULT_CONFIGDIR, "extendedSettings.yaml")
+
+DB_ITEM_COLS = ["id","storage_type","name","owner_id","owner_name","weenie_id","type",
+                "quantity","qualifier","value_copper","hardness","durability","icon_id",
+                "description","min_level","material","is_junk","is_locked","is_minor_artifact",
+                "is_sellable","set_bonus_1","set_bonus_2","current_slot","binding","equips_to",
+                "augments","effects"]
+
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -79,6 +86,14 @@ else:
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+def loadExtendedSettings() -> dict:
+  try:
+    with open(P_EXTENDED_SETTINGS_FILE, "r") as f:
+      return yaml.safe_load(f) or {}
+  except Exception:
+    return {}
+
+# ──────────────────────────────────────────────────────────────────────────────────────────────────────────  
 def newRQLabel(text :  str):
   lbl = QLabel(text)
   lbl.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight | QtCore.Qt.AlignmentFlag.AlignVCenter)
