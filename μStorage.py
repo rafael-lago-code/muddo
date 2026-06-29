@@ -31,9 +31,9 @@ from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus
 from helpers.μPrint import μPrint
 from helpers.μStrings import *
 from μMilvian import *
-import os, time, struct, mmap
+import os, re, time, struct, mmap
 from helpers import χDB
-from helpers.χDB import P_STORAGE_INVENTORY
+from helpers.χDB import P_STORAGE_INVENTORY, P_STORAGE_INVALID
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMilvianBridge import μMilvianBridge
@@ -64,6 +64,7 @@ class μStorage(μToggler):
     self.table = μItemsTable(self, columns=P_STORAGE_COLUMNS)
     self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
     setBGColour(self.table.viewport(), P_DEFAULT_BG)
+    self.modeFilter = self._inventoryModeFilter
 
     # self.btnLoad        = cOrb(icon=P_ICON_TRIANGLE_DOWN, tooltip="Load storage data from file")
     self.btnRefresh   = μOrbTask("Refresh\nInventory",  icon=getIcon('backpack'), tooltip="Fetch inventory data from running clients and display in the viewer.<br><b>Ctrl+Click</b> to examine items and get more detailed data.")
@@ -90,7 +91,6 @@ class μStorage(μToggler):
     self.lblExplanation = QLabel("Some explanation")
 
     self.itemFilter = μItemFilter(self, self.table, lambda: self.modeFilter)
-
 
     self.btnRefresh.execute = lambda : self.refreshInventory(False)
     self.btnRefresh.executeCtrl = lambda : self.refreshInventory(True)
@@ -228,6 +228,7 @@ class μStorage(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setVaultMode(self):
+    if self.vaultMode: return
     self.vaultMode = True
     self.modeFilter = lambda x : False
     self.itemFilter.setVaultMode(True)
@@ -242,7 +243,8 @@ class μStorage(μToggler):
     self.lblExplanation.setVisible(True)
     self.btnToggleRecord.setVisible(True)
     self.btnToggleVault.setChecked(True)
-    self.table.customContextMenuRequested.disconnect()
+    try: self.table.customContextMenuRequested.disconnect()
+    except: pass
     self.loadDBData()
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -256,6 +258,7 @@ class μStorage(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setInventoryMode(self):
+    if not self.vaultMode: return
     self.vaultMode = False
     self.modeFilter = self._inventoryModeFilter
     self.itemFilter.setVaultMode(False)
@@ -368,6 +371,7 @@ class μStorage(μToggler):
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestStartRecord(self):
+    if self.recordRunning: return
     bridges = μMilvianMeta.getBridges()
     if not bridges: return
     self.recordRunning = True
@@ -384,6 +388,7 @@ class μStorage(μToggler):
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   def requestStopRecord(self):
+    if not self.recordRunning: return
     bridges = μMilvianMeta.getBridges()
     if not bridges: return
     self.recordRunning = False
@@ -398,14 +403,17 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      storageType = struct.unpack('<I', packet.outData[:4])[0]
-      msg         = packet.outData[4:].decode('utf-8', errors='replace')
-      if storageType: μPrint.info(f"[μStorage] Vault parsing {P_STORAGE_NAMES.get(storageType, storageType)}[{C_SILVER}{packet.bridge.charName}</font>] {msg}")
+      msg = packet.outData.decode('utf-8', errors='replace')
+      μPrint.info(f"[μStorage] Vault watching for {C_SILVER}{packet.bridge.charName}</font>: {msg}")
       packet.χigResponse.disconnect()
     else:
-      msg = packet.outData.decode('utf-8', errors='replace')
-      if msg=="watching started": return
-      μPrint.info(f"[μStorage] {C_SILVER}{packet.outData.decode('utf-8', errors='replace')}</font>")
+      storageType = struct.unpack('<I', packet.outData[:4])[0]
+      msg         = packet.outData[4:].decode('utf-8', errors='replace')
+      if storageType==P_STORAGE_INVALID:
+        pass
+      else:
+        msg = re.sub(r'\[([A-Za-z0-9]+)\]', f'[{C_SILVER}\\1:{packet.bridge.charName}</font>]', msg, count=1)
+        μPrint.info(f"[μStorage] {msg}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _readVaultThread(self, bridge):
