@@ -51,6 +51,7 @@ class μStorage(μToggler):
   sigPurgeStale  = pyqtSignal(int, str, set)  # (storageType, ownerName, freshIds)
   sigSetStatus = pyqtSignal(object,int)
   vaultMode = False
+  recordRunning = False
   widgetID = "StorageManager"
   daemon : μMilvianBridge = None
   status : dict = {}
@@ -87,8 +88,6 @@ class μStorage(μToggler):
     self.btnToggleVault.setCheckable(True)
     self.btnToggleRecord.setCheckable(True)
     self.lblExplanation = QLabel("Some explanation")
-    self._pendingThreads = 0
-    self._pendingLock    = threading.Lock()
 
     self.itemFilter = μItemFilter(self, self.table, lambda: self.modeFilter)
 
@@ -363,41 +362,53 @@ class μStorage(μToggler):
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E C O R D   V A U L T
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  def toggleRecord(self, checked: bool):
+  def toggleRecord(self):
+    if self.recordRunning: self.requestStopRecord()
+    else: self.requestStartRecord()
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  def requestStartRecord(self):
     bridges = μMilvianMeta.getBridges()
-    if not bridges:
-      μPrint.warning("[μStorage] No active bridges")
-      self.btnToggleRecord.setChecked(False)
-      return
-    inData = struct.pack('<I', 1 if checked else 0)
-    if checked:
-      with self._pendingLock:
-        self._pendingThreads = len(bridges)
+    if not bridges: return
+    self.recordRunning = True
+    self.btnToggleRecord.setChecked(True)
     for bridge in bridges.values():
-      p = μMilvianPacket(packetCommand.queryvault, bridge, inData)
+      p = μMilvianPacket(packetCommand.queryvault, bridge, struct.pack('<I', 1))
       p.χigResponse.connect(lambda data, p=p: self._vaultStatusUpdate(p, data))
       bridge.send(p)
-      if checked:
-        pathFile = f"/dev/shm/milvian/{bridge.charName.lower()}/vault.bin"
-        try: os.remove(pathFile)
-        except: pass
-        μPrint.info(f"[μStorage] Vault recording started for {bridge.charName} — interact with a bank in-game")
-        threading.Thread(target=self._readVaultThread, args=(bridge, p), daemon=True).start()
-      else:
-        μPrint.info(f"[μStorage] Vault recording stopped for {bridge.charName}")
+      pathFile = f"/dev/shm/milvian/{bridge.charName.lower()}/vault.bin"
+      try: os.remove(pathFile)
+      except: pass
+      μPrint.info(f"[μStorage] Vault recording started for {C_SILVER}{bridge.charName}</font> — interact with a bank in-game")
+      threading.Thread(target=self._readVaultThread, args=(bridge,), daemon=True).start()
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  def requestStopRecord(self):
+    bridges = μMilvianMeta.getBridges()
+    if not bridges: return
+    self.recordRunning = False
+    self.btnToggleRecord.setChecked(False)
+    for bridge in bridges.values():
+      p = μMilvianPacket(packetCommand.queryvault, bridge, struct.pack('<I', 0))
+      bridge.send(p)
+      μPrint.info(f"[μStorage] Vault recording finished for {C_SILVER}{bridge.charName}</font>")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _vaultStatusUpdate(self, packet: μMilvianPacket, rawData: bytes):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[μStorage] Vault recording done for {C_SILVER}{packet.bridge.charName}</font>")
+      storageType = struct.unpack('<I', packet.outData[:4])[0]
+      msg         = packet.outData[4:].decode('utf-8', errors='replace')
+      if storageType: μPrint.info(f"[μStorage] Vault parsing {P_STORAGE_NAMES.get(storageType, storageType)}[{C_SILVER}{packet.bridge.charName}</font>] {msg}")
       packet.χigResponse.disconnect()
     else:
-      μPrint.info(f"[μStorage] {C_ORANGE}{packet.outData.decode('utf-8', errors='replace')}</font>")
+      msg = packet.outData.decode('utf-8', errors='replace')
+      if msg=="watching started": return
+      μPrint.info(f"[μStorage] {C_SILVER}{packet.outData.decode('utf-8', errors='replace')}</font>")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def _readVaultThread(self, bridge, packet: μMilvianPacket):
+  def _readVaultThread(self, bridge):
     charName = bridge.charName.lower()
     pathFile = f"/dev/shm/milvian/{charName}/vault.bin"
 
@@ -472,12 +483,6 @@ class μStorage(μToggler):
       conn.close()
     except Exception as e:
       μPrint.error("[μStorage] _readVaultThread DB purge failed:", e)
-
-    μPrint.info(f"[μStorage] Vault snapshot complete for {bridge.charName}")
-    with self._pendingLock:
-      self._pendingThreads -= 1
-      if self._pendingThreads <= 0:
-        self.btnToggleRecord.setChecked(False)
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   U S E
@@ -694,7 +699,7 @@ class μStorage(μToggler):
       p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
       p.χigResponse.connect(lambda data, p=p: self.inventoryStatusUpdate(p, data))
       bridge.send(p)
-      μPrint.info(f"[μStorage] Inventory refresh requested for {C_ORANGE}{bridge.charName}</font>")
+      μPrint.info(f"[μStorage] Inventory refresh requested for {C_SILVER}{bridge.charName}</font>")
       self.readInventoryBin(bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -705,7 +710,7 @@ class μStorage(μToggler):
       μPrint.info(f"[μStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
     else:
-      μPrint.info(f"[μStorage] {C_ORANGE}{packet.outData.decode('utf-8', errors='replace')}</font>")
+      μPrint.info(f"[μStorage] {C_SILVER}{packet.outData.decode('utf-8', errors='replace')}</font>")
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -780,5 +785,5 @@ class μStorage(μToggler):
         except: pass
       self.table.removeRow(row)
     if npurged:
-      μPrint.info(f"[μStorage] cleaned {npurged} stale items from {C_ORANGE}{ownerName}</font>")
+      μPrint.info(f"[μStorage] cleaned {C_ORANGE}{npurged}</font> stale items from {C_SILVER}{ownerName}</font>")
   
