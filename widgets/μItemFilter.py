@@ -184,6 +184,13 @@ class μItemFilter(QWidget):
     self.storage.setEnabled(enabled)
     self.accountSet.setEnabled(enabled)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setOwnerFilter(self, allowed: set | None):
+    model = self.owner.rowModel
+    for i in range(2, model.rowCount()):  # 2 = _AC_ITEMS_START
+      hidden = allowed is not None and model.item(i).text() not in allowed
+      self.owner.view().setRowHidden(i, hidden)
+
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  F I L T E R
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

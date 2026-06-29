@@ -19,9 +19,10 @@
 #
 from __future__ import annotations
 import threading
-from PyQt6.QtWidgets import QMenu
+from PyQt6.QtWidgets import QMenu, QSizePolicy, QStackedWidget
 from PyQt6.QtGui import QAction, QCursor, QShortcut, QKeySequence
 from PyQt6.QtCore import Qt, pyqtSignal
+from widgets.μGrid import μGridFrame, μGridLayout
 from widgets.μOrb import μOrb, μOrbSmall, μOrbTask
 from helpers.μImageFactory import *
 from widgets.μFloating import μToggler
@@ -30,6 +31,7 @@ from widgets.μItemFilter import μItemFilter
 from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus, packetSignal
 from helpers.μPrint import μPrint
 from helpers.μStrings import *
+from widgets.μText import μDisplayLabel
 from μMilvian import *
 import os, re, time, struct, mmap
 from helpers import χDB
@@ -84,11 +86,14 @@ class μStorage(μToggler):
                              tooltip="<b><i>Not Implemented Yet</b></i><br>Feeds selected items into a sentient jewel. You must manually open the jewel UI.")
     self.btnToggleVault = μOrb("Vault\nMode", icon=getIcon('vault'),
                              tooltip="Toggles between inventory (managing current inventory) and vault mode (tracking banks and guild chests).")
-    self.btnToggleRecord = μOrbTask("Record\nVault", icon=getIcon('camera'),
+    self.btnToggleRecord = μOrb("Record\nVault", icon=getIcon('camera'),
                              tooltip="Toggles data collection on/off")
     self.btnToggleVault.setCheckable(True)
     self.btnToggleRecord.setCheckable(True)
-    self.lblExplanation = QLabel("Some explanation")
+    self.lblExplanation = μDisplayLabel("Bank and Guild Chests are only tracked while \"Record Vault\" is toggled on. While recording, interact with a bank or chest (open or add/remove an item) to register the change. The logs shows if it worked. It only tracks one interaction each 10s for the same bank/chest, to avoid spamming the backend.")
+    self.lblExplanation.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    self.lblExplanation.setWordWrap(True)
+    # self.lblExplanation.setStyleSheet("background-color: Black;")
 
     self.itemFilter = μItemFilter(self, self.table, lambda: self.modeFilter)
 
@@ -128,9 +133,15 @@ class μStorage(μToggler):
     self.sigSetStatus.connect(self.setStatus)
     allSplitters = newVSplitter([self.table, self.itemFilter])
     allSplitters.setSizes([800, 100])
-   
-    self.setLayout(newVLayout([allSplitters, newHLayout([self.btnRefresh, self.btnToggleRecord, self.lblExplanation, self.btnUse, self.btnStore, self.btnSell,
-                                                         self.btnDissolve, self.btnTrade, self.btnSort, self.btnFeedJewel, self.btnToggleVault])]))
+
+    self.inventoryModeButtons = μGridFrame()
+    self.inventoryModeButtons.appendRow(self.btnUse, self.btnStore, self.btnSell, self.btnDissolve, self.btnTrade, self.btnSort, self.btnFeedJewel)
+    self.vaultModeButtons = μGridFrame()
+    self.vaultModeButtons.appendRow(" ", self.btnToggleRecord, " ", " ", self.lblExplanation, " ", " ")
+    self.vaultModeButtons.setVisible(False)
+    self.btnToggleRecord.setVisible(False)
+    
+    self.setLayout(vLayout(allSplitters, hLayout(self.btnRefresh, self.inventoryModeButtons, self.vaultModeButtons, self.btnToggleVault)))
     self.setInventoryMode()
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -213,6 +224,7 @@ class μStorage(μToggler):
     super().initialize()
     self.daemon = daemon
     self.itemFilter.initialize()
+    self.itemFilter.setOwnerFilter({b.charName for b in μMilvianMeta.getBridges().values()})
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def toggleVaultMode(self):
@@ -231,16 +243,12 @@ class μStorage(μToggler):
     if self.vaultMode: return
     self.vaultMode = True
     self.modeFilter = lambda x : False
+    self.vaultModeButtons.setVisible(True)
+    self.inventoryModeButtons.setVisible(False)
     self.itemFilter.setVaultMode(True)
+    self.itemFilter.setOwnerFilter(None)
     self.itemFilter.applyFilters()
-    self.btnDissolve.setVisible(False)
-    self.btnFeedJewel.setVisible(False)
-    self.btnSell.setVisible(False)
-    self.btnSort.setVisible(False)
-    self.btnStore.setVisible(False)
-    self.btnTrade.setVisible(False)
     self.btnUse.setVisible(False)
-    self.lblExplanation.setVisible(True)
     self.btnToggleRecord.setVisible(True)
     self.btnToggleVault.setChecked(True)
     try: self.table.customContextMenuRequested.disconnect()
@@ -248,30 +256,22 @@ class μStorage(μToggler):
     self.loadDBData()
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def show(self):
-    super().show()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def hide(self):
     super().hide()
-    # if it is recording, stop
+    self.requestStopRecord() # harmless if not recording
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setInventoryMode(self):
     if not self.vaultMode: return
     self.vaultMode = False
+    self.vaultModeButtons.setVisible(False)
+    self.inventoryModeButtons.setVisible(True)
     self.modeFilter = self._inventoryModeFilter
     self.itemFilter.setVaultMode(False)
+    self.itemFilter.setOwnerFilter({b.charName for b in μMilvianMeta.getBridges().values()})
     self.itemFilter.applyFilters()
-    # if is recording, stop recording
-    self.btnDissolve.setVisible(True)
-    self.btnFeedJewel.setVisible(True)
-    self.btnSell.setVisible(True)
-    self.btnSort.setVisible(True)
-    self.btnTrade.setVisible(True)
-    self.btnStore.setVisible(True)
+    self.requestStopRecord() # harmless if not recording
     self.btnUse.setVisible(True)
-    self.lblExplanation.setVisible(False)
     self.btnToggleRecord.setVisible(False)
     self.btnToggleVault.setChecked(False)
     self.table.customContextMenuRequested.connect(self._showTableContextMenu)
@@ -718,7 +718,9 @@ class μStorage(μToggler):
       μPrint.info(f"[μStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
     else:
-      μPrint.info(f"[μStorage] {C_SILVER}{packet.outData.decode('utf-8', errors='replace')}</font>")
+      msg = packet.outData.decode('utf-8', errors='replace')
+      msg = re.sub(r'\[([A-Za-z0-9]+)\]', f'[{C_SILVER}\\1:{packet.bridge.charName}</font>]', msg, count=1)
+      μPrint.info(f"[μStorage] {msg}")
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

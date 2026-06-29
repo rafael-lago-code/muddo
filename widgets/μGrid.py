@@ -225,3 +225,17 @@ class μGridLayout(QGridLayout):
     tmp = QLabel(text)
     if self.customFont: tmp.setFont(self.customFont)
     return tmp
+  
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  G R I D   F R A M E
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class μGridFrame(QFrame):
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def __init__(self, customFont = None):
+    super().__init__()
+    self._grid = μGridLayout(customFont)
+    self.setLayout(self._grid)
+
+  def appendRow(self, *args):
+    self._grid.appendRow(list(args))
