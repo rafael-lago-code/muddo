@@ -68,6 +68,17 @@ def resolveOwnerName(ownerName: str) -> str:
   return ownerName
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────────
+def getAccountCharacters(server: str) -> dict[str, set[str]]:
+  settings = loadExtendedSettings()
+  server_data = settings.get(server, {})
+  result = {}
+  for key, val in server_data.items():
+    if isinstance(key, str) and isinstance(val, dict) and "knownMembers" in val:
+      members = {m.strip().lower() for m in str(val["knownMembers"]).split(",") if m.strip()}
+      result[key.lower()] = members
+  return result
+
+# ─────────────────────────────────────────────────────────────────────────────────────────────────
 def getVaultDBPath() -> str:
   from μWorlds import μWorldList
   try:

@@ -365,9 +365,9 @@ class μMilvian():
     if id in self.knownPackets:
       status = packetStatus(rawData[4:8])
       packet = self.knownPackets[id]
+      packet.χigResponse.emit(rawData)
       if status in (packetStatus.success, packetStatus.error):
         self.knownPackets.pop(id)
-      packet.χigResponse.emit(rawData)
       return
 
     packet = μMilvianPacket(packetCommand.unrequested, self)

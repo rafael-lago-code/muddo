@@ -152,6 +152,14 @@ if __name__ == '__main__':
         selection-background-color: #541308;
         selection-color: white;
     }
+    QLineEdit {
+        border: 1px solid #3a0a0a;
+        background-color: transparent;
+    }
+    QLineEdit:focus {
+        border: 1px solid transparent;
+        background-color: #3a0a0a;
+    }
   """)
   window = μMainWindow()
   window.initialize()

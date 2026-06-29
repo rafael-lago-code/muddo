@@ -18,7 +18,7 @@
 #
 #
 from __future__ import annotations
-from PyQt6.QtWidgets import QComboBox, QStyle, QStyleOptionComboBox, QStylePainter, QStyledItemDelegate
+from PyQt6.QtWidgets import QComboBox, QLineEdit, QStyle, QStyleOptionComboBox, QStylePainter, QStyledItemDelegate
 from PyQt6.QtCore import QModelIndex, QRect, QSize, Qt, pyqtSignal
 from PyQt6.QtGui import QIcon, QStandardItem, QStandardItemModel
 from helpers.util import *
@@ -203,6 +203,115 @@ class μCheckCombo(μCombo):
     prefix  = f"{self.title}: " if self.title is not None else ""
     checked = self.getChecked()
     nitems  = self.rowModel.rowCount() - 1
+    if nitems == 0 or len(checked) == nitems:
+      text = f"{prefix}All"
+    elif len(checked) == 1:
+      text = f"{prefix}{checked[0]}"
+    elif len(checked) == 0:
+      text = f"{prefix}None"
+    else:
+      text = f"{prefix}{len(checked)}/{nitems}"
+    self.rowModel.item(0).setText(text)
+    self.setCurrentIndex(0)
+
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#
+#   ❖  μ A D V A N C E D   C O M B O
+#
+#     μCheckCombo with a filter QLineEdit that appears once item count reaches minShowFilter (default 10)
+#     Meant for comboboxes which can have hilariously long number of items.
+#
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+_AC_FILTER_ROW = 1
+_AC_ITEMS_START = 2
+
+class μAdvancedCombo(μCheckCombo):
+  def __init__(self, title: str = None, minShowFilter: int = 10):
+    super().__init__(title)
+    self._minShowFilter = minShowFilter
+
+    filterItem = QStandardItem("")
+    filterItem.setFlags(Qt.ItemFlag.NoItemFlags)
+    self.rowModel.itemChanged.disconnect(self.onItemChanged)
+    self.rowModel.insertRow(_AC_FILTER_ROW, filterItem)
+    self.rowModel.itemChanged.connect(self.onItemChanged)
+
+    self._filterEdit = QLineEdit()
+    self._filterEdit.setPlaceholderText("🔍 filter...")
+    self._filterEdit.setClearButtonEnabled(True)
+    self.view().setIndexWidget(self.rowModel.index(_AC_FILTER_ROW, 0), self._filterEdit)
+    self._filterEdit.textChanged.connect(self._applySearch)
+    self.view().setRowHidden(_AC_FILTER_ROW, True)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def _applySearch(self, text: str):
+    text = text.lower()
+    for i in range(_AC_ITEMS_START, self.rowModel.rowCount()):
+      item = self.rowModel.item(i)
+      self.view().setRowHidden(i, bool(text) and text not in item.text().lower())
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def hidePopup(self):
+    self._filterEdit.clear()
+    super().hidePopup()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def onPressed(self, index: QModelIndex):
+    if index.row() == _AC_FILTER_ROW:
+      return
+    if index.row() == 0:
+      self.blockHide = True
+      new_state = not self.areAllChecked()
+      for i in range(_AC_ITEMS_START, self.rowModel.rowCount()):
+        self.rowModel.item(i).setData(new_state, Qt.ItemDataRole.UserRole)
+      self.refreshHeader()
+      self.changed.emit()
+      return
+    self.blockHide = True
+    item = self.rowModel.itemFromIndex(index)
+    item.setData(not item.data(Qt.ItemDataRole.UserRole), Qt.ItemDataRole.UserRole)
+    self.refreshHeader()
+    self.changed.emit()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def addCheckItem(self, text: str, checked: bool = True, icon: QIcon = None):
+    for i in range(_AC_ITEMS_START, self.rowModel.rowCount()):
+      if self.rowModel.item(i).text() == text:
+        return
+    row = QStandardItem(text)
+    row.setData(checked, Qt.ItemDataRole.UserRole)
+    if icon and not icon.isNull():
+      row.setIcon(icon)
+
+    insertPos = self.rowModel.rowCount()
+    self.rowModel.itemChanged.disconnect(self.onItemChanged)
+    for i in range(_AC_ITEMS_START, self.rowModel.rowCount()):
+      if text.lower() < self.rowModel.item(i).text().lower():
+        insertPos = i
+        break
+    self.rowModel.insertRow(insertPos, row)
+    nitems = self.rowModel.rowCount() - _AC_ITEMS_START
+    self.view().setRowHidden(_AC_FILTER_ROW, nitems < self._minShowFilter)
+    self.refreshHeader()
+    self.rowModel.itemChanged.connect(self.onItemChanged)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def getChecked(self) -> list:
+    return [self.rowModel.item(i).text()
+            for i in range(_AC_ITEMS_START, self.rowModel.rowCount())
+            if self.rowModel.item(i).data(Qt.ItemDataRole.UserRole)]
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def areAllChecked(self) -> bool:
+    total = self.rowModel.rowCount() - _AC_ITEMS_START
+    return total == 0 or len(self.getChecked()) == total
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def refreshHeader(self):
+    prefix  = f"{self.title}: " if self.title is not None else ""
+    checked = self.getChecked()
+    nitems  = self.rowModel.rowCount() - _AC_ITEMS_START
     if nitems == 0 or len(checked) == nitems:
       text = f"{prefix}All"
     elif len(checked) == 1:

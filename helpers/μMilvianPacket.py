@@ -143,13 +143,13 @@ class cPacker():
 #   ❖  M I L V I A N   P A C K E T 
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μMilvianPacket():
-  command : packetCommand = packetCommand.none
-  status  : packetStatus  = packetStatus.unknown
-  id      = b''
-  inData = None
+  command   : packetCommand = packetCommand.none
+  status    : packetStatus  = packetStatus.unknown
+  id        = b''
+  inData    = None
   outMessage = None
-  outData = None
-  bridge = None
+  outData   = None
+  bridge    = None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self, command : packetCommand, bridge : μMilvian, inData = None):
