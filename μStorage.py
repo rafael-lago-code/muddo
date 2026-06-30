@@ -52,7 +52,7 @@ class μStorage(μToggler):
   sigAppendItem  = pyqtSignal(μItemData)
   sigPurgeStale  = pyqtSignal(int, str, set)  # (storageType, ownerName, freshIds)
   sigSetStatus = pyqtSignal(object,int)
-  vaultMode = False
+  vaultMode = None
   recordRunning = False
   widgetID = "StorageManager"
   daemon : μMilvianBridge = None
@@ -138,11 +138,9 @@ class μStorage(μToggler):
     self.inventoryModeButtons.appendRow(self.btnUse, self.btnStore, self.btnSell, self.btnDissolve, self.btnTrade, self.btnSort, self.btnFeedJewel)
     self.vaultModeButtons = μGridFrame()
     self.vaultModeButtons.appendRow(" ", self.btnToggleRecord, " ", " ", self.lblExplanation, " ", " ")
-    self.vaultModeButtons.setVisible(False)
-    self.btnToggleRecord.setVisible(False)
+    self.setInventoryMode()
     
     self.setLayout(vLayout(allSplitters, hLayout(self.btnRefresh, self.inventoryModeButtons, self.vaultModeButtons, self.btnToggleVault)))
-    self.setInventoryMode()
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setStatus(self, bridge, newStatus):
@@ -225,6 +223,7 @@ class μStorage(μToggler):
     self.daemon = daemon
     self.itemFilter.initialize()
     self.itemFilter.setOwnerFilter({b.charName for b in μMilvianMeta.getBridges().values()})
+    self.setInventoryMode()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def toggleVaultMode(self):
@@ -240,7 +239,6 @@ class μStorage(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setVaultMode(self):
-    if self.vaultMode: return
     self.vaultMode = True
     self.modeFilter = lambda x : False
     self.vaultModeButtons.setVisible(True)
@@ -262,7 +260,6 @@ class μStorage(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setInventoryMode(self):
-    if not self.vaultMode: return
     self.vaultMode = False
     self.vaultModeButtons.setVisible(False)
     self.inventoryModeButtons.setVisible(True)

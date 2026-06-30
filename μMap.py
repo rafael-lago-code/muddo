@@ -673,7 +673,7 @@ class μMap(μToggler):
       pix = QPixmap.fromImage(QImage(path))
       if pix.isNull():
         μPrint.error(f'[μMap] Failed to load {path}')
-        μMap.setWindowTitle(f"Map - Unknown")
+        self.setWindowTitle(f"Map - Unknown")
         self.lblAreaId.setText("")
         self.parser.mapId = -1
         return

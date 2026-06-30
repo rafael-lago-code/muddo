@@ -284,7 +284,8 @@ class μMilvian():
     data = packet.outData
     pos  = 0
     name_len       = struct.unpack_from('<H', data, pos)[0]; pos += 2
-    self.charName  = data[pos:pos+name_len].decode('utf-8', errors='replace').split()[0]; pos += name_len
+    parts = data[pos:pos+name_len].decode('utf-8', errors='replace').split(); pos += name_len
+    self.charName = parts[0] if parts else ""
     self.charId    = struct.unpack_from('<Q', data, pos)[0] if len(data) >= pos + 8 else 0
 
     if self.charName.lower() != charNameFromPath:
