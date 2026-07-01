@@ -111,6 +111,12 @@ P_ENTITY_PINS: dict[int, str] = {
   451: "challenge_grey",
   452: "challenge_red",
   # ─────────────────────────────────────────────────
+  # 500-999: reserved for static pins
+  #    Logic is:
+  #      - entity pins are 100-500 - top layer
+  #      - static pins are 500-999 - middle layer
+  #      - dungeon entity pins     - bottom layer
+  # ─────────────────────────────────────────────────
   # Block - Dungeon Stuff
   # TODO move "chest" to static and shift all indices
   1000: "chest",
@@ -121,6 +127,7 @@ P_ENTITY_PINS: dict[int, str] = {
   1025: "token_npc",
   1030: "dimension_door",
   1035: "mysterious_remnants",
+  1036: "mysterious_remnants_taken",
   1040: "lostsoul",
   1050: "usable",
   1051: "control_panel",
@@ -128,7 +135,8 @@ P_ENTITY_PINS: dict[int, str] = {
   1053: "coins",
   1054: "item_dropped",
   1060: "trap",
-  1061: "secret",
+  1061: "trap_disabled",
+  1062: "secret",
   1070: "ladder",
   1071: "door_grey",
   1075: "collectible_taken",
@@ -652,11 +660,6 @@ class μMap(μToggler):
       for pin in self.staticPins.values(): pin.setOpacity(val)
     if entity:
       for pin in self.entityPins.values(): pin.setOpacity(val)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def reset(self):
-
-    self.refresh()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def refresh(self):

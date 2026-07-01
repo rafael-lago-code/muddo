@@ -28,6 +28,7 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - batch-dissolving, selling (mark as junk), storing or using of selected items
     - repair-all, sell gems also enabled
     - advanced filtering in the local UI
+    - records banks, inventory and guild storages in a database for local searches
  - [Strategy](docs/Strategy.md) management via Milvian
     - basic follow (analogous to Dungeon Helper's AAF)
     - follows jump, swim, direction (but not camera pitch), target selection and ladder behaviour
@@ -41,8 +42,8 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - shows usual map pins, plus entities (monsters, breakeables, etc)
     - shows many extra icons (soul binders, lost souls, useables, sockets)
     - natural mouse gestures (ctrl+scroll to zoom) and smooth lightweight controls
-    - allow for selecting game targets directly from the map
-    - allow for searching game targets by their name
+    - select game entities directly from the map
+    - search game targets by their name
 
 ## TODO
   - Macros Daemon

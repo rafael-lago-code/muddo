@@ -20,6 +20,7 @@
 from __future__ import annotations
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QAction
+from PyQt6.QtCore import QTimer
 from μProcess import aProcessItem
 from μToolbar import μToolbar, μToolbarItem
 from widgets.μOrb import μOrb
@@ -52,15 +53,17 @@ class μMilvianBridge(aProcessItem):
                            tooltip="Toggle on/off all shortcuts from all active sets" \
                            "<br><b>Ctrl+Click</b> to purge all shortcuts and restart daemon<br><b><i>Right-click for more options</i></b>")
     self.orb.setCheckable(True)
-    self.menuActionToggle   = self.orb.menu.addAction("Launch Bridges")
-    self.menuActionRestart  = self.orb.menu.addAction("Restart Bridges")
-    self.menuActionKill     = self.orb.menu.addAction("Kill Bridges")
-    self.menuActionPurge    = self.orb.menu.addAction("Purge defunct bridges")
+    self.menuActionToggle     = self.orb.menu.addAction("Launch Bridges")
+    self.menuActionRestart    = self.orb.menu.addAction("Restart Bridges")
+    self.menuActionHardReset  = self.orb.menu.addAction("Hard Reset Bridges")
+    self.menuActionKill       = self.orb.menu.addAction("Kill Bridges")
+    self.menuActionPurge      = self.orb.menu.addAction("Purge defunct bridges")
     self.menuActionConf     = self.orb.menu.addAction("Show/Hide setting UI")
     self.orb.clicked.connect(μMilvianBridge.toggle)
     self.orb.ctrlClicked.connect(lambda: μMilvianBridge.restart(purge=True))
     self.menuActionToggle.triggered.connect(μMilvianBridge.toggle)
     self.menuActionRestart.triggered.connect(μMilvianBridge.restart)
+    self.menuActionHardReset.triggered.connect(μMilvianBridge.hardReset)
     self.menuActionKill.triggered.connect(lambda: μMilvianBridge.terminate(force=True))
     self.menuActionConf.triggered.connect(lambda: main.macros.toggle())
     self.menuActionPurge.triggered.connect(lambda: μMilvian.scanBridges(purgeUnknown=True))
@@ -110,6 +113,22 @@ class μMilvianBridge(aProcessItem):
   def restart(cls, force=False, purge=False):
     cls.terminate(force or purge)
     cls.launch()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def hardReset(cls):
+    import shutil
+    μMilvianMeta.closeBridges()
+    μToolbar.clearItems()
+    if cls._widget: cls._widget.setStatus(aProcessItem.P_STATUS_KILLED)
+    cls.process = None
+    shmPath = μMilvian.bridgePath
+    μPrint.info(f"[μMilvianBridge] hard reset: nuking {shmPath!r}...")
+    try:
+      shutil.rmtree(shmPath)
+    except Exception as e:
+      μPrint.warning(f"[μMilvianBridge] rmtree failed: {e}")
+    QTimer.singleShot(1000, cls.launch)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
