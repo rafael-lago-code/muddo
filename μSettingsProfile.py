@@ -234,7 +234,8 @@ class dPlugins(dSection):
 #   ❖  S E C T I O N   -   M A P
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class dMap(dSection):
-  name = "map"
+  name      = "map"
+  _raw_keys = {'uiDetailsVisible', 'uiMapOpacity', 'uiPlayerOpacity', 'uiStaticOpacity', 'uiEntityOpacity'}
   def __init__(self, state):
     self._iconSize = QSpinBox()
     self._iconShadow = QLineEdit("")

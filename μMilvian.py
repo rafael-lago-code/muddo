@@ -70,6 +70,8 @@ def parseCommand(cmd: str, bridge) -> μMilvianPacket:
   if cmd == 'chat(*)': return μMilvianPacket(packetCommand.chat, bridge, cPacker.pack(cmd[5:-1]))
   if cmd == 'strategy(*)': return _parseStrategy(cmd, bridge)
   if cmd == 'debug(*)':    return μMilvianPacket(packetCommand.debug, bridge, cPacker.pack(cmd[6:-1]))
+  if cmd == 'setattackmode(*)':  return μMilvianPacket(packetCommand.setAttackMode, bridge, struct.pack('<I', int(cmd[14:-1])))
+  if cmd == 'engagetarget(*)':   return _parseEngageTarget(cmd, bridge)
   if cmd == 'ordered(*)':  return _parseOrdered(cmd, bridge)
   if cmd == 'confirmdialog(*)':
     args     = cmd[14:-1].split(',', 1)
@@ -124,7 +126,7 @@ def _parseOrdered(cmd: str, bridge) -> μMilvianPacket:
 #    strategy(directives=blabla, flag1, flag2, flag3)
 #      → filename=/home/.../strategy/blabla.strategy  args="flag1, flag2, flag3"
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPacket:
+def _parseStrategy(cmd, bridge) -> μMilvianPacket:
   from μStrategy import μStrategy
   if isinstance(cmd, str):
     idx = cmd.index('(')
@@ -153,9 +155,50 @@ def _parseStrategy(cmd, bridge, command=packetCommand.strategy) -> μMilvianPack
   args = ', '.join(f'{k.strip()}={str(v).strip()}' if (v is not True and v is not None) else k.strip() for k, v in content.items())
   inData  = cPacker.packString(directives)
   inData += cPacker.packString(args)
-  packet = μMilvianPacket(command, bridge, inData)
+  packet = μMilvianPacket(packetCommand.strategy, bridge, inData)
   char_name = bridge.charName
   packet.χigResponse.connect(lambda _=None, n=char_name: μStrategy.refreshFromStatus(n))
+  return packet
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   ❖  P A R S E   E N G A G E   T A R G E T
+#       Syntax:
+#           engage(id=uint64, current, near|next|prev , closeIn, timeout=int)
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+def _parseEngageTarget(cmd, bridge) -> μMilvianPacket:
+  if isinstance(cmd, str):
+    idx = cmd.index('(')
+    content = μString.dictionary(cmd[idx+1:-1].strip())
+  else:
+    pass # assume it is a dict already
+
+  targetId = 0
+  timeout = 0
+  if "timeout" in content.keys(): timeout = int(content['timeout'])
+  if "id" in content.keys():
+    targetId = int(content['id'])
+  else:
+    if "prev" in content.keys():    targetId = 6
+    if "next" in content.keys():    targetId = 5
+    if "near" in content.keys():    targetId = 4
+    if "current" in content.keys(): targetId -= 3
+    targetId = max(0,targetId)
+  closeIn = "closein" in content.keys()
+
+  inData  = struct.pack('<Q', targetId)
+  inData += struct.pack('<I', timeout)
+  inData += struct.pack('<?', closeIn)
+  if "actions" in content.keys():
+    content['actions'] = "sleep(0.1)," + content['actions'] # always prepend a short sleep to give engageTarget
+                                                           # time to face the target
+                                                           # add more sleep if needs to close in first
+    print(f" ACTIONS = {content['actions']}")
+    actionsPacket = parseList(bridge, content['actions'])
+    inData += actionsPacket.inData
+  else:
+    inData += struct.pack('<I', 0)  # no actions
+
+  packet = μMilvianPacket(packetCommand.engageTarget, bridge, inData)
   return packet
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -403,6 +446,9 @@ class μMilvian():
 
   def chat(self, text: str) -> μMilvianPacket:
     return self.send(μMilvianPacket(packetCommand.chat, self, cPacker.pack(text)))
+
+  def setAttackMode(self, mode: int) -> μMilvianPacket:
+    return self.send(μMilvianPacket(packetCommand.setAttackMode, self, struct.pack('<I', mode)))
   
   def strategy(self, data: dict) -> μMilvianPacket:
     return self.send(_parseStrategy(data, self))

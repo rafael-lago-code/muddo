@@ -64,6 +64,11 @@ class μYAML:
     if not isinstance(d, dict) or keys[0] not in d:
       return default
     return d[keys[0]] if len(keys) == 1 else μYAML._get_recursive(d[keys[0]], keys[1:], default)
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def parseText(text):
+    return yaml.safe_load(text) or {}
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def set(self, path: str, value):

@@ -222,7 +222,6 @@ class μStorage(μToggler):
     super().initialize()
     self.daemon = daemon
     self.itemFilter.initialize()
-    self.itemFilter.setOwnerFilter({b.charName for b in μMilvianMeta.getBridges().values()})
     self.setInventoryMode()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -253,6 +252,11 @@ class μStorage(μToggler):
     except: pass
     self.loadDBData()
   
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def show(self):
+    super().show()
+    self.itemFilter.setOwnerFilter({b.charName for b in μMilvianMeta.getBridges().values()})
+    
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def hide(self):
     super().hide()

@@ -752,7 +752,7 @@ class μMap(μToggler):
       self.lblTargetPin.setPixmap(sel.pixmap().scaled(32, 32, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
       name = sel.name.split("<br>", 1)
       lbl = "<b>Weenie:</b>" if sel.isStatic() else "<b>Id:</b>"
-      self.lblTargetName.setText(f"{lbl} {sel.id}<br><b>Name:</b> {name[0]}{f"<br><i>({name[1]})</i>" if len(name)>1 else ""}")
+      self.lblTargetName.setText(f"{lbl} 0x{sel.id:016X}<br><b>Name:</b> {name[0]}{f"<br><i>({name[1]})</i>" if len(name)>1 else ""}")
     else:
       self.lblTargetPin.clear()
       self.lblTargetName.setText("None")
