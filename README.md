@@ -44,6 +44,11 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - natural mouse gestures (ctrl+scroll to zoom) and smooth lightweight controls
     - select game entities directly from the map
     - search game targets by their name
+ - Mini [Browser](docs/Browser.md)
+    - landing page: DDO Wiki!
+    - VERY lightweight
+    - basic forward, backward and bookmarking features
+    - ad-blocking embedded (w00000t)
 
 ## TODO
   - Macros Daemon
@@ -59,12 +64,9 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
       - vizualize keyboard with its macros
   - Map
     - figure out distinction between:
-      - champions and normal monsters
-        - between champion ranks
     - distinguish own pet from other pets
     - allow entering "commander" and "leader" in the list of sources
   - Milvian
-    - Bug: if you log in a different characters with Milvian Plugin on, it doesn't update the bridge path
     - re-think initialization of Milvian Bridges; it should be done automatically when a character logs in
     - needs to signal logouts/death of process somehow
     - maybe leave signal in χDispatcher until something happens? File watcher to see new files creation? 
@@ -85,9 +87,6 @@ A powerful Linux launcher for the game Dungeons & Dragons Online, using Python a
     - enable sorting
     - enable tracking inside of containers (i.e. bags)
       - more advanced features: sharing of collectibles and ingredients
-    - enable tracking of last known state for each container/character/bank (like Trove Plugin)
-  - MiniBrowser
-    - a low-feature ad-blocking minibrowser that automatically opens to the wiki page of the current quest or currently selected item
   - Revamp/merge accounts/processmanager
     - aProcessItems refactor?
       - use a QTableWidget or QListWidget instead?

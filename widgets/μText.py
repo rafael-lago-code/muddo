@@ -122,15 +122,19 @@ class yamlHighlighter(QSyntaxHighlighter):
     self.formats["key"] = keyFormat
 
     stringFormat = QTextCharFormat()
-    stringFormat.setForeground(QColor("#ce9178"))
+    stringFormat.setForeground(QColor("#b6b6b6"))
     self.formats["string"] = stringFormat
 
+    placeholderFormat = QTextCharFormat()
+    placeholderFormat.setForeground(QColor("#c96de0"))
+    self.formats["placeholder"] = placeholderFormat
+
     numberFormat = QTextCharFormat()
-    numberFormat.setForeground(QColor("#b5cea8"))
+    numberFormat.setForeground(QColor("#fffd81"))
     self.formats["number"] = numberFormat
 
     boolFormat = QTextCharFormat()
-    boolFormat.setForeground(QColor("#c586c0"))
+    boolFormat.setForeground(QColor("#86bcc5"))
     self.formats["bool"] = boolFormat
 
     commentFormat = QTextCharFormat()
@@ -139,7 +143,7 @@ class yamlHighlighter(QSyntaxHighlighter):
     self.formats["comment"] = commentFormat
 
     anchorFormat = QTextCharFormat()
-    anchorFormat.setForeground(QColor("#dcdcaa"))
+    anchorFormat.setForeground(QColor("#ce9178"))
     self.formats["anchor"] = anchorFormat
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -151,14 +155,23 @@ class yamlHighlighter(QSyntaxHighlighter):
       length = m.capturedLength(group)
       self.setFormat(start, length, fmt)
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def highlightBlock(self, text: str):
-    self._applyRegex(r'(?m)^\s*([\w\-\.]+)\s*:(?:\s|$)', text, self.formats["key"],    group=1)
+    # self._applyRegex(r'(?m)^\s*([+\-]?[\p{L}\p{N}_\-\.]+)\s*:(?:\s|$)', text, self.formats["key"], group=1)
+    # self._applyRegex(r'"(?:[^"\\]|\\.)*"',                text, self.formats["string"])
+    # self._applyRegex(r"'[^']*'",                          text, self.formats["string"])
+    # self._applyRegex(r'\b-?\d+(?:\.\d+)?\b',              text, self.formats["number"])
+    # self._applyRegex(r'\b(true|false|null|yes|no|~)\b',   text, self.formats["bool"])
+    # self._applyRegex(r'[&\*]\w+',                         text, self.formats["anchor"])
+    # self._applyRegex(r'#.*$',                             text, self.formats["comment"])
+    self._applyRegex(r'(?m)^\s*([+\-]?[\p{L}\p{N}_\-\.\$]+)\s*:(?:\s|$)', text, self.formats["key"], group=1)
     self._applyRegex(r'"(?:[^"\\]|\\.)*"',                text, self.formats["string"])
     self._applyRegex(r"'[^']*'",                          text, self.formats["string"])
     self._applyRegex(r'\b-?\d+(?:\.\d+)?\b',              text, self.formats["number"])
     self._applyRegex(r'\b(true|false|null|yes|no|~)\b',   text, self.formats["bool"])
     self._applyRegex(r'[&\*]\w+',                         text, self.formats["anchor"])
     self._applyRegex(r'#.*$',                             text, self.formats["comment"])
+    self._applyRegex(r'\$[0-9]+',                         text, self.formats["placeholder"]) 
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂

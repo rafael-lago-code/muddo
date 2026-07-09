@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   version="1.1"
+   id="svg2"
+   width="682.66669"
+   height="682.66669"
+   viewBox="0 0 682.66669 682.66669"
+   sodipodi:docname="compass.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs6" />
+  <sodipodi:namedview
+     id="namedview4"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="0.75219725"
+     inkscape:cx="275.85849"
+     inkscape:cy="514.49271"
+     inkscape:window-width="1663"
+     inkscape:window-height="973"
+     inkscape:window-x="1724"
+     inkscape:window-y="1098"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="g8" />
+  <g
+     inkscape:groupmode="layer"
+     inkscape:label="Image"
+     id="g8">
+    <path
+       style="color:#eff0f1;fill:#ffffff;fill-opacity:1;stroke:#ffffff;stroke-width:33.6;stroke-dasharray:none;stroke-opacity:1"
+       d="m 340.29678,342.05648 m -307.183967,0 a 307.18398,307.18399 0 1 0 614.367947,0 307.18398,307.18399 0 1 0 -614.367947,0 z m 307.183967,0 m -263.300547,0 a 263.30055,263.30056 0 1 1 526.601097,0 263.30055,263.30056 0 1 1 -526.601097,0 z M 515.83048,166.52278 274.47164,276.23134 164.76308,517.59019 406.12191,407.88163 Z m -175.5337,175.5337 m -43.88342,0 a 43.883425,43.883427 0 1 1 87.76685,0 43.883425,43.883427 0 1 1 -87.76685,0 z m -241.358847,0 v 43.88343 L 142.82137,342.05648 Z M 340.29678,56.81422 h -43.88342 l 43.88342,87.76684 z m 285.24226,285.24226 v -43.88342 l -87.76685,43.88342 z M 340.29678,627.29876 h 43.88343 L 340.29678,539.5319 Z"
+       class="ColorScheme-Text"
+       id="path4-3" />
+  </g>
+</svg>

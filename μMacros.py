@@ -167,16 +167,18 @@ class μMacroRegistry:
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def loadAliases(cls):
-    cls.aliases = μYAML(P_DEFAULT_MACRODIR + os.sep + "aliases.yaml").raw
+  def loadAliases(cls) -> str:
+    with open(f"{P_DEFAULT_MACRODIR}/aliases.yaml", "r") as f:
+      raw = f.read()
+    cls.aliases = μYAML.parseText(raw)
+    return raw
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def saveAliases(cls):
-    db = μYAML(P_DEFAULT_MACRODIR + os.sep + "aliases.yaml")
-    db.raw = cls.aliases
-    db.save()
-
+  def saveAliases(cls, text: str):
+    cls.aliases = μYAML.parseText(text)
+    with open(f"{P_DEFAULT_MACRODIR}/aliases.yaml", "w") as f:
+      f.write(text)
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  C O N S O L I D A T E   T R I G G E R
   #
@@ -419,8 +421,7 @@ class μMacros(μToggler):
     self.btnEditIcon    = μOrbSmall(icon=P_ICON_IMAGE, tooltip="Set icon for the selected macro")
     self.btnPlay        = μOrbSmall(icon=P_ICON_PLAY, tooltip="Executes current text as-is, if Milvian is running already. <b><i>Ctrl+Enter</i></b> is a shortcut for that.")
 
-    self.btnAddAlias    = μOrbSmall(icon=P_ICON_ADD, tooltip="Add a new alias")
-    self.btnRemoveAlias = μOrbSmall(icon=P_ICON_REMOVE, tooltip="Remove the currently selected alias")
+    self.aliasEditor = μTextEdit(syntax='yaml')
 
     self.btnAddSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
     self.btnRemoveSet.setSizePolicy(QSizePolicy.Policy.Fixed,QSizePolicy.Policy.Fixed)
@@ -429,26 +430,8 @@ class μMacros(μToggler):
     self.setListWidget.setWordWrap(True)
     self.setListWidget.setTextElideMode(QtCore.Qt.TextElideMode.ElideNone)
 
-    self.aliasTable = QTableWidget(0, 2)
-    self.aliasTable.setHorizontalHeaderLabels(["Alias", "Translation"])
-    self.aliasTable.setColumnWidth(0, 120)
-    self.aliasTable.horizontalHeader().setStretchLastSection(True)
-    self.aliasTable.setSortingEnabled(True)
-    self.aliasTable.setWordWrap(True)
-    self.aliasTable.verticalHeader().setVisible(False)
-    self.aliasTable.verticalHeader().setSectionResizeMode(QHeaderView.ResizeMode.ResizeToContents)
-    self.aliasTable.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-    self.aliasTable.setAcceptDrops(True)
-    self.aliasTable.setDragEnabled(True)
-    self.aliasTable.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-    self.aliasTable.setDropIndicatorShown(True)
-    self.aliasTable.setDragDropOverwriteMode(False)
-
-    self.aliasFilter = QLineEdit()
-
     self.activeSetLabel = QLabel("Macros in selected set:")
     self._loading = False
-    self._aliasLoading = False
     self._actionLoading = False
 
     self.table = QTableWidget(0, 4)
@@ -475,8 +458,7 @@ class μMacros(μToggler):
     _topSplitter.addWidget(newVFrame([ "Sets:",
                               newHLayout([self.setListWidget,
                                 newVLayout(["__stretch__",self.btnAddSet, self.btnRemoveSet, "__stretch__"])])]))
-    _topSplitter.addWidget(newHFrame([newVLayout([self.aliasTable, newHLayout(["Filter by:", self.aliasFilter])]),
-                           newVLayout(["__stretch__",self.btnAddAlias, self.btnRemoveAlias, "__stretch__"])]))
+    _topSplitter.addWidget(vFrame("Aliases:", self.aliasEditor))
 
     _topSplitter.setSizes([100,400])
 
@@ -492,7 +474,6 @@ class μMacros(μToggler):
 
     self.btnAddSet.clicked.connect(self.addMacroSet)
     self.btnRemoveSet.clicked.connect(self.removeMacroSet)
-    # self.btnHelp.clicked.connect(self.showHelpWindow)
     self.btnPlay.clicked.connect(self.playMacro)
     self.setListWidget.itemChanged.connect(self.editMacroSet)
     self.setListWidget.itemSelectionChanged.connect(self.updateTable)
@@ -504,11 +485,7 @@ class μMacros(μToggler):
     QShortcut(QKeySequence("Ctrl+S"), self).activated.connect(self._saveAction)
     QShortcut(QKeySequence("Ctrl+Return"), self).activated.connect(self.playMacro)
     QShortcut(QKeySequence("Ctrl+Enter"), self).activated.connect(self.playMacro)
-    self.aliasTable.cellChanged.connect(self._onAliasCellChanged)
-
-    self.btnAddAlias.clicked.connect(self.addAlias)
-    self.btnRemoveAlias.clicked.connect(self.removeAlias)
-    self.aliasFilter.textChanged.connect(self.filterAlias)
+    self.aliasEditor.editingFinished.connect(self.saveAlias)
 
     self.btnAddEntry.clicked.connect(self.addMacroEntry)
     self.btnRemoveEntry.clicked.connect(self.removeMacroEntry)
@@ -594,60 +571,13 @@ class μMacros(μToggler):
       sset.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def addAlias(self, alias="", action=""):
-    self.aliasTable.setSortingEnabled(False)
-    pos = self.aliasTable.rowCount()
-    self.aliasTable.insertRow(pos)
-    self.aliasTable.setItem(pos, 0, QTableWidgetItem(alias))
-    self.aliasTable.setItem(pos, 1, QTableWidgetItem(action))
-    self.aliasTable.setSortingEnabled(True)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def removeAlias(self):
-    crow = self.aliasTable.currentRow()
-    if crow >= 0:
-      self.aliasTable.removeRow(crow)
-      self.saveAlias()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def _onAliasCellChanged(self, row, column):
-    if self._aliasLoading: return
-    self.saveAlias()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def reloadAlias(self):
-    self._aliasLoading = True
-    self.aliasTable.clearContents()
-    self.aliasTable.setRowCount(0)
-    μMacroRegistry.loadAliases()
-    for k, v in μMacroRegistry.aliases.items():
-      self.addAlias(k, v)
-    self._aliasLoading = False
+    self.aliasEditor.setPlainText(μMacroRegistry.loadAliases())
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveAlias(self):
-    μMacroRegistry.aliases = self.getAliases()
-    μMacroRegistry.saveAliases()
+    μMacroRegistry.saveAliases(self.aliasEditor.toPlainText())
     μMacroRegistry.consolidateAll()
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def getAliases(self):
-    d = {}
-    for row in range(self.aliasTable.rowCount()):
-      k = self.aliasTable.item(row, 0)
-      v = self.aliasTable.item(row, 1)
-      if k and v:
-        d[k.text()] = v.text()
-    return d
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  def filterAlias(self, text: str):
-    text = text.lower()
-    for row in range(self.aliasTable.rowCount()):
-      alias       = self.aliasTable.item(row, 0)
-      translation = self.aliasTable.item(row, 1)
-      match = (text in (alias.text().lower() if alias else "")) or (text in (translation.text().lower() if translation else ""))
-      self.aliasTable.setRowHidden(row, bool(text) and not match)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def addMacroSet(self):
@@ -801,6 +731,7 @@ class μMacros(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _saveAction(self):
     if self._actionLoading or self._loading: return
+    μMacroRegistry.saveAliases(self.aliasEditor.toPlainText())
     indexes = self.table.selectionModel().selectedRows()
     if len(indexes) != 1: return
     entry : μMacroEntry = self.table.item(indexes[0].row(), 1)

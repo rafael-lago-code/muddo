@@ -31,6 +31,7 @@ from μDungeonHelper import μDungeonHelper
 from μProcess import μProcessManager
 from μStorage import μStorage
 from μDDO import μDDO
+from μBrowser import μBrowser
 from μStrategy import μStrategy
 from μSummary import μSummary
 from μToolbar import μToolbar
@@ -67,6 +68,7 @@ class μMainWindow(QMainWindow):
     self.patch = μPatch(self)
     self.setup = μSetup(self)
     self.macros = μMacros(self)
+    self.browser = μBrowser(self)
     self.processManager = μProcessManager()
     self.dh = μDungeonHelper(self)
     self.storageManager = μStorage(self)
@@ -79,7 +81,7 @@ class μMainWindow(QMainWindow):
 
     μSummary.setup(self.credentials)
     lButtonsBar = newHLayout(["__stretch__", self.dh.orb, self.macros.daemon.orb, self.strategy.toggler, self.map.toggler, self.btnLaunch,
-                              μSummary.widget, self.processManager.toggler, self.storageManager.toggler, 
+                              μSummary.widget, self.browser.toggler, self.processManager.toggler, self.storageManager.toggler, 
                               self.macros.toggler, self.setup.toggler, self.patch.toggler, self.console.toggler, btnQuit,"__stretch__"])
 
     aLaunchAll = self.btnLaunch.menu.addAction("Launch all")
@@ -95,7 +97,7 @@ class μMainWindow(QMainWindow):
 
     self.setCentralWidget(newVFrame([lButtonsBar]))
 
-    self._docks = [self.setup, self.macros, self.processManager,
+    self._docks = [self.setup, self.macros, self.browser, self.processManager,
                    self.storageManager, self.patch, self.console, self.strategy, self.map]
     for dock in self._docks:
       self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
@@ -205,6 +207,7 @@ class μMainWindow(QMainWindow):
     self.storageManager.close()
     self.map.close()
     self.strategy.close()
+    self.browser.close()
     super().close()
 
 

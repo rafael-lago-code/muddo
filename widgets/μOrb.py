@@ -277,12 +277,12 @@ class μOrb(QPushButton):
  
   # ───────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setEnabled(self, a0):
+    super().setEnabled(a0)
     if a0:
       self.normalizeState()
     else:
       self.setState(P_STATUS_DISBLD)
-    return super().setEnabled(a0)
-  
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _setCtrlPressed(self, b):
     self._ctrlPressed = b
