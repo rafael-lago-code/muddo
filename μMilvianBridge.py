@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QMenu
 from PyQt6.QtGui import QAction
 from PyQt6.QtCore import QTimer
-from μProcess import aProcessItem
+from μProcess import αProcessItem
 from μToolbar import μToolbar, μToolbarItem
 from widgets.μOrb import μOrb
 from helpers.χHelper import χHelper
@@ -41,7 +41,7 @@ from μMilvian import μMilvian, μMilvianMeta
 #   One instance lives in cMainWindow. __init__ creates the widgets, the rest is supposed to be done
 #   via class methods
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μMilvianBridge(aProcessItem):
+class μMilvianBridge(αProcessItem):
   widgetID = "Milvian Bridge"
   process  = None
   _widget  = None   # singleton instance reference
@@ -66,7 +66,7 @@ class μMilvianBridge(aProcessItem):
     self.menuActionHardReset.triggered.connect(μMilvianBridge.hardReset)
     self.menuActionKill.triggered.connect(lambda: μMilvianBridge.terminate(force=True))
     self.menuActionConf.triggered.connect(lambda: main.macros.toggle())
-    self.menuActionPurge.triggered.connect(lambda: μMilvian.scanBridges(purgeUnknown=True))
+    self.menuActionPurge.triggered.connect(lambda: μMilvian.scanBridges(purgeDefunct=True))
 
     self.profileID.setText("")
     self.worldname.setText("")
@@ -79,7 +79,7 @@ class μMilvianBridge(aProcessItem):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def toggle(cls):
-    if cls._widget and cls._widget.status == aProcessItem.P_STATUS_RUNNING:
+    if cls._widget and cls._widget.status == αProcessItem.P_STATUS_RUNNING:
       cls.terminate()
     else:
       cls.launch()
@@ -90,7 +90,7 @@ class μMilvianBridge(aProcessItem):
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnAudio.setEnabled(False)
-    if status == aProcessItem.P_STATUS_RUNNING:
+    if status == αProcessItem.P_STATUS_RUNNING:
       self.orb.setChecked(True)
       self.menuActionToggle.setText("Stop")
     else:
@@ -103,7 +103,7 @@ class μMilvianBridge(aProcessItem):
     if not cls.process: return
     cls.process.stop()
     if force: cls.cleanup()
-    if cls._widget: cls._widget.setStatus(aProcessItem.P_STATUS_KILLED)
+    if cls._widget: cls._widget.setStatus(αProcessItem.P_STATUS_KILLED)
     cls.process = None
     μMilvianMeta.closeBridges()
     μToolbar.clearItems()
@@ -120,7 +120,7 @@ class μMilvianBridge(aProcessItem):
     import shutil
     μMilvianMeta.closeBridges()
     μToolbar.clearItems()
-    if cls._widget: cls._widget.setStatus(aProcessItem.P_STATUS_KILLED)
+    if cls._widget: cls._widget.setStatus(αProcessItem.P_STATUS_KILLED)
     cls.process = None
     shmPath = μMilvian.bridgePath
     μPrint.info(f"[μMilvianBridge] hard reset: nuking {shmPath!r}...")
@@ -174,7 +174,7 @@ class μMilvianBridge(aProcessItem):
     if cls._widget:
       if not cls.main.processManager.itemExists(cls._widget):
         cls.main.processManager.addItem(cls._widget)
-      cls._widget.setStatus(aProcessItem.P_STATUS_RUNNING)
+      cls._widget.setStatus(αProcessItem.P_STATUS_RUNNING)
       cls._widget.pid.setText("R")
     cls.process.start()
 

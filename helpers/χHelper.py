@@ -304,7 +304,11 @@ class χHelper():
     with cls._lock:
       window = cls.disp.create_resource_object('window', winID)
       motif_wm_hints = cls.disp.intern_atom('_MOTIF_WM_HINTS')
-      prop = window.get_full_property(motif_wm_hints, X.AnyPropertyType)
+      try:
+        prop = window.get_full_property(motif_wm_hints, X.AnyPropertyType)
+      except Exception as e:
+        μPrint.warning(f"[χHelper] getWindowHint({winID}) failed", e)
+        return None
       if prop and prop.value:
         values = prop.value
         if len(values) >= 5:
@@ -594,13 +598,17 @@ class χHelper():
         coords = win.translate_coords(cls.root, 0, 0)
         return [-coords.x, -coords.y, geometry.width, geometry.height]
       except Exception as e:
-        raise(f"XHelper.getWindowGeometry failed\n{e}")
+        # Window may be gone already (BadWindow/BadDrawable); normal after a game dies
+        μPrint.warning(f"[χHelper] getWindowGeometry({winID}) failed", e)
+        return None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWindowsData(cls, winID) -> windowData:
-    winData = windowData(cls.getWindowGeometry(winID))
-    winData.desktop = cls.getWindowsVirtualDesktop(winID)
+    geo = cls.getWindowGeometry(winID)
+    if geo is None: return None
+    winData = windowData(geo)
+    winData.desktop = cls.getWindowsVirtualDesktop(winID) or 0
     winData.borderless = cls.getWindowsBorder(winID)
     winData.audio = not cls.audioQueryMuted(cls.getPID(winID))
     return winData
@@ -625,7 +633,8 @@ class χHelper():
         prop = win.get_full_property(cls.netWMDesktop, X.AnyPropertyType)
         return int(prop.value[0]) if prop and prop.value else 0
       except Exception as e:
-        raise(f"XHelper.getWindowsVirtualDesktop failed\n{e}")
+        μPrint.warning(f"[χHelper] getWindowsVirtualDesktop({winID}) failed", e)
+        return None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -635,7 +644,8 @@ class χHelper():
       if hint is None: return True
       return bool(hint.get('decorations', 1))
     except Exception as e:
-      raise(f"XHelper.getWindowsBorder failed\n{e}")
+      μPrint.warning(f"[χHelper] getWindowsBorder({winID}) failed", e)
+      return True
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -646,7 +656,8 @@ class χHelper():
         prop = win.get_full_property(cls.netWMPID, X.AnyPropertyType)
         return int(prop.value[0]) if prop and prop.value else 0
       except Exception as e:
-        raise(f"XHelper.getPID failed\n{e}")
+        μPrint.warning(f"[χHelper] getPID({winID}) failed", e)
+        return 0
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -669,7 +680,8 @@ class χHelper():
       μPrint.warning(f"[χHelper] moveVirtualDesktop: window {winID} not confirmed on desktop {targetDesktop}")
       return False
     except Exception as e:
-      raise(f"XHelper.moveVirtualDesktop({targetDesktop}) failed\n{e}")
+      μPrint.warning(f"[χHelper] moveVirtualDesktop({winID},{targetDesktop}) failed", e)
+      return False
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -687,7 +699,8 @@ class χHelper():
       μPrint.warning(f"[χHelper] moveWindow: window {winID} not confirmed at ({x},{y})")
       return False
     except Exception as e:
-      raise(f"XHelper.moveWindow({x},{y}) failed\n{e}")
+      μPrint.warning(f"[χHelper] moveWindow({winID},{x},{y}) failed", e)
+      return False
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
@@ -707,9 +720,19 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def audioQueryMuted(pid) -> bool:
-    output = subprocess.check_output(['pw-dump'], text=True, stderr=subprocess.DEVNULL)
-    alldata = json.loads(output)
+    try:
+      output = subprocess.check_output(['pw-dump'], text=True, stderr=subprocess.DEVNULL)
+      alldata = json.loads(output)
+    except (subprocess.SubprocessError, OSError, json.JSONDecodeError) as e:
+      μPrint.warning(f"[χHelper.audioQueryMuted] pw-dump failed", e)
+      return False
     for i in alldata:
-      if i.get('type',{}).endswith("Node"):
-        if str(pid) == str(i.get('info',{}).get('props',{}).get('application.process.id',{})):
-          return str(i.get('info',{}).get('params',{}).get('Props',{})[0]['mute']).lower()=='true'
+      if not str(i.get('type','')).endswith("Node"): continue
+      info  = i.get('info')  or {}
+      props = info.get('props') or {}
+      if str(pid) != str(props.get('application.process.id','')): continue
+      params = info.get('params') or {}
+      for p in params.get('Props') or []:
+        if isinstance(p, dict) and 'mute' in p:
+          return str(p['mute']).lower()=='true'
+    return False

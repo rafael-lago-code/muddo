@@ -27,8 +27,8 @@
 class μPrint():
   info    = lambda x : print(x)
   debug   = lambda x : print(x)
-  warning = lambda x,e=None : print(x + f"\n{e}" if e else "")
-  error   = lambda x,e=None : print(x + f"\n{e}" if e else "")
+  warning = lambda x,e=None : print(x + (f"\n{e}" if e else ""))
+  error   = lambda x,e=None : print(x + (f"\n{e}" if e else ""))
   console = None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -46,9 +46,9 @@ class μPrint():
   def deattachConsole(cls):
     cls.console = None
     cls.info    = lambda x : print(x)
-    cls.error   = lambda x : print(x)
-    cls.warning = lambda x,e=None : print(x + f"\n{e}" if e else "")
-    cls.error   = lambda x,e=None : print(x + f"\n{e}" if e else "")
+    cls.debug   = lambda x : print(x)
+    cls.warning = lambda x,e=None : print(x + (f"\n{e}" if e else ""))
+    cls.error   = lambda x,e=None : print(x + (f"\n{e}" if e else ""))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod

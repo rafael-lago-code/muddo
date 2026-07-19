@@ -18,9 +18,13 @@
 #
 #
 from __future__ import annotations
-import os, pwd, signal, pwd, grp
+import os, pwd, signal, grp, getpass
 import time
-P_DEFAULT_USERNAME=os.getlogin()
+try:
+  P_DEFAULT_USERNAME=os.getlogin()
+except OSError:
+  # os.getlogin() fails when there is no controlling terminal (desktop launch)
+  P_DEFAULT_USERNAME=getpass.getuser()
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   🮿  T O P
@@ -184,6 +188,15 @@ class χTop():
       sig = getattr(signal, f'SIG{sig}')
     
     os.kill(pid, sig)
+  
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def isAlive(pid: int) -> bool:
+    try:
+      os.kill(pid, 0)
+      return True
+    except (ProcessLookupError, PermissionError):
+      return pid > 0 and os.path.exists(f"/proc/{pid}")
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod

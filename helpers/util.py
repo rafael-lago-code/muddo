@@ -197,15 +197,15 @@ def getArrow():
   return f"&nbsp;&nbsp;&nbsp;<span style='font-size:{fs+4}pt'>▾</span>"
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-def getConnection(urlIn):
+def getConnection(urlIn, timeout=15):
   if urlIn.upper().find("HTTP://") >= 0:
     url = urlIn[7:].split("/")[0]
     post = urlIn[7:].replace(url, "")
-    return HTTPConnection(url), post
+    return HTTPConnection(url, timeout=timeout), post
   else:
     url = urlIn[8:].split("/")[0]
     post = urlIn[8:].replace(url, "")
-    return HTTPSConnection(url, context=P_CERTCTX), post
+    return HTTPSConnection(url, context=P_CERTCTX, timeout=timeout), post
     
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────----------------------
 def getNodeText(nodelist):

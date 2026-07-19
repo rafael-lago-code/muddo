@@ -23,6 +23,7 @@
 #
 from __future__ import annotations
 from helpers.util import *
+from helpers.μPrint import μPrint
 from μServerInfo import μServerInfo
 import os
 import xml.dom.minidom
@@ -41,9 +42,7 @@ class μAuthenticator():
 
   def __init__(self, ddo : μDDO):
     super().__init__()
-    self.main = ddo.main
     self.ddo = ddo
-    self.console = ddo.main.console
     self.credentials = ddo.main.credentials
     self.ticket = None
     self.status = self.P_STATUS_UNKNOWN
@@ -85,7 +84,7 @@ class μAuthenticator():
         f.write(tempxml)
 
       if tempxml == "":
-        self.console.error(f"Failed to fetch information from \"{μServerInfo.authServer}\"")
+        μPrint.error(f"Failed to fetch information from \"{μServerInfo.authServer}\"")
         return False
       else:
         doc = xml.dom.minidom.parseString(tempxml)
@@ -113,24 +112,24 @@ class μAuthenticator():
         #   self.messError = "No Error"
         #   self.authSuccess = True
         # else:
-        #   self.console.error(f"Game account \"{self.ddo.username.text()}\" not associated with user account - please visit games website and check account details")
+        #   μPrint.error(f"Game account \"{self.ddo.username.text()}\" not associated with user account - please visit games website and check account details")
     except ssl.SSLError as e:
-      self.console.error("SSL error occured in HTTPS connection", e)
+      μPrint.error("SSL error occured in HTTPS connection", e)
       return False
     except Exception as e:
       if webresp and webresp.status == 500:
-        self.console.error("Account details incorrect", e)
+        μPrint.error("Account details incorrect", e)
       else:
-        self.console.error(f"Server not found - may be down.\n{webresp and webresp.status or "N/A"}", e)
+        μPrint.error(f"Server not found - may be down.\n{webresp and webresp.status or "N/A"}", e)
       return False
     else:
       if self.subscription is None:
-        self.console.error(f"Game account \"{C_SILVER}{self.ddo.username.text()}</font>\" not associated with user account - please visit games website and check account details")
+        μPrint.error(f"Game account \"{C_SILVER}{self.ddo.username.text()}</font>\" not associated with user account - please visit games website and check account details")
         return False
       return True
 
   #----------------------------------------------------------------------------------------------------------
-  def queue(self):
+  def queue(self) -> tuple[int, int]:
     number  = None
     serving = None
     try:
@@ -158,11 +157,11 @@ class μAuthenticator():
       if tempxml != "":
         doc = xml.dom.minidom.parseString(tempxml)
         if getNodeText(doc.getElementsByTagName("HResult")[0].childNodes) == "0x00000000":
-          number  = getNodeText(doc.getElementsByTagName("QueueNumber")[0].childNodes)
-          serving = getNodeText(doc.getElementsByTagName("NowServingNumber")[0].childNodes)
+          number  = int(getNodeText(doc.getElementsByTagName("QueueNumber")[0].childNodes),0)
+          serving = int(getNodeText(doc.getElementsByTagName("NowServingNumber")[0].childNodes),0)
 
     except Exception as e:
-      self.console.error(f"Error checking the queue for \"{C_SILVER}{self.ddo.username.text()}</font>\"<br>\
+      μPrint.error(f"Error checking the queue for \"{C_SILVER}{self.ddo.username.text()}</font>\"<br>\
                          (number,serving) = ({number},{serving})<br>\
                          queueURL={self.ddo.world.queueURL}",e)
     return (number, serving)
@@ -173,10 +172,10 @@ class μAuthenticator():
     while number > serving:
       (number, serving) = self.queue()
       if number is None or serving is None:
-        self.console.error(f"Something went wrong while queueing for account \"{C_SILVER}\
+        μPrint.error(f"Something went wrong while queueing for account \"{C_SILVER}\
                            {self.ddo.username.text()}</font>\"")
         return False
-    self.console.info(f"Queueing done for \"{C_SILVER}{self.ddo.username.text()}</font>\", joining server...")
+    μPrint.info(f"Queueing done for \"{C_SILVER}{self.ddo.username.text()}</font>\", joining server...")
     return True
       
 

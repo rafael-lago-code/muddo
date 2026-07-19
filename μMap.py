@@ -300,7 +300,7 @@ class μMapParser:
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
-  def dataPath() -> str: return f"{μMap.runningBridge.bridgePath}/{μMap.runningBridge.charName.lower()}/map"
+  def dataPath() -> str: return μMap.runningBridge.shmRoot + "map"
   def imagePath(self) -> str: return f"{μMapParser.dataPath()}{self.ext}"
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

@@ -35,21 +35,27 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
+
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+# 
+#   ❖  P R O C E S S   M A N A G E R
+#                                  
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 class μProcessManager(μToggler):
   main = None      # set in attachMain
   widgetID = "ProcessManager"
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def attachMain(cls, main : μMainWindow):
     cls.main = main
-    aProcessItem.attachMain(main)
+    αProcessItem.attachMain(main)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self):
     super().__init__("Process\nManager", P_ICON_PROPERTIES)
     self.toggler.setToolTip("Toggle Process Manager and allows control of individual launched processes")
-    self.items : OrderedDict[str, aProcessItem] = OrderedDict()
+    self.items : OrderedDict[str, αProcessItem] = OrderedDict()
     pal = QPalette()
     self.colour1 = pal.color(QPalette.ColorRole.Window)
     self.colour2 = pal.color(QPalette.ColorRole.AlternateBase)
@@ -93,13 +99,20 @@ class μProcessManager(μToggler):
       self.btnKillAll, self.btnSaveAll, self.btnRestoreAll, self.btnCleanAll, self.btnLogAll, self.btnAudioAll, justSpace]),
                     "__stretch__"]))
 
-  #----------------------------------------------------------------------------------------------------------
-  def clearItem(self, item : aProcessItem, kill=False):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def show(self):
+    for i in self.items.values():
+      if i.isAlive(): i.setStatus(αProcessItem.P_STATUS_RUNNING)
+      else: i.setStatus(αProcessItem.P_STATUS_TERMINATED)
+    super().show()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def clearItem(self, item : αProcessItem, kill=False):
     if kill and item.status == item.P_STATUS_RUNNING:
       try:
         item.terminate()
       except Exception as e:
-        μPrint.error(f"[cProcessManager] cleanItem: error killing \"{item.widgetID}\"", e)
+        μPrint.error(f"[μProcessManager] cleanItem: error killing \"{item.widgetID}\"", e)
     elif item.status == item.P_STATUS_RUNNING:
       return
     
@@ -107,68 +120,68 @@ class μProcessManager(μToggler):
       self.layout().removeWidget(item)
       del self.items[item.widgetID]
     except Exception as e:
-      μPrint.error(f"[cProcessManager] cleanItem: unknown error removing item \"{item.widgetID}\"", e)
+      μPrint.error(f"[μProcessManager] cleanItem: unknown error removing item \"{item.widgetID}\"", e)
 
     item.hide()
     self.main.processManager.resetColour()
     # item.deleteLater()
 
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def cleanAll(self, kill=False):
     allItems  = set(self.items.values())
     for i in allItems: 
       self.clearItem(i,kill)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def startAll(self):
     for u in self.items.keys(): 
       if u.startswith("dh_"): continue
-      if self.items[u].status == aProcessItem.P_STATUS_RUNNING:
+      if self.items[u].status != αProcessItem.P_STATUS_RUNNING:
         self.items[u].launch()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def selectedItems(self):
     return [p for k, p in self.items.items() if not k.startswith("dh_") and p.btnSelect.isChecked()]
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def applySelectAll(self):
     state = self.btnSelectAll.isChecked()
     for k, p in self.items.items():
       if k.startswith("dh_"): continue
       p.btnSelect.setChecked(state)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def terminateAll(self):
     for p in self.selectedItems():
       p.terminate()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def killAll(self):
     for p in self.selectedItems():
       p.kill()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def toggleAudioAll(self):
     allItems = list(self.items.keys())
     for i in allItems:
       self.items[i].audioToggle()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioMuteAll(self):
     allItems = list(self.items.keys())
     for i in allItems:
       self.items[i].audioMute()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveWindowAll(self):
     for p in self.selectedItems(): p.saveWindow()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def restoreWindowAll(self):
     for p in self.selectedItems(): p.restoreWindow()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def fixBlackScreenAll(self):
     from helpers.χHelper import χHelper
     for p in self.selectedItems():
@@ -176,15 +189,15 @@ class μProcessManager(μToggler):
       if winID.isdigit():
         χHelper.remapWindow(int(winID))
 
-  #----------------------------------------------------------------------------------------------------------
-  def itemExists(self, p : aProcessItem):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def itemExists(self, p : αProcessItem):
     for key, proc in self.items.items():
       if key == p.widgetID: return True
       if proc == p: return True
     return False
 
-  #----------------------------------------------------------------------------------------------------------
-  def addItem(self, p : aProcessItem):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def addItem(self, p : αProcessItem):
     if self.itemExists(p): return
     self.btnKillAll.setEnabled(True)
     self.btnSaveAll.setEnabled(True)
@@ -195,14 +208,14 @@ class μProcessManager(μToggler):
     self.content.addWidget(p)
     p.show()
 
-  #----------------------------------------------------------------------------------------------------------
-  def isPIDManaged(self, pid : str) -> bool:
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def isPIDManaged(self, pid) -> bool:
     for i in self.items.values():
-      if i.pid.text() == pid: return True
+      if i.pid.text() == str(pid): return True
     return False
   
-  #----------------------------------------------------------------------------------------------------------
-  def setColour(self,p : aProcessItem):
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def setColour(self,p : αProcessItem):
     pal = QPalette()
     pal.setColor(QPalette.ColorRole.Window, self.colour2)
     p.setAutoFillBackground(True)
@@ -211,7 +224,7 @@ class μProcessManager(μToggler):
     self.colour2 = self.colour1
     self.colour1 = tmp
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def resetColour(self):
     if len(self.items.keys())==0: return
 
@@ -221,7 +234,7 @@ class μProcessManager(μToggler):
     for u in self.items.keys():
       self.setColour(self.items[u])
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def captureOrphan(self):
     from μDDO import μDDO
     from μDungeonHelper import μDungeonHelper
@@ -236,11 +249,11 @@ class μProcessManager(μToggler):
         orphan : μDDO = μDDO.createFromOrphan(self.main, c, cmdline)
         if orphan:
           found += 1
-          μPrint.info(f"[cProcessManager] found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
+          μPrint.info(f"[μProcessManager] found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
           self.addItem(orphan)
           orphan.printInfo = μPrint.info # restores printing ability of orphan
     if found == 0:
-      μPrint.info(f"[cProcessManager] no orphan DDO processes were found")
+      μPrint.info(f"[μProcessManager] no orphan DDO processes were found")
     
     orphanCandidates = χTop.getByCommand(μDungeonHelper.dhExec)
     for c in orphanCandidates:
@@ -248,13 +261,17 @@ class μProcessManager(μToggler):
       cmdline = cmdline.replace("\x00", " ").strip()
       if μDungeonHelper.isCMD(cmdline) and not self.isPIDManaged(c):
         self.main.dh.createFromOrphan(c)
-        μPrint.info(f"[cProcessManager] found orphan DungeonHelper: [{c}]")
+        μPrint.info(f"[μProcessManager] found orphan DungeonHelper: [{c}]")
         break
       
 
 
-#----------------------------------------------------------------------------------------------------------
-class aProcessItem(QWidget):
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿  P R O C E S S   I T E M
+#
+#       Abstract class
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
+class αProcessItem(QWidget):
   sigRunning = pyqtSignal()
   sigKilled = pyqtSignal()
   sigTerminated = pyqtSignal()
@@ -275,12 +292,12 @@ class aProcessItem(QWidget):
   main = None      # set in attachMain
   profile = None   # set in attachMain
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def attachMain(cls, main : μMainWindow):
     cls.main = main
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def __init__(self):
     super().__init__()
     self.widgetID = ""
@@ -320,39 +337,43 @@ class aProcessItem(QWidget):
                               self.username, self.btnToggle, self.btnSave, self.btnRestore,
                               self.btnClear, self.btnLog, self.btnAudio]))
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  def isAlive(self) -> bool:
+    return χTop.isAlive(int(self.pid.text()))
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def launch(self):
     pass
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clear(self, kill=False):
     self.main.processManager.clearItem(self, kill)
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def saveWindow(self):
     pass
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def restoreWindow(self):
     pass
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioToggle(self):
     pass
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioMute(self):
     pass
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioUnmute(self):
     pass
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def getLogFilename(self) -> str:
     return ""
   
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def logShow(self):
     if self.logger: return
     tabName = re.sub(r'<[^>]+>', '', self.username.text())
@@ -360,19 +381,19 @@ class aProcessItem(QWidget):
     self.logger = μLog(self.getLogFilename(), tabName)
     self.btnLog.setChecked(True)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def logHide(self):
     if not self.logger: return
     self.logger.deleteLater()
     self.logger = None
     self.btnLog.setChecked(False)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def logToggle(self):
     if self.logger: self.logHide()
     else:           self.logShow()
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def setStatus(self, newStatus):
     self.btnAudio.setEnabled(   self.pid.text().isdigit())
     self.btnSave.setEnabled(   self.winID.text().isdigit())
@@ -380,16 +401,16 @@ class aProcessItem(QWidget):
     self.btnLog.setEnabled(    self.winID.text().isdigit())
     self.btnClear.setEnabled(not self.winID.text().isdigit())
     if self.status != newStatus:
-      if newStatus == "error" or newStatus == aProcessItem.P_STATUS_ERROR:
+      if newStatus == "error" or newStatus == αProcessItem.P_STATUS_ERROR:
         self.username.setText(f"{C_RED}{self.username.text()}[E]</font>")
         self.btnToggle.setEnabled(False)
         self.btnToggle.setChecked(False)
         self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
         self.btnClear.setEnabled(True)
         self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
-        self.status = aProcessItem.P_STATUS_ERROR 
+        self.status = αProcessItem.P_STATUS_ERROR 
         self.sigError.emit("APROCESS_UNKNOWN_ERROR")
-      elif newStatus == "terminated" or newStatus == aProcessItem.P_STATUS_TERMINATED:
+      elif newStatus == "terminated" or newStatus == αProcessItem.P_STATUS_TERMINATED:
         self.pid.setText("")
         self.winID.setText("")
         self.btnToggle.setEnabled(True)
@@ -397,17 +418,17 @@ class aProcessItem(QWidget):
         self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
         self.btnClear.setEnabled(True)
         self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
-        self.status = aProcessItem.P_STATUS_UNKNOWN
+        self.status = αProcessItem.P_STATUS_UNKNOWN
         self.sigTerminated.emit()
-      elif newStatus == "running" or newStatus == aProcessItem.P_STATUS_RUNNING:
+      elif newStatus == "running" or newStatus == αProcessItem.P_STATUS_RUNNING:
         self.btnToggle.setEnabled(True)
         self.btnToggle.setChecked(True)
         self.btnToggle.setIcon(getIcon(P_ICON_SKULL))
         self.btnClear.setEnabled(True)
         self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
-        self.status = aProcessItem.P_STATUS_RUNNING
+        self.status = αProcessItem.P_STATUS_RUNNING
         self.sigRunning.emit()
-      elif newStatus == "killed" or newStatus == aProcessItem.P_STATUS_KILLED:
+      elif newStatus == "killed" or newStatus == αProcessItem.P_STATUS_KILLED:
         self.pid.setText("")
         self.winID.setText("")
         self.btnToggle.setEnabled(True)
@@ -415,11 +436,11 @@ class aProcessItem(QWidget):
         self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
         self.btnClear.setEnabled(True)
         self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
-        self.status = aProcessItem.P_STATUS_UNKNOWN
+        self.status = αProcessItem.P_STATUS_UNKNOWN
         self.sigKilled.emit()
       self.sigStatusChanged.emit(self.status)
 
-  # #----------------------------------------------------------------------------------------------------------
+  # # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   # def clean(self):
   #   # this should be called when the job has already died (i.e. user closed the window)
   #   self.pid.setText("")
@@ -429,15 +450,15 @@ class aProcessItem(QWidget):
   #   self.btnToggle.setIcon(getIcon(P_ICON_PLAY))
   #   self.status = self.P_STATUS_UNKNOWN
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def kill(self):
     self._terminate(signal.SIGKILL)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def terminate(self):
     self._terminate(signal.SIGTERM)
 
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _terminate(self, sig : signal):
     if not self.pid.text().isdigit():
       μPrint.error(f"[aProcessItem] error terminating {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font> is invalid!")
@@ -460,7 +481,7 @@ class aProcessItem(QWidget):
       μPrint.error(f"[aProcessItem] unknown error terminating (signal: {sig}) process with PID {self.pid.text()}", e)
       self.setStatus(self.P_STATUS_ERROR)
  
-  #----------------------------------------------------------------------------------------------------------
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def toggle(self, kill=False):
     if self.status == self.P_STATUS_RUNNING:
       if kill: self.kill()

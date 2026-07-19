@@ -43,7 +43,7 @@ class packetCommand(Enum):
   list           = struct.pack('<I', 1)
   sleep          = struct.pack('<I', 2)
   inputaction    = struct.pack('<I', 3)
-  querycharname  = struct.pack('<I', 4)
+  validate       = struct.pack('<I', 4)
   queryparty     = struct.pack('<I', 5)
   queryselected  = struct.pack('<I', 6)
   queryinventory = struct.pack('<I', 8)

@@ -148,14 +148,24 @@ class μConsole(μToggler):
           self.tabWidget.widget(index).deleteLater()
 
   #------------------------------------------------------------------------------------
+  # Writes may arrive after close() during shutdown; a write to a closed file
+  # raised inside a slot aborts the whole application (PyQt6 qFatal)
+  def writeLog(self, text : str):
+    try:
+      if not self.logFile.closed:
+        self.logFile.writelines(text+"\n")
+        self.logFile.flush()
+    except (ValueError, OSError):
+      pass
+
+  #------------------------------------------------------------------------------------
   def printMessage(self, message : str, endLine = True):
     message = C_SILVER+self.prefixStr()+"</font>"+message
     self.content.append(message)
     sbar = self.content.verticalScrollBar()
     sbar.setValue(sbar.maximum())
     self.converter.setText(message)
-    self.logFile.writelines(self.converter.toPlainText()+"\n")
-    self.logFile.flush()
+    self.writeLog(self.converter.toPlainText())
     self.update()
 
   #------------------------------------------------------------------------------------
@@ -166,8 +176,7 @@ class μConsole(μToggler):
     sbar = self.content.verticalScrollBar()
     sbar.setValue(sbar.maximum())
     self.converter.setText(message)
-    self.logFile.writelines(self.converter.toPlainText()+"\n")
-    self.logFile.flush()
+    self.writeLog(self.converter.toPlainText())
     self.update()
 
   #------------------------------------------------------------------------------------
@@ -178,15 +187,13 @@ class μConsole(μToggler):
     sbar = self.content.verticalScrollBar()
     sbar.setValue(sbar.maximum())
     self.converter.setText(message)
-    self.logFile.writelines(self.converter.toPlainText()+"\n")
-    self.logFile.flush()
+    self.writeLog(self.converter.toPlainText())
     self.update()
 
   #------------------------------------------------------------------------------------
   def debugMessage(self, message : str):
     if not self.isDebugging: return
-    self.logFile.writelines(self.prefixStr()+message+"\n")
-    self.logFile.flush()
+    self.writeLog(self.prefixStr()+message)
 
   #------------------------------------------------------------------------------------
   def close(self) -> bool:

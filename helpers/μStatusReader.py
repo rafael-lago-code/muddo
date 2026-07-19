@@ -72,12 +72,14 @@ class μStatusReader:
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
-  def filePath(char_name: str) -> str:
-    return os.path.join(P_DEFAULT_SHM_DIR, char_name.lower(), 'status')
+  def filePath(char_name: str) -> str | None:
+    from μMilvian import μMilvian
+    root = μMilvian.findShmRootForChar(char_name)
+    return root + 'status' if root else None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def open(self) -> bool:
-    if not os.path.exists(self._path): return False
+    if not self._path or not os.path.exists(self._path): return False
     try:
       self._f  = open(self._path, 'rb')
       self._mm = mmap.mmap(self._f.fileno(), 0, access=mmap.ACCESS_READ)

@@ -381,7 +381,7 @@ class μStorage(μToggler):
       p = μMilvianPacket(packetCommand.queryvault, bridge, struct.pack('<I', 1))
       p.χigResponse.connect(lambda data, p=p: self._vaultStatusUpdate(p, data))
       bridge.send(p)
-      pathFile = f"/dev/shm/milvian/{bridge.charName.lower()}/vault.bin"
+      pathFile = bridge.shmRoot + "vault.bin"
       try: os.remove(pathFile)
       except: pass
       μPrint.info(f"[μStorage] Vault recording started for {C_SILVER}{bridge.charName}</font> — interact with a bank in-game")
@@ -419,7 +419,7 @@ class μStorage(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _readVaultThread(self, bridge):
     charName = bridge.charName.lower()
-    pathFile = f"/dev/shm/milvian/{charName}/vault.bin"
+    pathFile = bridge.shmRoot + "vault.bin"
 
     while not os.path.exists(pathFile) or os.path.getsize(pathFile) < 4:
       time.sleep(0.1)
@@ -684,7 +684,7 @@ class μStorage(μToggler):
       inData += struct.pack('<I', len(selectedItems[c]))
       for item in list(selectedItems[c]):
         inData += struct.pack('<Q', item._id)
-      try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
+      try: os.remove(bridge.shmRoot + 'inventory.bin')
       except: pass
       p = μMilvianPacket(packetCommand.examineItems, bridge, inData)
       p.χigResponse.connect(lambda data, p=p: self.inventoryStatusUpdate(p, data))
@@ -703,7 +703,7 @@ class μStorage(μToggler):
 
     for bridge in μMilvianMeta.getBridges().values():
       bridge : μMilvian
-      try: os.remove(f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin')
+      try: os.remove(bridge.shmRoot + 'inventory.bin')
       except: pass
       p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
       p.χigResponse.connect(lambda data, p=p: self.inventoryStatusUpdate(p, data))
@@ -727,7 +727,7 @@ class μStorage(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def readInventoryBin(self, bridge : μMilvian):
     def _refreshStorageThread(self : μStorage, bridge : μMilvian):
-      filename  = f'/dev/shm/milvian/{bridge.charName.lower()}/inventory.bin'
+      filename  = bridge.shmRoot + 'inventory.bin'
       ownerName = bridge.charName
       freshIds  = set()
 

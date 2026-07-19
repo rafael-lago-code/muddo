@@ -203,11 +203,13 @@ class μMainWindow(QMainWindow):
     self.macros.close()
     self.processManager.close()
     self.patch.close()
-    self.console.close()
     self.storageManager.close()
     self.map.close()
     self.strategy.close()
     self.browser.close()
+    # Console must be closed last: the closers above still log through μPrint,
+    # and writing to a closed console log raised inside a slot aborts the app
+    self.console.close()
     super().close()
 
 

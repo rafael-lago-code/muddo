@@ -19,7 +19,7 @@
 #
 from __future__ import annotations
 from PyQt6.QtCore import QRunnable, pyqtSignal
-from μProcess import aProcessItem
+from μProcess import αProcessItem
 from μSettings import μSetup
 from μAuthenticator import μAuthenticator
 from μServerInfo import μServerInfo
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  D D O
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μDDO(aProcessItem):
+class μDDO(αProcessItem):
   sigAuthenticating = pyqtSignal(str)
   sigAuthenticated = pyqtSignal(str)
   sigQueued = pyqtSignal(str)
@@ -102,7 +102,10 @@ class μDDO(aProcessItem):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def launch(self):
-    if self.status == aProcessItem.P_STATUS_RUNNING: return
+    # Block re-entry while a launch is already in flight, otherwise a second
+    # click during authentication/queueing spawns a duplicate game instance
+    if self.status in (αProcessItem.P_STATUS_RUNNING, self.P_STATUS_AUTHENTICATING,
+                       self.P_STATUS_QUEUEING, self.P_STATUS_QUEUEDONE): return
     t = threading.Thread(target=self._launchThread, daemon=True)
     t.start()
     μPrint.info(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
@@ -110,40 +113,45 @@ class μDDO(aProcessItem):
     
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _launchThread(self):
-    self.auth = μAuthenticator(self)
-    self.sigChangeRequest.emit(self.P_STATUS_AUTHENTICATING)
+    try:
+      self.auth = μAuthenticator(self)
+      self.sigChangeRequest.emit(self.P_STATUS_AUTHENTICATING)
 
-    if not self.auth.authenticate():
+      if not self.auth.authenticate():
+        self.sigChangeRequest.emit(self.P_STATUS_ERROR)
+        return
+
+      self.sigChangeRequest.emit(self.P_STATUS_QUEUEING)
+      if not self.auth.wait():
+        self.sigChangeRequest.emit(self.P_STATUS_ERROR)
+        return
+      self.sigChangeRequest.emit(self.P_STATUS_QUEUEDONE)
+
+      arg = self.parseArguments()
+      gamePath = self.frozenProfile.launcher.gamePath()
+      gameExec = self.frozenProfile.launcher.gameExec()
+      cmd = f'cd \"{gamePath}\" ; {self.frozenProfile.launcher.command()} "{gameExec}" {arg} '
+
+      with open(self.getLogFilename(), "w") as logFile:
+        proc = subprocess.Popen(
+            cmd,
+            shell=True,                     # Needed for env var prefix + cd + &&
+            stdout=logFile,
+            stderr=subprocess.STDOUT,       # Merge stderr → stdout → log
+            start_new_session=True,         # New session → survives Python exit
+            close_fds=True,
+            env=os.environ.copy(),          # Inherit + your vars are in cmd
+        )
+        if proc:
+          self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
+          exitCode = proc.wait()
+        else:
+          μPrint.info("tGameExecutable.run:Error launching, check logs for details!")
+          exitCode = 1
+    except Exception as e:
+      μPrint.error(f"[μDDO] launch failed for {C_SILVER}{self.widgetID}</font>", e)
       self.sigChangeRequest.emit(self.P_STATUS_ERROR)
       return
-    
-    self.sigChangeRequest.emit(self.P_STATUS_QUEUEING)
-    if not self.auth.wait():
-      self.sigChangeRequest.emit(self.P_STATUS_ERROR)
-      return
-    self.sigChangeRequest.emit(self.P_STATUS_QUEUEDONE)
-
-    arg = self.parseArguments()
-    gamePath = self.frozenProfile.launcher.gamePath()
-    gameExec = self.frozenProfile.launcher.gameExec()
-    cmd = f'cd \"{gamePath}\" ; {self.frozenProfile.launcher.command()} "{gameExec}" {arg} '
-
-    logFile = open(self.getLogFilename(), "w")
-    proc = subprocess.Popen(
-        cmd,
-        shell=True,                     # Needed for env var prefix + cd + &&
-        stdout=logFile,
-        stderr=subprocess.STDOUT,       # Merge stderr → stdout → log
-        start_new_session=True,         # New session → survives Python exit
-        close_fds=True,
-        env=os.environ.copy(),          # Inherit + your vars are in cmd
-    )
-    if proc:
-      self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
-      exitCode = proc.wait()
-    else:
-      μPrint.info("tGameExecutable.run:Error launching, check logs for details!")
-      exitCode = 1
 
     # this locks until the DDO process ends, and it is intentional!
     # If it does end, then it was closed by the user (or some error...)
@@ -305,6 +313,9 @@ class μDDO(aProcessItem):
   def createFromOrphan(main : μMainWindow, pid : int, cmdline : str) -> μDDO:
     cmdline = cmdline.split(' ')
     pid = str(pid)
+    if len(cmdline) < 5:
+      μPrint.debug(f" Trying to match orphan process failed; cmdline too short: {cmdline}")
+      return None
     auth = cmdline[2]        # used to figure out the account
     loginServer = cmdline[4] # used to figure out the world
     world = ""

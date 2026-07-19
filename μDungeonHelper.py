@@ -18,7 +18,7 @@
 #
 #
 from __future__ import annotations
-from μProcess import aProcessItem
+from μProcess import αProcessItem
 from μSettings import μSetup
 from helpers.χHelper import χHelper
 from helpers.χTop import χTop
@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 import glob
 
 #----------------------------------------------------------------------------------------------------------
-class μDungeonHelper(aProcessItem):
+class μDungeonHelper(αProcessItem):
   dhExec = "DungeonHelper.exe"
   widgetID = "dh"
 
@@ -231,7 +231,7 @@ class μDungeonHelper(aProcessItem):
     self.btnSave.setEnabled(False)
     self.btnRestore.setEnabled(False)
     self.btnAudio.setEnabled(False)
-    if status == aProcessItem.P_STATUS_RUNNING:
+    if status == αProcessItem.P_STATUS_RUNNING:
       self.orb.setChecked(True)
       self.main.processManager.addItem(self)
       # self.actionToggle.setText("Stop")

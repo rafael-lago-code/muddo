@@ -22,6 +22,7 @@
   🭔🭠🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭔🭟🬂🬂🭕🭟
 """
 import os, sys, subprocess
+import faulthandler 
 
 THIS_PATH  = os.path.dirname(os.path.realpath(__file__))
 VENV_PATH  = os.path.join(THIS_PATH, "env", "μddo")
@@ -130,7 +131,8 @@ if os.environ.get("VIRTUAL_ENV") != VENV_PATH:
 from PyQt6.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt6.QtWidgets import QApplication
 from μMainWindow import μMainWindow
-import Xlib
+from helpers.util import P_DEFAULT_CONFIGDIR
+import Xlib, os
 
 
 print(MUDDO_TITLE)
@@ -142,7 +144,36 @@ print(boxLine(" "))
 print("╚══════════════════════════════════════════════════════════════════════════════╝")
 
 if __name__ == '__main__':
+  import threading, traceback, datetime
+
   app = QApplication(sys.argv)
+  errorFile = f'{P_DEFAULT_CONFIGDIR}/muddo.errors'
+  if os.path.isfile(errorFile): os.replace(errorFile,errorFile+".old")
+  errorLog = open(errorFile, 'w')
+  faulthandler.enable(file=errorLog)
+
+  # PyQt6 calls qFatal() (SIGABRT) on any unhandled Python exception raised in a
+  # slot or reimplemented virtual, unless the application installs its own
+  # excepthook. Log the exception and keep the application alive instead.
+  def _logUnhandled(prefix, excType, excValue, excTb):
+    msg = f"\n[{datetime.datetime.now():%Y-%m-%d %H:%M:%S}] {prefix}\n"
+    msg += "".join(traceback.format_exception(excType, excValue, excTb))
+    sys.stderr.write(msg)
+    try:
+      errorLog.write(msg)
+      errorLog.flush()
+    except Exception:
+      pass
+
+  def _excepthook(excType, excValue, excTb):
+    _logUnhandled("Unhandled exception (main thread):", excType, excValue, excTb)
+
+  def _threadExcepthook(args):
+    _logUnhandled(f"Unhandled exception (thread {args.thread.name if args.thread else '?'}):",
+                  args.exc_type, args.exc_value, args.exc_traceback)
+
+  sys.excepthook = _excepthook
+  threading.excepthook = _threadExcepthook
   app.setStyleSheet("""
     *::item:selected {
         background-color: #541308;
