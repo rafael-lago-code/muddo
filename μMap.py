@@ -25,7 +25,7 @@ from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QObject, QPointF, pyqtP
 from helpers.μImageFactory import *
 from helpers.util import P_DEFAULT_SHM_DIR
 from helpers.μStrings import μString
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
 from widgets.μText import μDisplayLabel

@@ -28,7 +28,7 @@ from widgets.μCombo import μCheckCombo
 from μSettings import μSetup
 from μWorlds import μWorldList
 from μServerInfo import μServerInfo
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from widgets.μText import μDisplayLabel
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *

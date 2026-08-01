@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 import threading
 from datetime import datetime
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 

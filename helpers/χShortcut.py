@@ -18,21 +18,24 @@ from Xlib import X
 import threading, time
 from helpers.tStoppableThread import tStoppableThread
 from helpers.χHelper import χHelper
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 
 # This is used so that key grabs are insensitive to the following modifiers and their combinations:
 #  - capslock
 #  - left and right mouse button
-P_EXTRA_MOD_MASKS = [0, X.LockMask, X.Button1Mask, X.Button1Mask | X.LockMask, X.Button3Mask, X.Button3Mask | X.LockMask]
+P_IGNORED_MODS  = [X.LockMask, X.Button1Mask, X.Button3Mask]
+P_TOCLEAN_MODS  = X.LockMask | X.Button1Mask | X.Button3Mask
+P_IGNORED_COMBO = [0, X.LockMask, X.Button1Mask, X.Button1Mask | X.LockMask, X.Button3Mask, X.Button3Mask | X.LockMask]
+
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
-#   🮿  G L O B A L   S H O R T C U T
+#   🮿  S H O R T C U T
 #
 #   Manages shortcuts directly from XLib instead of going through Qt. This allows really global shortcuts to be
 #   used. Uses χHelper's Xlib display connection.
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class χGlobalShortcut():
+class χShortcut():
   _managedWindows: set = set()
   _hotkeys: dict = {}
   daemonStopFlag: threading.Event = None
@@ -50,11 +53,17 @@ class χGlobalShortcut():
     cls._managedWindows.discard(winID)
     χPrint.debug(f"[χGlobalShortcut] unregistered managed window {winID}")
 
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @staticmethod
+  def clearExtraModifiers(modmask: int) -> int:
+    return modmask & ~P_TOCLEAN_MODS
+
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   ⌖  S H O R T C U T S   D A E M O N
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   @classmethod
   def startDaemon(cls):
+
     if cls.daemonThread and cls.daemonThread.is_alive():
       return
     cls.daemonStopFlag = threading.Event()
@@ -70,6 +79,8 @@ class χGlobalShortcut():
           with χHelper._lock:
             event = χHelper.disp.next_event()
           if event.type == X.KeyPress:
+            modmask = χShortcut.clearExtraModifiers(event.state)
+            keycode = event.detail
             try:
               focus = χHelper.disp.get_input_focus().focus
               if focus.id not in cls._managedWindows:
@@ -79,7 +90,7 @@ class χGlobalShortcut():
             except Exception:
               pass
             with χHelper._lock:
-              callback = cls._hotkeys.get((event.state, event.detail))
+              callback = cls._hotkeys.get((modmask, keycode))
             if callback: callback()
         else:
           time.sleep(0.01)
@@ -127,22 +138,24 @@ class χGlobalShortcut():
   @classmethod
   def grabKey(cls, modmask, keycode):
     with χHelper._lock:
-      for extra in P_EXTRA_MOD_MASKS:
+      for extra in P_IGNORED_COMBO:
         χHelper.root.grab_key(keycode, modmask | extra, True, X.GrabModeAsync, X.GrabModeAsync)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def ungrabKey(cls, modmask, keycode):
     with χHelper._lock:
-      for extra in P_EXTRA_MOD_MASKS:
+      for extra in P_IGNORED_COMBO:
         χHelper.root.ungrab_key(keycode, modmask | extra)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  #  Converts a dictionary of hotkeys in the form { "Ctrl+Shift+X": callback } into a dictionary of
+  #  {(modmask, keycode) : callback }
   @classmethod
   def _parseHotkeyMap(cls, hotkeys: dict) -> dict:
     parsed = {}
     for keystring, callback in hotkeys.items():
-      seq = χHelper._parseKeystring(keystring)
+      seq = χHelper.parseKeystring(keystring)
       if not seq or len(seq) > 1:
         χPrint.error(f"[χGlobalShortcut] invalid hotkey \"{keystring}\"")
         continue
@@ -150,29 +163,27 @@ class χGlobalShortcut():
       modmask = 0
       for m in item['mods']: modmask |= χHelper.MODIFIER_MASKS[m]
       keycode = χHelper.getKeyCode(item['key'])
-      for extra in P_EXTRA_MOD_MASKS:
-        parsed[(modmask | extra, keycode)] = callback
+      parsed[(modmask, keycode)] = callback
     return parsed
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  #  Because of the way Milvian does consolidation, we rarely have a single hotkey. 
+  #  This function basically registers a bunch of hotkeys at once, passed by dictionary
   @classmethod
   def updateHotkeys(cls, hotkeys: dict):
     newMap = cls._parseHotkeyMap(hotkeys)
     oldKeys = set(cls._hotkeys.keys())
     newKeys = set(newMap.keys())
 
-    oldBase = {(m & ~0x502, k) for m, k in oldKeys}
-    newBase = {(m & ~0x502, k) for m, k in newKeys}
-
-    for modmask, keycode in (oldBase - newBase):
+    for modmask, keycode in (oldKeys - newKeys):
       try:    cls.ungrabKey(modmask, keycode)
       except: pass
-    for modmask, keycode in (newBase - oldBase):
+    for modmask, keycode in (newKeys - oldKeys):
       try:    cls.grabKey(modmask, keycode)
       except Exception as e:
-        χPrint.error(f"[χGlobalShortcut] failed to grab key ({modmask}, {keycode})", e)
+        χPrint.error(f"[χShortcut] failed to grab key ({modmask}, {keycode})", e)
 
     with χHelper._lock:
       cls._hotkeys = newMap
       χHelper.disp.sync()
-    χPrint.debug(f"[χGlobalShortcut] hotkeys updated: {len(hotkeys)} active ({len(newBase - oldBase)} added, {len(oldBase - newBase)} removed)")
+    χPrint.debug(f"[χShortcut] hotkeys updated: {len(hotkeys)} active ({len(newKeys - oldKeys)} added, {len(oldKeys - newKeys)} removed)")

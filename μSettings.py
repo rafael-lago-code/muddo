@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import QComboBox, QTabWidget, QStackedWidget
 from PyQt6.QtCore import pyqtSignal
 from widgets.μCombo import μCheckCombo, μCombo
 from μSettingsProfile import μSettingsProfile
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
 from widgets.μFloating import μToggler

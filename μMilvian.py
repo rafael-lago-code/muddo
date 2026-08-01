@@ -21,7 +21,7 @@ import sys, mmap, time, struct
 import os, threading, json, re, random
 from helpers.μMilvianPacket import μMilvianPacket, cPacker, μPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.χDispatcher import χSignal
 from helpers.util import *
 from helpers.util import P_DEFAULT_SHM_DIR

@@ -24,11 +24,12 @@ from μSettings import μSetup
 from μAuthenticator import μAuthenticator
 from μServerInfo import μServerInfo
 from helpers.χHelper import χHelper, windowData
+from helpers.χShortcut import χShortcut
 from helpers.χTop import χTop
 import subprocess
 import os, time, glob, threading
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from μWorlds import μWorld, μWorldList
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -72,7 +73,7 @@ class μDDO(αProcessItem):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onGotWinID(self, winID):
     self.winID.setText(winID)
-    χHelper.registerWindow(int(winID))
+    χShortcut.registerWindow(int(winID))
     self.setStatus(self.status)
     self.restoreWindow()
 

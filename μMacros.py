@@ -22,7 +22,8 @@ from dataclasses import dataclass, field
 from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
                               QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit,
                               QTableWidget, QTableWidgetItem, QLabel, QDialog)
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
+from helpers.χDispatcher import χDispatcher
 from helpers.μImageFactory import *
 from helpers.μStrings import *
 from μSettings import μSetup
@@ -93,6 +94,7 @@ class μMacroRegistry:
   consolidatedTriggers : dict[str, dict] = {}
   metaActors : set = {'all', 'self', 'any', 'etal', 'focus', 'ui'}
   uiTargets  : dict = {}
+  _refreshPending : bool = False
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -120,6 +122,8 @@ class μMacroRegistry:
         del cls.triggers[macro.trigger]
     if macro.parentSet in cls.sets:
       cls.sets[macro.parentSet].entries.remove(macro)
+    # Reconsolidates if siblings remain, drops the stale entry if not. Either way the hotkeys get rebuilt
+    cls.consolidateTrigger(macro.trigger)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -131,7 +135,9 @@ class μMacroRegistry:
         del cls.triggers[oldTrigger]
     cls.triggers.setdefault(newTrigger, []).append(macro)
     macro.trigger = newTrigger
-    if oldTrigger in cls.triggers: cls.consolidateTrigger(oldTrigger)
+    # Unconditional: if oldTrigger just lost its last macro it is no longer in cls.triggers, and only
+    # consolidateTrigger will clear the entry it left in consolidatedTriggers
+    cls.consolidateTrigger(oldTrigger)
     cls.consolidateTrigger(newTrigger)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -199,7 +205,11 @@ class μMacroRegistry:
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   @classmethod
   def consolidateTrigger(cls, trigger : str) -> dict:
-    if trigger == "none" or trigger not in cls.triggers: return {}
+    cls.scheduleRefresh()
+    if trigger == "none" or trigger not in cls.triggers:
+      # The trigger is gone; leaving its old entry behind would resurrect the hotkey on the next rebuild
+      cls.consolidatedTriggers.pop(trigger, None)
+      return {}
     consolidated = {}
     for e in (e for e in cls.triggers[trigger] if e.active):
       cls.consolidateEntry(e, consolidated)
@@ -248,16 +258,16 @@ class μMacroRegistry:
         try:    args.append(ast.literal_eval(arg))
         except (ValueError, SyntaxError): args.append(arg)
 
+    # The shortcut daemon calls this from its own thread; χDispatcher hops the widget call to the Qt one
     def callback(t=target_name, m=method_name, a=args):
-      from PyQt6.QtCore import QTimer
       if t == 'all':
         for widget in cls.uiTargets.values():
           if hasattr(widget, m):
-            QTimer.singleShot(0, lambda w=widget, mn=m, ar=a: getattr(w, mn)(*ar))
+            χDispatcher.post(lambda w=widget, mn=m, ar=a: getattr(w, mn)(*ar))
       else:
         widget = cls.uiTargets.get(t)
         if widget and hasattr(widget, m):
-          QTimer.singleShot(0, lambda w=widget, mn=m, ar=a: getattr(w, mn)(*ar))
+          χDispatcher.post(lambda w=widget, mn=m, ar=a: getattr(w, mn)(*ar))
         else:
           χPrint.warning(f"[μMacroRegistry] ui target \"{t}\" or method \"{m}\" not found")
 
@@ -274,22 +284,54 @@ class μMacroRegistry:
       cb = cls._buildUICallback(action_str)
       if cb: ft.items.append(cb)
 
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  H O T K E Y   R E F R E S H
+  #
+  #      consolidateTrigger only updates data. Pushing that data to the X11 grabs goes through here.
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  # Asks for a rebuild without doing one. Every consolidateTrigger call lands here, so consolidateAll would
+  # otherwise rebuild once per trigger; the pending flag collapses a whole burst into a single pass.
+  #
+  # Deferring also fixes the ordering at startup: μMacros.initialize() consolidates from inside
+  # μMainWindow.initialize(), before χHelper.setup() has opened the display. The Qt loop only starts at
+  # app.exec(), well after, so the rebuild finds a display instead of None.
+  @classmethod
+  def scheduleRefresh(cls):
+    if cls._refreshPending: return
+    cls._refreshPending = True
+    χDispatcher.post(cls._doRefresh)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def _doRefresh(cls):
+    cls._refreshPending = False
+    cls.refreshHotkeys()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # Rebuilds every hotkey from the consolidated state as it stands. Bridges may be absent - UI-only macros
+  # still work, finalizeScript handles it.
+  @classmethod
+  def refreshHotkeys(cls):
+    from helpers.χHelper import χHelper
+    from helpers.χShortcut import χShortcut
+    from μMilvian import μMilvianMeta
+    if χHelper.disp is None: return          # χHelper.setup() has not run yet
+    bridges  = μMilvianMeta.getBridges() or {}
+    triggers = {}
+    for trigger, scripts in cls.consolidatedTriggers.items():
+      if trigger == "none" or trigger.startswith('toolbar'): continue
+      # finalizeScript pops 'ui' off the dict it is given, so hand it a copy
+      ft = cls.finalizeScript(dict(scripts), bridges)
+      if ft is not None and ft.items:
+        triggers[trigger] = lambda x=ft.items: χHelper.execute(x)
+    χShortcut.updateHotkeys(triggers)
+    χPrint.debug(f"[μMacroRegistry] hotkeys refreshed: {len(triggers)} active")
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def buildUIHotkeys(cls):
-    from helpers.χHelper import χHelper
     cls.consolidateAll()
-    triggers = {}
-    for trigger, scripts in cls.consolidatedTriggers.items():
-      if trigger == "none": continue
-      uiScript = scripts.get('ui')
-      if not uiScript: continue
-      ft = μFinalizedTrigger()
-      cls._appendUICallbacks(ft, uiScript)
-      if ft.items:
-        triggers[trigger] = lambda x=ft.items: χHelper.execute(x)
-    χHelper.updateHotkeys(triggers)
-    χPrint.debug(f"[μMacroRegistry] UI hotkeys: {len(triggers)} registered")
+    cls.refreshHotkeys()
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  F I N A L I Z E   C O N S O L I D A T I O N

@@ -24,7 +24,7 @@
 from __future__ import annotations
 from PyQt6.QtCore import QObject, pyqtSignal
 from μSettings import μSetup
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.util import *
 import os, time, threading
 import xml.dom.minidom

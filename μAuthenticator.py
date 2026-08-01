@@ -23,7 +23,7 @@
 #
 from __future__ import annotations
 from helpers.util import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from μServerInfo import μServerInfo
 import os
 import xml.dom.minidom

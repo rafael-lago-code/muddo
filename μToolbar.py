@@ -26,7 +26,7 @@ from PyQt6.QtGui import QPainter, QPixmap, QColor
 from PyQt6.QtCore import Qt, QPoint
 from μSettings import μSetup
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.util import *
 from helpers import μEffects
 from widgets.μFloating import μFloating

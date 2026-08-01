@@ -37,8 +37,10 @@ from μSummary import μSummary
 from μToolbar import μToolbar
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.χHelper import χHelper
+from helpers.χShortcut import χShortcut
+from helpers.χDispatcher import χDispatcher
 
 class μMainWindow(QMainWindow):
   P_POS_X = 100
@@ -124,9 +126,9 @@ class μMainWindow(QMainWindow):
     self.macros.initialize()
     self.patch.initialize()
     χHelper.setup()
-    χHelper.registerWindow(int(self.winId()))
+    χShortcut.registerWindow(int(self.winId()))
     for dock in self._docks:
-      χHelper.registerWindow(int(dock.winId()))
+      χShortcut.registerWindow(int(dock.winId()))
     μMacroRegistry.uiTargets = {
       'map':       self.map,
       'strategy':  self.strategy,
@@ -139,7 +141,7 @@ class μMainWindow(QMainWindow):
       'storage':   self.storageManager,
       'dh':        self.dh,
     }
-    χHelper.startScd()
+    χShortcut.startDaemon()
     μMacroRegistry.buildUIHotkeys()
     μMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
@@ -215,10 +217,12 @@ class μMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def close(self):
     self.saveState()
-    χHelper.stopScd()
-    χHelper.unregisterWindow(int(self.winId()))
+    χShortcut.stopDaemon()
+    # Before the widgets go: anything still queued would land on a half-torn-down target
+    χDispatcher.stop()
+    χShortcut.unregisterWindow(int(self.winId()))
     for dock in self._docks:
-      χHelper.unregisterWindow(int(dock.winId()))
+      χShortcut.unregisterWindow(int(dock.winId()))
     self.setup.save()
     self.setup.close()
     self.macros.close()

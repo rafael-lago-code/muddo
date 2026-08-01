@@ -24,7 +24,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from PyQt6.QtCore import pyqtSignal
 from helpers.χDispatcher import χDispatcher, χSignal
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 if TYPE_CHECKING:
    from helpers.μMilvianPacket import μMilvianPacket
    from μMilvian import μMilvian

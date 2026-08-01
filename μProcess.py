@@ -28,7 +28,8 @@ from helpers.μImageFactory import *
 from widgets.μLog import μLog
 from helpers.χTop import χTop
 from helpers.χHelper import χHelper
-from helpers.μPrint import χPrint
+from helpers.χShortcut import χShortcut
+from helpers.χPrint import χPrint
 from collections import OrderedDict
 import re
 import signal
@@ -413,7 +414,7 @@ class αProcessItem(QWidget):
         self.sigError.emit("APROCESS_UNKNOWN_ERROR")
       elif newStatus == "terminated" or newStatus == αProcessItem.P_STATUS_TERMINATED:
         if self.winID.text().isdigit():
-          χHelper.unregisterWindow(int(self.winID.text()))
+          χShortcut.unregisterWindow(int(self.winID.text()))
         self.pid.setText("")
         self.winID.setText("")
         self.btnToggle.setEnabled(True)
@@ -433,7 +434,7 @@ class αProcessItem(QWidget):
         self.sigRunning.emit()
       elif newStatus == "killed" or newStatus == αProcessItem.P_STATUS_KILLED:
         if self.winID.text().isdigit():
-          χHelper.unregisterWindow(int(self.winID.text()))
+          χShortcut.unregisterWindow(int(self.winID.text()))
         self.pid.setText("")
         self.winID.setText("")
         self.btnToggle.setEnabled(True)

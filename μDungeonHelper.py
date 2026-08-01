@@ -26,7 +26,7 @@ import subprocess
 import os, time, threading
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow

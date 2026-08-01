@@ -19,15 +19,13 @@ import Xlib.error
 import Xlib.protocol.event
 import Xlib.Xutil
 import time, re, threading, json, subprocess
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.χDispatcher import χDispatcher
 from helpers.μStrings import μString
 import os
 
 P_DEFAULT_SLEEP = 0.05
 P_DEFAULT_KEYSYM = '/usr/include/X11/keysymdef.h'
-
-from helpers.χGlobalShortcut import χGlobalShortcut
 
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -158,15 +156,6 @@ class χHelper():
     cls.utf8String = cls.disp.intern_atom('UTF8_STRING')
     cls.netWMDesktop = cls.disp.intern_atom('_NET_WM_DESKTOP')
     cls.disp.set_error_handler(lambda d, e: None)
-
-  registerWindow   = χGlobalShortcut.registerWindow
-  unregisterWindow = χGlobalShortcut.unregisterWindow
-  startScd         = χGlobalShortcut.startDaemon
-  stopScd          = χGlobalShortcut.stopDaemon
-  cleanupScd       = χGlobalShortcut.forceCleanup
-  grabKey          = χGlobalShortcut.grabKey
-  ungrabKey        = χGlobalShortcut.ungrabKey
-  updateHotkeys    = χGlobalShortcut.updateHotkeys
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -412,7 +401,7 @@ class χHelper():
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def _parseKeystring(cls, string) -> list:
+  def parseKeystring(cls, string) -> list:
     seq = []
     string = ' '.join(string.lower().split())
     string = string.replace(" + ","+")
@@ -435,8 +424,7 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def execute(cls, script, winID = None) -> None:
-    if winID:
-      cls.focusWindow(winID)
+    if winID: cls.focusWindow(winID)
 
     for item in script:
       if callable(item):
@@ -451,7 +439,7 @@ class χHelper():
       elif item.startswith("click"):
         cls.sendClick(int(item[6:]))
       else:
-        cls.sendKeystroke(cls._parseKeystring(item))
+        cls.sendKeystroke(cls.parseKeystring(item))
 
       with cls._lock: cls.disp.sync()
 

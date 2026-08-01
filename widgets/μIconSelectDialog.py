@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (QDialog, QFileDialog, QInputDialog,
 from PyQt6.QtGui import QIcon, QPixmap, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, QSize
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from widgets.μOrb import μOrbSmall
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂

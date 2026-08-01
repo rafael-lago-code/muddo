@@ -26,7 +26,7 @@ from helpers.μStrings import μString
 from helpers.μDict import μDict
 from widgets.μGrid import μGridLayout
 from μMilvian import μMilvian, μMilvianMeta
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.μMilvianPacket import μMilvianPacket, cPacker, μPhonyPacket, packetCommand, packetStatus, packetSignal
 from widgets.μNetwork import *
 from widgets.μFloating import μToggler

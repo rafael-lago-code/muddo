@@ -24,7 +24,7 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 import threading
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 import xml.dom.minidom
 from widgets.μCombo import μCombo
 from typing import TYPE_CHECKING

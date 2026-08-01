@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import QAbstractItemView, QTableWidget, QTableWidgetItem, Q
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QImage
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from typing import TYPE_CHECKING
 
 from helpers.μStrings import μString

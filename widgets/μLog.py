@@ -20,7 +20,7 @@
 from PyQt6.QtWidgets import QTextEdit
 from PyQt6.QtCore import QFileSystemWatcher
 from helpers.util import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  L O G 

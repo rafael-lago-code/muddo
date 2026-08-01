@@ -29,7 +29,7 @@ from widgets.μFloating import μToggler
 from widgets.μItemsTable import *
 from widgets.μItemFilter import μItemFilter
 from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus, packetSignal
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.μStrings import *
 from widgets.μText import μDisplayLabel
 from μMilvian import *

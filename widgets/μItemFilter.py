@@ -29,7 +29,7 @@ from widgets.μOrb import μBoxCheck
 from helpers.μImageFactory import *
 from widgets.μCombo import μCheckCombo, μAdvancedCombo
 from widgets.μItemsTable import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from helpers.χDB import getAccountCharacters
 from helpers.μStrings import *
 from widgets.μText import μTextEdit

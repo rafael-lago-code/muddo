@@ -25,8 +25,9 @@ from μProcess import αProcessItem
 from μToolbar import μToolbar, μToolbarItem
 from widgets.μOrb import μOrb
 from helpers.χHelper import χHelper
+from helpers.χShortcut import χShortcut
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
@@ -135,7 +136,7 @@ class μMilvianBridge(αProcessItem):
   def cleanup(cls):
     χPrint.info("Purging all possible shortcuts combinations...")
     μToolbar.clearItems()
-    χHelper.cleanupScd()
+    χShortcut.forceCleanup()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -153,7 +154,7 @@ class μMilvianBridge(αProcessItem):
     toolbarMacros = {k: triggers.pop(k) for k in list(triggers) if k.startswith('toolbar')}
     for hk, ft in triggers.items():
       triggers[hk] = lambda x=ft.items: χHelper.execute(x)
-    χHelper.updateHotkeys(triggers)
+    χShortcut.updateHotkeys(triggers)
 
     μToolbar.clearItems()
     if toolbarMacros:

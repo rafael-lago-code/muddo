@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QWidget, QSlider
 from PyQt6.QtCore import QSettings
 from helpers.μImageFactory import *
-from helpers.μPrint import χPrint
+from helpers.χPrint import χPrint
 from widgets.μOrb import μOrbSmall
 from widgets.μOrb import μBoxCheck
 from widgets.μGrid import μGridLayout

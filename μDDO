@@ -144,6 +144,10 @@ if __name__ == '__main__':
   import threading, traceback, datetime
 
   app = QApplication(sys.argv)
+  # Must happen here: the backend takes the affinity of the thread that builds it, and everything posted to
+  # χDispatcher from a worker thread lands on that thread
+  from helpers.χDispatcher import χDispatcher
+  χDispatcher.setup(qt=True)
   errorFile = f'{P_DEFAULT_CONFIGDIR}/muddo.errors'
   if os.path.isfile(errorFile): os.replace(errorFile,errorFile+".old")
   errorLog = open(errorFile, 'w')
