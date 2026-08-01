@@ -29,7 +29,7 @@ from widgets.μOrb import μBoxCheck
 from helpers.μImageFactory import *
 from widgets.μCombo import μCheckCombo, μAdvancedCombo
 from widgets.μItemsTable import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.χDB import getAccountCharacters
 from helpers.μStrings import *
 from widgets.μText import μTextEdit
@@ -271,7 +271,7 @@ class μItemFilter(QWidget):
           if not bool(eval(scriptText, itemContext)):
             return self.table.setRowHidden(row, True)
         except Exception as e:
-          μPrint.error("[μItemFilter]: error while evaluating filter script:", e)
+          χPrint.error("[μItemFilter]: error while evaluating filter script:", e)
           return
 
       textTarget = ""
@@ -394,7 +394,7 @@ class μItemFilter(QWidget):
     selected = self.scriptList.selectedItems()
     if not selected: return
     filter: μFilterItem = selected[0]
-    μPrint.info(f"Removing filter script \"{C_SILVER}{filter.name}</font>\"...")
+    χPrint.info(f"Removing filter script \"{C_SILVER}{filter.name}</font>\"...")
     self.allFilterScripts.pop(filter.name, None)
     filename = P_DEFAULT_FILTERSDIR + os.sep + filter.name + P_DEFAULT_FILTEREXT
     try:
@@ -402,7 +402,7 @@ class μItemFilter(QWidget):
     except FileNotFoundError:
       pass
     except OSError as e:
-      μPrint.error(f"[μItemFilter] failed to remove filter file \"{filename}\":", e)
+      χPrint.error(f"[μItemFilter] failed to remove filter file \"{filename}\":", e)
     self.scriptList.takeItem(self.scriptList.row(filter))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -529,5 +529,5 @@ class μFilterItem(QListWidgetItem):
       with open(filename, "r") as f:
         self.content = f.read()
     except Exception as e:
-      μPrint.error(f"{C_RED}WARNING:</font> error loading filter from \"{filename}\"", e)
+      χPrint.error(f"{C_RED}WARNING:</font> error loading filter from \"{filename}\"", e)
       self.content = ""

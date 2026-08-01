@@ -24,7 +24,7 @@
 from PyQt6.QtCore import QObject, pyqtSignal
 import threading
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 import xml.dom.minidom
 from widgets.μCombo import μCombo
 from typing import TYPE_CHECKING
@@ -113,7 +113,7 @@ class μWorld(QObject):
         self.update()
     except Exception as e:
       self.status = μWorld.DOWN
-      μPrint.error("Error trying to check world status", e)
+      χPrint.error("Error trying to check world status", e)
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  W O R L D   L I S T 
@@ -167,7 +167,7 @@ class μWorldList(μCombo):
     if w:
       cls._widget.setCurrentIndex(w.index)
     else:
-      μPrint.error(f"[μWorld]: world \"{name}\" not found in the list!")
+      χPrint.error(f"[μWorld]: world \"{name}\" not found in the list!")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def update(self):
@@ -178,11 +178,11 @@ class μWorldList(μCombo):
   def updateWorld(self, data : tuple):
     name, chatServer, statusServer = data
     if name in μWorldList.worlds:
-      μPrint.info(f"Updating \"{C_SILVER}{name}</font>\" world info...")
+      χPrint.info(f"Updating \"{C_SILVER}{name}</font>\" world info...")
       μWorldList.worlds[name].chatServer = chatServer
       μWorldList.worlds[name].statusServer = statusServer
     else:
-      μPrint.info(f"Adding \"{C_SILVER}{name}</font>\" world info...")
+      χPrint.info(f"Adding \"{C_SILVER}{name}</font>\" world info...")
       μWorldList.worlds[name] = μWorld(self, name, chatServer, statusServer, self.count())
       self.addItem(μWorldList.worlds[name])
     μWorldList.worlds[name].checkStatus()

@@ -24,7 +24,7 @@
 #                                  
 #   This is a static class. Don't instantiate it.
 # 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
-class μPrint():
+class χPrint():
   info    = lambda x : print(x)
   debug   = lambda x : print(x)
   warning = lambda x,e=None : print(x + (f"\n{e}" if e else ""))
@@ -77,6 +77,6 @@ class μPrint():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def fill(text, length: int, char: str = " ", align : str = "l") -> str:
-    if align == "r": return μPrint.fillLeft(text, length, char)
-    if align == "l": return μPrint.fillRight(text, length, char)
-    if align == "c": return μPrint.fillCenter(text, length, char)
+    if align == "r": return χPrint.fillLeft(text, length, char)
+    if align == "l": return χPrint.fillRight(text, length, char)
+    if align == "c": return χPrint.fillCenter(text, length, char)

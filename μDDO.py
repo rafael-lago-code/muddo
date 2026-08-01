@@ -28,7 +28,7 @@ from helpers.χTop import χTop
 import subprocess
 import os, time, glob, threading
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from μWorlds import μWorld, μWorldList
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -72,6 +72,7 @@ class μDDO(αProcessItem):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _onGotWinID(self, winID):
     self.winID.setText(winID)
+    χHelper.registerWindow(int(winID))
     self.setStatus(self.status)
     self.restoreWindow()
 
@@ -83,19 +84,19 @@ class μDDO(αProcessItem):
         self.status = self.P_STATUS_AUTHENTICATING
         self.sigAuthenticating.emit(self.username.text())
         self.pid.setText("Auth")
-        μPrint.info(f"Authenticating \"{C_SILVER}{self.username.text()}</font>\"...")
+        χPrint.info(f"Authenticating \"{C_SILVER}{self.username.text()}</font>\"...")
       elif newStatus == self.P_STATUS_QUEUEING:
         self.status = self.P_STATUS_QUEUEING
         self.sigAuthenticated.emit(self.username.text())
         self.pid.setText("Queue")
-        μPrint.info(f"Queueing \"{C_SILVER}{self.username.text()}</font>\"...")
+        χPrint.info(f"Queueing \"{C_SILVER}{self.username.text()}</font>\"...")
         self.sigQueued.emit(self.username.text())
       elif newStatus == self.P_STATUS_QUEUEDONE:
         self.status = self.P_STATUS_QUEUEDONE
         self.pid.setText("Launch")
         self.sigQueueDone.emit(self.username.text())
       elif newStatus == self.P_STATUS_RUNNING:
-        μPrint.info(f"Running \"{C_SILVER}{self.username.text()}</font>\"...")
+        χPrint.info(f"Running \"{C_SILVER}{self.username.text()}</font>\"...")
     super().setStatus(newStatus)
     if _oldstatus != self.status: self.sigStatusChanged.emit(self.status)
     self.updateTooltip()
@@ -108,7 +109,7 @@ class μDDO(αProcessItem):
                        self.P_STATUS_QUEUEING, self.P_STATUS_QUEUEDONE): return
     t = threading.Thread(target=self._launchThread, daemon=True)
     t.start()
-    μPrint.info(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
+    χPrint.info(f"Starting {C_SILVER}{self.username.text()}</font> in {C_SILVER}\
                       {self.worldname.text()}</font>...")
     
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -146,10 +147,10 @@ class μDDO(αProcessItem):
           self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
           exitCode = proc.wait()
         else:
-          μPrint.info("tGameExecutable.run:Error launching, check logs for details!")
+          χPrint.info("tGameExecutable.run:Error launching, check logs for details!")
           exitCode = 1
     except Exception as e:
-      μPrint.error(f"[μDDO] launch failed for {C_SILVER}{self.widgetID}</font>", e)
+      χPrint.error(f"[μDDO] launch failed for {C_SILVER}{self.widgetID}</font>", e)
       self.sigChangeRequest.emit(self.P_STATUS_ERROR)
       return
 
@@ -188,7 +189,7 @@ class μDDO(αProcessItem):
             self.sigChangeRequest.emit(self.status)
             return c
         if (time.time() - startTime) > 15.0:
-          μPrint.error(f"cDDO.watchPID: timeout error while looking for PID for {self.username.text()}")
+          χPrint.error(f"cDDO.watchPID: timeout error while looking for PID for {self.username.text()}")
           return None
         time.sleep(0.1)
 
@@ -206,14 +207,14 @@ class μDDO(αProcessItem):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioMute(self):
     if self.pid.text().isdigit():
-      μPrint.info(f"{C_SILVER}Muting</font> {self.pid.text()}...")
+      χPrint.info(f"{C_SILVER}Muting</font> {self.pid.text()}...")
       χHelper.audioMute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_UNMUTE))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def audioUnmute(self):
     if self.pid.text().isdigit():
-      μPrint.info(f"{C_SILVER}Unmuting</font> {self.pid.text()}...")
+      χPrint.info(f"{C_SILVER}Unmuting</font> {self.pid.text()}...")
       χHelper.audioUnmute(str(self.pid.text()))
       self.btnAudio.setIcon(getIcon(P_ICON_MUTE))
   
@@ -254,7 +255,7 @@ class μDDO(αProcessItem):
       χHelper.moveWindow(winID, winData.posx, winData.posy)
     if self.frozenProfile.xsettings.size():
       # χHelper.resizeWindow(winID, winData.posx, winData.posy)
-      μPrint.warning(f"[cDDO] resizing window not yet implemented")
+      χPrint.warning(f"[cDDO] resizing window not yet implemented")
     if self.frozenProfile.xsettings.desktop():
       χHelper.moveVirtualDesktop(winID, winData.desktop)
 
@@ -314,7 +315,7 @@ class μDDO(αProcessItem):
     cmdline = cmdline.split(' ')
     pid = str(pid)
     if len(cmdline) < 5:
-      μPrint.debug(f" Trying to match orphan process failed; cmdline too short: {cmdline}")
+      χPrint.debug(f" Trying to match orphan process failed; cmdline too short: {cmdline}")
       return None
     auth = cmdline[2]        # used to figure out the account
     loginServer = cmdline[4] # used to figure out the world
@@ -328,14 +329,14 @@ class μDDO(αProcessItem):
           username = ((os.path.basename(a)).replace("GLSAuthServer_","")).replace(".xml","")
           break
     if not username:
-      μPrint.debug(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
+      χPrint.debug(f" Trying to match orphan process failed; auth={auth} not found in any GLSAuth file.")
       return None
     
     for w in μWorldList.worlds.values():
       if w.loginServer == loginServer:
         world = w
     if not world:
-      μPrint.debug(f" Trying to match orphan process failed; loginServer={loginServer} doesn't match any world")
+      χPrint.debug(f" Trying to match orphan process failed; loginServer={loginServer} doesn't match any world")
       return None
 
     # missing profile info, what to do?

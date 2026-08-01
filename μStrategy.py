@@ -26,7 +26,7 @@ from helpers.μStrings import μString
 from helpers.μDict import μDict
 from widgets.μGrid import μGridLayout
 from μMilvian import μMilvian, μMilvianMeta
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.μMilvianPacket import μMilvianPacket, cPacker, μPhonyPacket, packetCommand, packetStatus, packetSignal
 from widgets.μNetwork import *
 from widgets.μFloating import μToggler
@@ -351,7 +351,7 @@ class μStrategy(μToggler):
     d = self.strategyPath()
     files = glob.glob(os.path.join(d, "*.directives"))
     if not files:
-      μPrint.warning(f"[μStrategy] No strategy found in {d}. Creating one from defaults...")
+      χPrint.warning(f"[μStrategy] No strategy found in {d}. Creating one from defaults...")
       os.makedirs(d, exist_ok=True)
       shutil.copy("docs/default.directives", d)
       files = glob.glob(os.path.join(d, "*.directives"))
@@ -391,7 +391,7 @@ class μStrategy(μToggler):
       with open(self.directivePath(), 'w') as f:
         f.write(self.directivesEditor.toPlainText())
     except Exception as e:
-      μPrint.error(f"[μStrategy] save failed: {e}")
+      χPrint.error(f"[μStrategy] save failed: {e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def renameDirective(self):
@@ -405,7 +405,7 @@ class μStrategy(μToggler):
       os.rename(old_path, new_path)
       self.directiveList.setItemText(idx, new_name)
     except Exception as e:
-      μPrint.error(f"[μStrategy] rename failed: {e}")
+      χPrint.error(f"[μStrategy] rename failed: {e}")
       self.directiveList.setItemText(idx, old_name)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -423,7 +423,7 @@ class μStrategy(μToggler):
       self.directiveList.addItem(new_name)
       self.directiveList.setCurrentIndex(self.directiveList.count() - 1)
     except Exception as e:
-      μPrint.error(f"[μStrategy] duplicate failed: {e}")
+      χPrint.error(f"[μStrategy] duplicate failed: {e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def removeDirective(self):
@@ -434,7 +434,7 @@ class μStrategy(μToggler):
       os.remove(self.directivePath(name))
       self.directiveList.removeItem(idx)
     except Exception as e:
-      μPrint.error(f"[μStrategy] remove failed: {e}")
+      χPrint.error(f"[μStrategy] remove failed: {e}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def updateNode(self, node : μPartyNode):
@@ -626,11 +626,11 @@ class μStrategy(μToggler):
         if data is None: continue
         data['self'] = μString(name)
         match = μStrategy.updateParty(data)
-        μPrint.info(f"[μStrategy] \"{C_SILVER}{name.capitalize()}</font>\" reported its party {"with mismatches!" if not match else ""}")
+        χPrint.info(f"[μStrategy] \"{C_SILVER}{name.capitalize()}</font>\" reported its party {"with mismatches!" if not match else ""}")
       time.sleep(0.05)
       timeout += 50
       if timeout > 2000:
-        μPrint.warning(f"[μStrategy] refreshPartyInfo timeout — no response from: {list(packets.keys())}")
+        χPrint.warning(f"[μStrategy] refreshPartyInfo timeout — no response from: {list(packets.keys())}")
         break
 
     if cls._widget: cls._widget.sigNetworkUpdate.emit()
@@ -744,16 +744,16 @@ class μStrategy(μToggler):
         data = yaml.safe_load(f)
       result.update({k: v for k, v in data.items() if k != 'directives'})
     except Exception as e:
-      μPrint.error(f"[μStrategy] parseDirectives failed: {e}")
+      χPrint.error(f"[μStrategy] parseDirectives failed: {e}")
     return result
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
   def printDirective(d: dict, label: str = ""):
     if not d:
-      μPrint.debug(f"[μStrategy] {label or 'directive'}: (empty)")
+      χPrint.debug(f"[μStrategy] {label or 'directive'}: (empty)")
       return
-    μPrint.debug(f"[μStrategy] ┌─ {label or 'directive'}")
+    χPrint.debug(f"[μStrategy] ┌─ {label or 'directive'}")
     for k, v in d.items():
-      μPrint.debug(f"[μStrategy] │  {k:<24} = {v}")
-    μPrint.debug(f"[μStrategy] └{'─'*40}")
+      χPrint.debug(f"[μStrategy] │  {k:<24} = {v}")
+    χPrint.debug(f"[μStrategy] └{'─'*40}")

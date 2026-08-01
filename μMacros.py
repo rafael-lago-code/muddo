@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from PyQt6.QtWidgets import (QAbstractItemView, QTextEdit, QVBoxLayout,
                               QListWidgetItem, QListWidget, QSplitter, QHeaderView, QLineEdit,
                               QTableWidget, QTableWidgetItem, QLabel, QDialog)
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.μImageFactory import *
 from helpers.μStrings import *
 from μSettings import μSetup
@@ -42,14 +42,14 @@ if TYPE_CHECKING:
 
 # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 def printConsolidatedDict(trigger, consolidated):
-  μPrint.debug(f"     ├─ {μPrint.fill(f"Consolidated: {trigger}  ", 67, "─")}┘")
+  χPrint.debug(f"     ├─ {χPrint.fill(f"Consolidated: {trigger}  ", 67, "─")}┘")
   prevName = ""
   for actor, c in consolidated.items():
     if (prevName != c.name.normalize()[:-1]):
       prevName = c.name.normalize()[:-1]
-      μPrint.debug(f"     │ Macro \"{c.name.normalize()[:-1]}\"")
-    μPrint.debug(  f"     │ {μPrint.fill(f"{actor}", 14)} │ {c.actions.normalize()[:-1]}")
-  μPrint.debug(    f"     ├────────────────┴────────────────────────────────────────────────────┐")
+      χPrint.debug(f"     │ Macro \"{c.name.normalize()[:-1]}\"")
+    χPrint.debug(  f"     │ {χPrint.fill(f"{actor}", 14)} │ {c.actions.normalize()[:-1]}")
+  χPrint.debug(    f"     ├────────────────┴────────────────────────────────────────────────────┐")
 
 # ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 # Can be used for actors or actions
@@ -91,7 +91,8 @@ class μMacroRegistry:
   sets     : dict[str, μMacroSet] = {}
   aliases  : dict[str, str] = {}
   consolidatedTriggers : dict[str, dict] = {}
-  metaActors : set = {'all', 'self', 'any', 'etal', 'focus'}
+  metaActors : set = {'all', 'self', 'any', 'etal', 'focus', 'ui'}
+  uiTargets  : dict = {}
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -101,7 +102,7 @@ class μMacroRegistry:
       if newMacro.parentSet in cls.sets:
         cls.sets[newMacro.parentSet].append(newMacro)
       else:
-        μPrint.error(f"[μMacroRegistry] set \"{newMacro.parentSet}\" not registered; macro \"{newMacro.name}\" orphaned")
+        χPrint.error(f"[μMacroRegistry] set \"{newMacro.parentSet}\" not registered; macro \"{newMacro.name}\" orphaned")
         return
       cls.triggers.setdefault(newMacro.trigger, []).append(newMacro)
   
@@ -137,7 +138,7 @@ class μMacroRegistry:
   @classmethod
   def unregisterSet(cls, name : str):
     if name not in cls.sets:
-      μPrint.error(f"[μMacroRegistry] set \"{name}\" does not exist; cannot unregister")
+      χPrint.error(f"[μMacroRegistry] set \"{name}\" does not exist; cannot unregister")
       return
     for macro in list(cls.sets[name].entries):
       cls.unregisterMacro(macro)
@@ -147,7 +148,7 @@ class μMacroRegistry:
   @classmethod
   def renameSet(cls, old_name: str, new_name: str):
     if old_name not in cls.sets:
-      μPrint.error(f"[μMacroRegistry] set \"{old_name}\" not found; cannot rename")
+      χPrint.error(f"[μMacroRegistry] set \"{old_name}\" not found; cannot rename")
       return
     sset = cls.sets.pop(old_name)
     sset.name = new_name
@@ -219,7 +220,7 @@ class μMacroRegistry:
     for script in entry.scripts.split(";"):
       if not script.strip(): continue
       if len(script.split(":")) < 2:
-        μPrint.error(f"[μMacroRegistry] cannot consolidate script \"{script}\", missing \":\"")
+        χPrint.error(f"[μMacroRegistry] cannot consolidate script \"{script}\", missing \":\"")
         continue
       actors, actions = script.split(":", 1)
       actors  = parseText(actors)
@@ -230,6 +231,67 @@ class μMacroRegistry:
     return consolidated
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   🞋  U I   M A C R O   D I S P A T C H
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def _buildUICallback(cls, action_str: str):
+    import re, ast
+    match = re.match(r'(\w+)\.(\w+)(?:\(([^)]*)\))?', action_str)
+    if not match:
+      χPrint.error(f"[μMacroRegistry] invalid ui action: \"{action_str}\"")
+      return None
+    target_name, method_name, args_str = match.groups()
+    args = []
+    if args_str:
+      for arg in args_str.split(','):
+        arg = arg.strip()
+        try:    args.append(ast.literal_eval(arg))
+        except (ValueError, SyntaxError): args.append(arg)
+
+    def callback(t=target_name, m=method_name, a=args):
+      from PyQt6.QtCore import QTimer
+      if t == 'all':
+        for widget in cls.uiTargets.values():
+          if hasattr(widget, m):
+            QTimer.singleShot(0, lambda w=widget, mn=m, ar=a: getattr(w, mn)(*ar))
+      else:
+        widget = cls.uiTargets.get(t)
+        if widget and hasattr(widget, m):
+          QTimer.singleShot(0, lambda w=widget, mn=m, ar=a: getattr(w, mn)(*ar))
+        else:
+          χPrint.warning(f"[μMacroRegistry] ui target \"{t}\" or method \"{m}\" not found")
+
+    callback.char = 'ui'
+    callback.cmd = [action_str]
+    return callback
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def _appendUICallbacks(cls, ft: μFinalizedTrigger, uiScript: μConsolidatedScript):
+    for action_str in uiScript.actions.split(","):
+      action_str = str(action_str).strip()
+      if not action_str: continue
+      cb = cls._buildUICallback(action_str)
+      if cb: ft.items.append(cb)
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def buildUIHotkeys(cls):
+    from helpers.χHelper import χHelper
+    cls.consolidateAll()
+    triggers = {}
+    for trigger, scripts in cls.consolidatedTriggers.items():
+      if trigger == "none": continue
+      uiScript = scripts.get('ui')
+      if not uiScript: continue
+      ft = μFinalizedTrigger()
+      cls._appendUICallbacks(ft, uiScript)
+      if ft.items:
+        triggers[trigger] = lambda x=ft.items: χHelper.execute(x)
+    χHelper.updateHotkeys(triggers)
+    χPrint.debug(f"[μMacroRegistry] UI hotkeys: {len(triggers)} registered")
+
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  F I N A L I Z E   C O N S O L I D A T I O N
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -238,8 +300,18 @@ class μMacroRegistry:
     # if trigger == "none": return None
     # if trigger not in cls.consolidatedTriggers: return μFinalizedTrigger()
     # scripts : dict[str,μConsolidatedScript] = dict(cls.consolidatedTriggers[trigger])
+
+    uiScript = scripts.pop('ui', None) if scripts else None
+
     bridgeNames = bridges.keys()
-    if not scripts or not bridgeNames: return μFinalizedTrigger()
+    if not scripts or not bridgeNames:
+      if not uiScript: return μFinalizedTrigger()
+      ft = μFinalizedTrigger(
+        icon  = uiScript.icon,
+        names = {n for n in uiScript.name.split(",") if str(n)}
+      )
+      cls._appendUICallbacks(ft, uiScript)
+      return ft
 
     etalActors = set(bridgeNames) - set(scripts.keys())
 
@@ -270,6 +342,10 @@ class μMacroRegistry:
       cb.char = actor
       cb.cmd  = actions
       ft.items.append(cb)
+
+    if uiScript:
+      cls._appendUICallbacks(ft, uiScript)
+
     return ft
   
 
@@ -393,7 +469,7 @@ class μMacroSet(QListWidgetItem):
     try:
       data = μYAML(filename).raw or []
     except Exception as e:
-      μPrint.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
+      χPrint.error(f"{C_RED}WARNING:</font> error loading macro set from \"{filename}\"",e)
       data = []
 
     for entry in data:
@@ -597,7 +673,7 @@ class μMacros(μToggler):
     if os.path.exists(filename):
       sset.load()
     else:
-      μPrint.info(f"New macro set being created in \"{C_SILVER}{P_DEFAULT_MACRODIR}</font>\"...")
+      χPrint.info(f"New macro set being created in \"{C_SILVER}{P_DEFAULT_MACRODIR}</font>\"...")
       sset.save()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -677,7 +753,7 @@ class μMacros(μToggler):
     sset = self.setListWidget.selectedItems()
     if not sset: return
     name = sset[0].name
-    μPrint.info(f"Removing macro set \"{C_SILVER}{name}</font>\"...")
+    χPrint.info(f"Removing macro set \"{C_SILVER}{name}</font>\"...")
     μMacroRegistry.unregisterSet(name)
     try:
       os.remove(P_DEFAULT_MACRODIR+os.sep+name+P_DEFAULT_MACROEXT)
@@ -758,6 +834,6 @@ class μMacros(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def editMacroSet(self, sset : μMacroSet):
     if sset.name != sset.text():
-      μPrint.info(f"Renaming macro set from \"{C_SILVER}{sset.name}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
+      χPrint.info(f"Renaming macro set from \"{C_SILVER}{sset.name}</font>\" to \"{C_SILVER}{sset.text()}</font>\"...")
       os.rename(P_DEFAULT_MACRODIR+os.sep+sset.name+P_DEFAULT_MACROEXT, P_DEFAULT_MACRODIR+os.sep+sset.text()+P_DEFAULT_MACROEXT)
       μMacroRegistry.renameSet(sset.name, sset.text())

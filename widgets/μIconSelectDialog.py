@@ -26,7 +26,7 @@ from PyQt6.QtWidgets import (QDialog, QFileDialog, QInputDialog,
 from PyQt6.QtGui import QIcon, QPixmap, QKeySequence, QShortcut
 from PyQt6.QtCore import Qt, QSize
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from widgets.μOrb import μOrbSmall
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -68,7 +68,7 @@ def saveRecent(path: str):
     os.makedirs(P_DEFAULT_CONFIGDIR, exist_ok=True)
     μYAML.dump(recent, P_RECENT_FILE)
   except Exception as e:
-    μPrint.error("[cIconSelectDialog] could not save recent icons", e)
+    χPrint.error("[cIconSelectDialog] could not save recent icons", e)
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
 def makeItem(path: str) -> QListWidgetItem:

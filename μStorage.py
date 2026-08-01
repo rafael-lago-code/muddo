@@ -29,7 +29,7 @@ from widgets.μFloating import μToggler
 from widgets.μItemsTable import *
 from widgets.μItemFilter import μItemFilter
 from helpers.μMilvianPacket import μMilvianPacket, packetCommand, packetStatus, packetSignal
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.μStrings import *
 from widgets.μText import μDisplayLabel
 from μMilvian import *
@@ -327,7 +327,7 @@ class μStorage(μToggler):
         rows = conn.execute("SELECT * FROM items").fetchall()
         conn.close()
       except Exception as e:
-        μPrint.error("[μStorage] DB load failed:", e)
+        χPrint.error("[μStorage] DB load failed:", e)
         return
       for row in rows:
         d = dict(zip(χDB.DB_ITEM_COLS, row))
@@ -384,7 +384,7 @@ class μStorage(μToggler):
       pathFile = bridge.shmRoot + "vault.bin"
       try: os.remove(pathFile)
       except: pass
-      μPrint.info(f"[μStorage] Vault recording started for {C_SILVER}{bridge.charName}</font> — interact with a bank in-game")
+      χPrint.info(f"[μStorage] Vault recording started for {C_SILVER}{bridge.charName}</font> — interact with a bank in-game")
       threading.Thread(target=self._readVaultThread, args=(bridge,), daemon=True).start()
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -397,7 +397,7 @@ class μStorage(μToggler):
     for bridge in bridges.values():
       p = μMilvianPacket(packetCommand.queryvault, bridge, struct.pack('<I', 0))
       bridge.send(p)
-      μPrint.info(f"[μStorage] Vault recording finished for {C_SILVER}{bridge.charName}</font>")
+      χPrint.info(f"[μStorage] Vault recording finished for {C_SILVER}{bridge.charName}</font>")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _vaultStatusUpdate(self, packet: μMilvianPacket, rawData: bytes):
@@ -405,7 +405,7 @@ class μStorage(μToggler):
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
       msg = packet.outData.decode('utf-8', errors='replace')
-      μPrint.info(f"[μStorage] Vault watching for {C_SILVER}{packet.bridge.charName}</font>: {msg}")
+      χPrint.info(f"[μStorage] Vault watching for {C_SILVER}{packet.bridge.charName}</font>: {msg}")
       packet.χigResponse.disconnect()
     else:
       storageType = struct.unpack('<I', packet.outData[:4])[0]
@@ -414,7 +414,7 @@ class μStorage(μToggler):
         pass
       else:
         msg = re.sub(r'\[([A-Za-z0-9]+)\]', f'[{C_SILVER}\\1:{packet.bridge.charName}</font>]', msg, count=1)
-        μPrint.info(f"[μStorage] {msg}")
+        χPrint.info(f"[μStorage] {msg}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _readVaultThread(self, bridge):
@@ -462,7 +462,7 @@ class μStorage(μToggler):
             try:
               item.readFromBin(f)
             except Exception as e:
-              μPrint.error(f"[μStorage] _readVaultThread readFromBin failed at {itemsRead}/{nItems}:", e)
+              χPrint.error(f"[μStorage] _readVaultThread readFromBin failed at {itemsRead}/{nItems}:", e)
               break
             item._storageType = storageType
             item._ownerName   = χDB.resolveOwnerName(item._ownerName)
@@ -477,7 +477,7 @@ class μStorage(μToggler):
               conn.commit()
               conn.close()
             except Exception as e:
-              μPrint.error("[μStorage] _readVaultThread DB upsert failed:", e)
+              χPrint.error("[μStorage] _readVaultThread DB upsert failed:", e)
             itemsRead += 1
           else:
             time.sleep(0.05)
@@ -491,7 +491,7 @@ class μStorage(μToggler):
       conn.commit()
       conn.close()
     except Exception as e:
-      μPrint.error("[μStorage] _readVaultThread DB purge failed:", e)
+      χPrint.error("[μStorage] _readVaultThread DB purge failed:", e)
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   U S E
@@ -529,17 +529,17 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[μStorage] Finished using requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.info(f"[μStorage] Finished using requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[μStorage] Error using items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.error(f"[μStorage] Error using items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       used = packet.outData[0]
       iID = struct.unpack('<Q', packet.outData[1:9])[0]
-      μPrint.info(f"[μStorage] {"used" if used else "failed to use"} {C_ORANGE}{iID}</font>")
+      χPrint.info(f"[μStorage] {"used" if used else "failed to use"} {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   D I S S O L V E
@@ -567,17 +567,17 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[μStorage] Finished dissolving requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.info(f"[μStorage] Finished dissolving requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[μStorage] Error dissolving items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.error(f"[μStorage] Error dissolving items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       dissolved = packet.outData[0]
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
-      μPrint.info(f"[μStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
+      χPrint.info(f"[μStorage] {"dissolved" if dissolved else "failed dissolving"} {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   S T O R E
@@ -606,17 +606,17 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[μStorage] Finished storing requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.info(f"[μStorage] Finished storing requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[μStorage] Error storing items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.error(f"[μStorage] Error storing items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       stored = packet.outData[0]
       iID = struct.unpack('<Q',packet.outData[1:9])[0]
-      μPrint.info(f"[μStorage] {"stored" if stored else "failed to store"} {C_ORANGE}{iID}</font>")
+      χPrint.info(f"[μStorage] {"stored" if stored else "failed to store"} {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   T R A D E
@@ -651,16 +651,16 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[μStorage] Finished selling requested items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.info(f"[μStorage] Finished selling requested items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     elif packet.status == packetStatus.error:
-      μPrint.error(f"[μStorage] Error selling items for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.error(f"[μStorage] Error selling items for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
       self.sigSetStatus.emit(packet.bridge, P_STATUS_IDLE)
     else:
       iID = struct.unpack('<Q',packet.outData[0:8])[0]
-      μPrint.info(f"[μStorage] sold {C_ORANGE}{iID}</font>")
+      χPrint.info(f"[μStorage] sold {C_ORANGE}{iID}</font>")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  R E Q U E S T   F E E D   J E W E L
@@ -708,7 +708,7 @@ class μStorage(μToggler):
       p = μMilvianPacket(packetCommand.queryinventory, bridge, inData)
       p.χigResponse.connect(lambda data, p=p: self.inventoryStatusUpdate(p, data))
       bridge.send(p)
-      μPrint.info(f"[μStorage] Inventory refresh requested for {C_SILVER}{bridge.charName}</font>")
+      χPrint.info(f"[μStorage] Inventory refresh requested for {C_SILVER}{bridge.charName}</font>")
       self.readInventoryBin(bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -716,12 +716,12 @@ class μStorage(μToggler):
     packet.status = packetStatus(rawData[4:8])
     packet.outData = rawData[12:]
     if packet.status == packetStatus.success:
-      μPrint.info(f"[μStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
+      χPrint.info(f"[μStorage] Finished refreshing storage for {C_SILVER}{packet.bridge.charName}</font>")
       packet.χigResponse.disconnect()
     else:
       msg = packet.outData.decode('utf-8', errors='replace')
       msg = re.sub(r'\[([A-Za-z0-9]+)\]', f'[{C_SILVER}\\1:{packet.bridge.charName}</font>]', msg, count=1)
-      μPrint.info(f"[μStorage] {msg}")
+      χPrint.info(f"[μStorage] {msg}")
     # cDispatcher.fulfill((packet.bridge.id, packet.id, packetSignal.running), packet.bridge)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -747,7 +747,7 @@ class μStorage(μToggler):
             try:
               item.readFromBin(f)
             except Exception as e:
-              μPrint.error(f"[μStorage] readFromBin failed at item {itemsCount}/{nItems}:", e)
+              χPrint.error(f"[μStorage] readFromBin failed at item {itemsCount}/{nItems}:", e)
               break
             item._storageType = P_STORAGE_INVENTORY
             item._ownerName   = ownerName
@@ -759,7 +759,7 @@ class μStorage(μToggler):
               conn.commit()
               conn.close()
             except Exception as e:
-              μPrint.error(f"[μStorage] DB upsert failed:", e)
+              χPrint.error(f"[μStorage] DB upsert failed:", e)
             self.sigAppendItem.emit(item)
             itemsCount += 1
           else:
@@ -772,7 +772,7 @@ class μStorage(μToggler):
         conn.commit()
         conn.close()
       except Exception as e:
-        μPrint.error(f"[μStorage] DB purge failed:", e)
+        χPrint.error(f"[μStorage] DB purge failed:", e)
 
       self.sigSetStatus.emit(bridge, P_STATUS_IDLE)
       self.sigPurgeStale.emit(P_STORAGE_INVENTORY, ownerName, freshIds)
@@ -796,5 +796,5 @@ class μStorage(μToggler):
         except: pass
       self.table.removeRow(row)
     if npurged:
-      μPrint.info(f"[μStorage] cleaned {C_ORANGE}{npurged}</font> stale items from {C_SILVER}{ownerName}</font>")
+      χPrint.info(f"[μStorage] cleaned {C_ORANGE}{npurged}</font> stale items from {C_SILVER}{ownerName}</font>")
   

@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import QComboBox, QTabWidget, QStackedWidget
 from PyQt6.QtCore import pyqtSignal
 from widgets.μCombo import μCheckCombo, μCombo
 from μSettingsProfile import μSettingsProfile
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
 from widgets.μFloating import μToggler
@@ -94,7 +94,7 @@ class μSetup(μToggler):
       cls.profileList.addItem(name)
       cls.profileMain.addItem(name)
     except Exception as e:
-      μPrint.error(f"[cSettings] failed to load profile \"{name}\". Skipping it...", e)
+      χPrint.error(f"[cSettings] failed to load profile \"{name}\". Skipping it...", e)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -125,7 +125,7 @@ class μSetup(μToggler):
     if name in cls.profiles.keys():
       μSetup.switchProfile(name)
     else:
-      μPrint.warning(f"Trying to change to profile \"{name}\", but it was not found! Doing nothing instead...")
+      χPrint.warning(f"Trying to change to profile \"{name}\", but it was not found! Doing nothing instead...")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -206,9 +206,9 @@ class μSetup(μToggler):
         idx = combo.findText(name)
         if idx >= 0: combo.removeItem(idx)
       os.remove(self._confPath(name))
-      μPrint.info(f"[cSettings] removed profile \"{name}\"")
+      χPrint.info(f"[cSettings] removed profile \"{name}\"")
     except Exception as e:
-      μPrint.error(f"[cSettings] failed to remove profile \"{name}\"", e)
+      χPrint.error(f"[cSettings] failed to remove profile \"{name}\"", e)
     if self.profileList.count() > 0:
       self._selectProfile(self.profileList.itemText(0))
 
@@ -221,9 +221,9 @@ class μSetup(μToggler):
       shutil.copy2(self._confPath(src), self._confPath(dst))
       μSetup.addProfile(dst)
       self._selectProfile(dst)
-      μPrint.info(f"[cSettings] duplicated \"{src}\" → \"{dst}\"")
+      χPrint.info(f"[cSettings] duplicated \"{src}\" → \"{dst}\"")
     except Exception as e:
-      μPrint.error(f"[cSettings] failed to duplicate profile \"{src}\"", e)
+      χPrint.error(f"[cSettings] failed to duplicate profile \"{src}\"", e)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def renameProfile(self):
@@ -240,9 +240,9 @@ class μSetup(μToggler):
         if idx >= 0: combo.setItemText(idx, newName)
       μSetup.lastProfile = newName
       μSetup.profile.name = newName
-      μPrint.info(f"[cSettings] renamed \"{oldName}\" → \"{newName}\"")
+      χPrint.info(f"[cSettings] renamed \"{oldName}\" → \"{newName}\"")
     except Exception as e:
-      μPrint.error(f"[cSettings] failed to rename profile \"{oldName}\"", e)
+      χPrint.error(f"[cSettings] failed to rename profile \"{oldName}\"", e)
       self.profileList.lineEdit().setText(oldName)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -267,7 +267,7 @@ class μSetup(μToggler):
       if lpIdx == -1:
         self.profileList.setCurrentIndex(0)
         self.profileMain.setCurrentIndex(0)
-        μPrint.warning(f"[cSettings] last profile \"{self.lastProfile}\" was not found. Loading \"{self.profileMain.itemText(0)}\" instead...")
+        χPrint.warning(f"[cSettings] last profile \"{self.lastProfile}\" was not found. Loading \"{self.profileMain.itemText(0)}\" instead...")
       else:
         self.profileList.setCurrentIndex(-1)
         self.profileList.setCurrentIndex(lpIdx)
@@ -275,15 +275,15 @@ class μSetup(μToggler):
         self.profileMain.setCurrentIndex(lpIdx)
 
     except Exception as e:
-      μPrint.error(f"[cSettings] error loading settings from \"{C_SILVER}{self._state.fileName()}</font>\"", e)
+      χPrint.error(f"[cSettings] error loading settings from \"{C_SILVER}{self._state.fileName()}</font>\"", e)
     else:
-      μPrint.info(f"[cSettings] loaded from \"{C_SILVER}{self._state.fileName()}</font>\"")
+      χPrint.info(f"[cSettings] loaded from \"{C_SILVER}{self._state.fileName()}</font>\"")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def save(self):
     try:
       self._state.setValue("lastProfile", self.profileList.currentText())                  # goes in the "General" section of the settings file
     except Exception as e:
-      μPrint.error(f"[cSettings] could not create \"{C_SILVER}{self._state.fileName()}</font>\" to store settings!",e)
+      χPrint.error(f"[cSettings] could not create \"{C_SILVER}{self._state.fileName()}</font>\" to store settings!",e)
     else:
-      μPrint.info(f"[cSettings] saved in \"{C_SILVER}{self._state.fileName()}</font>\"")
+      χPrint.info(f"[cSettings] saved in \"{C_SILVER}{self._state.fileName()}</font>\"")

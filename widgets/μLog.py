@@ -20,7 +20,7 @@
 from PyQt6.QtWidgets import QTextEdit
 from PyQt6.QtCore import QFileSystemWatcher
 from helpers.util import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
 #   ❖  L O G 
@@ -31,10 +31,10 @@ class μLog(QTextEdit):
   def __init__(self, filePath: str, name : str):
     super().__init__()
     if not os.path.exists(filePath):
-      μPrint.error(f"Error trying to create cLog \"{name}\": {filePath} does not exist!")
+      χPrint.error(f"Error trying to create cLog \"{name}\": {filePath} does not exist!")
       return None
-    elif μPrint.console.getTabIndex(name) is not None:
-      μPrint.error(f"Error trying to create cLog \"{name}\": tab with this name already exists!")
+    elif χPrint.console.getTabIndex(name) is not None:
+      χPrint.error(f"Error trying to create cLog \"{name}\": tab with this name already exists!")
       return None
 
     self.name = name
@@ -43,14 +43,14 @@ class μLog(QTextEdit):
     self.watcher = QFileSystemWatcher()
     self.watcher.addPath(filePath)
     self.lastPos = 0
-    if not μPrint.console.addTab(self):
-      μPrint.error(f"Error trying to add tab to cConsole \"{self.name}\": name already exists!")
+    if not χPrint.console.addTab(self):
+      χPrint.error(f"Error trying to add tab to cConsole \"{self.name}\": name already exists!")
       self.deleteLater()
       return None
 
     self.watcher.fileChanged.connect(self.onFileUpdated)
     if self.onFileUpdated():
-      μPrint.info(f"Following log for {C_SILVER}{self.name}</font>...")
+      χPrint.info(f"Following log for {C_SILVER}{self.name}</font>...")
     
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def onFileUpdated(self) -> bool:
@@ -64,12 +64,12 @@ class μLog(QTextEdit):
       self.verticalScrollBar().setValue(self.verticalScrollBar().maximum())
 
     except Exception as e:
-      μPrint.error(f"Error reading updated file {self.filePath}", e)
+      χPrint.error(f"Error reading updated file {self.filePath}", e)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def deleteLater(self):
     if self.name is None: return
-    μPrint.info(f"Stopped following log for {C_SILVER}{self.name}</font>...")
+    χPrint.info(f"Stopped following log for {C_SILVER}{self.name}</font>...")
     self.name = None
     try:
       self.watcher.fileChanged.disconnect(self.onFileUpdated)
@@ -77,5 +77,5 @@ class μLog(QTextEdit):
       self.watcher.deleteLater()
     except RuntimeError:
       pass
-    μPrint.console.removeTab(self)
+    χPrint.console.removeTab(self)
     super().deleteLater()

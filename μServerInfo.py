@@ -24,7 +24,7 @@
 from __future__ import annotations
 from PyQt6.QtCore import QObject, pyqtSignal
 from μSettings import μSetup
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.util import *
 import os, time, threading
 import xml.dom.minidom
@@ -108,15 +108,15 @@ class μServerInfo(QObject):
       except Exception as e:
         self.sigFetchedGLS.emit(False)
         μServerInfo.status = μServerInfo.P_STATUS_ERROR
-        μPrint.error("Error fetching GLSData", e)
+        χPrint.error("Error fetching GLSData", e)
       else:
         self.sigFetchedGLS.emit(True)
-        μPrint.info("Fetched GLSData")
+        χPrint.info("Fetched GLSData")
     
     if self.getGLSData():
       if self.getQueue():
         μServerInfo.status = μServerInfo.P_STATUS_DONE
-        μPrint.info("Finished gathering server data")
+        χPrint.info("Finished gathering server data")
         return
     self.status = self.P_STATUS_ERROR
   
@@ -173,11 +173,11 @@ class μServerInfo(QObject):
           self.sigFetchedWorld.emit((name, urlChatServer, urlStatusServer))
 
     except Exception as e:
-      μPrint.error("Error fetching worlds data", e)
+      χPrint.error("Error fetching worlds data", e)
       self.sigFetchedWorldsInfo.emit(False)
       return False
     else:
-      μPrint.info("Fetched worlds data")
+      χPrint.info("Fetched worlds data")
       time.sleep(1)
       self.sigFetchedWorldsInfo.emit(True)
       return True
@@ -221,12 +221,12 @@ class μServerInfo(QObject):
             elif node.getAttribute("key") == "WorldQueue.TakeANumber.Parameters":
               μServerInfo.worldQueueParam = node.getAttribute("value")
     except Exception as e:
-      μPrint.error("Error fetching queue info", e)
+      χPrint.error("Error fetching queue info", e)
       self.sigFetchedQueueInfo.emit(False)
       return False
     else:
       self.sigFetchedQueueInfo.emit(True)
-      μPrint.info("Fetched queue info")
+      χPrint.info("Fetched queue info")
       return True
 
 

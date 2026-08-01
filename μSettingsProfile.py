@@ -21,7 +21,7 @@ from __future__ import annotations
 from PyQt6.QtWidgets import QComboBox, QFileDialog, QGroupBox, QLineEdit, QSpinBox, QWidget, QSlider
 from PyQt6.QtCore import QSettings
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from widgets.μOrb import μOrbSmall
 from widgets.μOrb import μBoxCheck
 from widgets.μGrid import μGridLayout
@@ -443,7 +443,7 @@ class μSettingsProfile(QWidget):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def load(self):
     if not self._state.allKeys():
-      μPrint.info(f"[cSettingsProfile] no settings found in {self.confFile}. Creating with defaults...")
+      χPrint.info(f"[cSettingsProfile] no settings found in {self.confFile}. Creating with defaults...")
       self.loadFromDefaults()
       return
 
@@ -460,7 +460,7 @@ class μSettingsProfile(QWidget):
         if isinstance(wobj, P_SERIALIZABLE):
           _setValue(wobj, self._state.value(key))
         else:
-          μPrint.error(f"[cProfile] widget \"{wname}\" (section \"{sname}\") does not exist.")
+          χPrint.error(f"[cProfile] widget \"{wname}\" (section \"{sname}\") does not exist.")
 
       self.session.world             = self._state.value("session/world",             "")
       self.session.strategyDirective = self._state.value("session/strategyDirective", "")
@@ -475,16 +475,16 @@ class μSettingsProfile(QWidget):
       except Exception:
         self.session.windowsPreferences = {}
     except Exception as e:
-      μPrint.error(f"[cSettingsProfile] error loading values from {self.confFile}", e)
+      χPrint.error(f"[cSettingsProfile] error loading values from {self.confFile}", e)
     else:
-      μPrint.info(f"Profile loaded from {self.confFile}")
+      χPrint.info(f"Profile loaded from {self.confFile}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def loadFromDefaults(self):
     # do stuff
     self.launcher._useHighRes.setChecked(True)
     self.launcher._useDebug.setChecked(True)
-    μPrint.info(f"{C_RED}Load from defaults not yet implemented!!!</font>")
+    χPrint.info(f"{C_RED}Load from defaults not yet implemented!!!</font>")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def selectDialog(self, target : QLineEdit, title, dir = True):
@@ -495,9 +495,9 @@ class μSettingsProfile(QWidget):
       target.setText(filename)
       target.editingFinished.emit()
     else:
-      μPrint.warning(f"[cSettingsProfile] invalid {title} selected, doing nothing...")
+      χPrint.warning(f"[cSettingsProfile] invalid {title} selected, doing nothing...")
     
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def autoDialog(self, target : QLineEdit, title, dir = True):
-    μPrint.warning(f"[cSettingsProfile] auto finding {title} is not yet implemented. Enter it manually for now.")
+    χPrint.warning(f"[cSettingsProfile] auto finding {title} is not yet implemented. Enter it manually for now.")
 

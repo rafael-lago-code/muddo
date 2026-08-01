@@ -34,7 +34,7 @@ from typing import TYPE_CHECKING
 import threading
 from datetime import datetime
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
 
@@ -101,7 +101,7 @@ class μPatch(μToggler):
     # Need to make the whole thing a static class again...
     newsURL=μServerInfo.newsFeedURL
     if newsURL == "":
-      μPrint.error(f"[cPatch] Error fetching news URL from server config file {P_DEFAULT_SERVERCONFIG}!")
+      χPrint.error(f"[cPatch] Error fetching news URL from server config file {P_DEFAULT_SERVERCONFIG}!")
       return
     with urllib.request.urlopen(newsURL) as response:
       newsData = response.read().decode('utf-8')
@@ -165,7 +165,7 @@ class μPatch(μToggler):
     # if self.status == aProcessItem.P_STATUS_RUNNING: return
     t = threading.Thread(target=self.fullLauncherThread, daemon=True)
     t.start()
-    μPrint.info(f"Starting {C_SILVER}full launcher</font> for patching...")
+    χPrint.info(f"Starting {C_SILVER}full launcher</font> for patching...")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   # TODO - add this to process manager 
@@ -188,7 +188,7 @@ class μPatch(μToggler):
       # self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
       exitCode = proc.wait()
     else:
-      μPrint.info("cPatch.fullLauncherThread.run: Error launching, check logs for details!")
+      χPrint.info("cPatch.fullLauncherThread.run: Error launching, check logs for details!")
       exitCode = 1
 
 

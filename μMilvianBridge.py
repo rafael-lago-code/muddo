@@ -26,7 +26,7 @@ from μToolbar import μToolbar, μToolbarItem
 from widgets.μOrb import μOrb
 from helpers.χHelper import χHelper
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
@@ -101,12 +101,12 @@ class μMilvianBridge(αProcessItem):
   @classmethod
   def terminate(cls, force=False, remove=False):
     if not cls.process: return
-    cls.process.stop()
-    if force: cls.cleanup()
-    if cls._widget: cls._widget.setStatus(αProcessItem.P_STATUS_KILLED)
     cls.process = None
     μMilvianMeta.closeBridges()
     μToolbar.clearItems()
+    if force: cls.cleanup()
+    else: cls.rebuildHotkeys()
+    if cls._widget: cls._widget.setStatus(αProcessItem.P_STATUS_KILLED)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -123,29 +123,25 @@ class μMilvianBridge(αProcessItem):
     if cls._widget: cls._widget.setStatus(αProcessItem.P_STATUS_KILLED)
     cls.process = None
     shmPath = μMilvian.bridgePath
-    μPrint.info(f"[μMilvianBridge] hard reset: nuking {shmPath!r}...")
+    χPrint.info(f"[μMilvianBridge] hard reset: nuking {shmPath!r}...")
     try:
       shutil.rmtree(shmPath)
     except Exception as e:
-      μPrint.warning(f"[μMilvianBridge] rmtree failed: {e}")
+      χPrint.warning(f"[μMilvianBridge] rmtree failed: {e}")
     QTimer.singleShot(1000, cls.launch)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def cleanup(cls):
-    μPrint.info("Purging all possible shortcuts combinations...")
+    χPrint.info("Purging all possible shortcuts combinations...")
     μToolbar.clearItems()
-    χHelper.forceCleanup()
+    χHelper.cleanupScd()
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
-  def launch(cls):
+  def rebuildHotkeys(cls):
     from μMacros import μMacroRegistry
-    if cls.process:
-      μPrint.warning("[μMilvianBridge] already running. Kill it first.")
-      return
-    bridges = μMilvianMeta.getBridges()
-    if not bridges: return
+    bridges = μMilvianMeta.getBridges() or {}
 
     triggers = {}
     μMacroRegistry.consolidateAll()
@@ -154,28 +150,35 @@ class μMilvianBridge(αProcessItem):
       ft = μMacroRegistry.finalizeScript(scripts, bridges)
       if ft is not None and ft.items: triggers[trigger] = ft
 
-    if not triggers:
-      μPrint.warning("[μMilvianBridge] no macros after finalization. Check active sets and online accounts.")
-      return
-
     toolbarMacros = {k: triggers.pop(k) for k in list(triggers) if k.startswith('toolbar')}
     for hk, ft in triggers.items():
       triggers[hk] = lambda x=ft.items: χHelper.execute(x)
-    cls.process = χHelper.getShortcutsDaemon(triggers)
+    χHelper.updateHotkeys(triggers)
 
+    μToolbar.clearItems()
     if toolbarMacros:
-      μPrint.info(f"[μMilvianBridge] found {len(toolbarMacros)} toolbar macros")
-      μToolbar.clearItems()
+      χPrint.info(f"[μMilvianBridge] found {len(toolbarMacros)} toolbar macros")
       for tb, ft in toolbarMacros.items():
         commands = [cmd for item in ft.items for cmd in item.cmd]
         μToolbar.addItems(μToolbarItem(tb, ft.items, icon=ft.icon, names=ft.names, commands=commands))
       μToolbar.sortLayout()
+
+  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  @classmethod
+  def launch(cls):
+    if cls.process:
+      χPrint.warning("[μMilvianBridge] already running. Kill it first.")
+      return
+    bridges = μMilvianMeta.getBridges()
+    if not bridges: return
+
+    cls.rebuildHotkeys()
+    cls.process = True
 
     if cls._widget:
       if not cls.main.processManager.itemExists(cls._widget):
         cls.main.processManager.addItem(cls._widget)
       cls._widget.setStatus(αProcessItem.P_STATUS_RUNNING)
       cls._widget.pid.setText("R")
-    cls.process.start()
 
 

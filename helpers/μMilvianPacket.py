@@ -24,7 +24,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 from PyQt6.QtCore import pyqtSignal
 from helpers.χDispatcher import χDispatcher, χSignal
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 if TYPE_CHECKING:
    from helpers.μMilvianPacket import μMilvianPacket
    from μMilvian import μMilvian
@@ -138,7 +138,7 @@ class cPacker():
       return a0.pack()
     else:
       print(f"[cPacker] no idea what you passed me, what is this?\n  ->{a0} | {type(a0)}")
-      μPrint.error(f"[cPacker] no idea what you passed me, what is this?\n  ->{a0} | {type(a0)}")
+      χPrint.error(f"[cPacker] no idea what you passed me, what is this?\n  ->{a0} | {type(a0)}")
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -187,7 +187,7 @@ class μMilvianPacket():
     else:
       self.outData = None
     if not isinstance(self.command, packetCommand):
-      μPrint.error(f"[μMilvianPacket.parseData] unknown packet received = {self})")
+      χPrint.error(f"[μMilvianPacket.parseData] unknown packet received = {self})")
       return
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -202,7 +202,7 @@ class μMilvianPacket():
     while self.status == packetStatus.waiting:
       if timeout and timer>timeout:
         # cMilvian.printDebug(f"[cMilvian:Debug] timeout ({timeout}) in wait! {self.command}[{int.from_bytes(self.id, byteorder='little', signed=False)}], pathO={self.pathSHM}")
-        μPrint.info(f"[μMilvianPacket:Debug] timeout ({timeout}) in wait! {self.command}[{int.from_bytes(self.id, byteorder='little', signed=False)}], pathO={self.bridge.pathResponse}")
+        χPrint.info(f"[μMilvianPacket:Debug] timeout ({timeout}) in wait! {self.command}[{int.from_bytes(self.id, byteorder='little', signed=False)}], pathO={self.bridge.pathResponse}")
         return False
       else:
         self.checkResponse()

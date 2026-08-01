@@ -26,7 +26,7 @@ import subprocess
 import os, time, threading
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
    from μMainWindow import μMainWindow
@@ -82,11 +82,11 @@ class μDungeonHelper(αProcessItem):
   def launch(self):
     # if not self.main.profile().useDungeonHelper.isChecked(): return
     if self.status == self.P_STATUS_RUNNING:
-      μPrint.warning(" Attempting to launch Dungeon Helper, but it is already running."+
+      χPrint.warning(" Attempting to launch Dungeon Helper, but it is already running."+
                         " Try right-click->kill to cleanup state.")
       return
     self.pid.setText("")
-    μPrint.info(f"Starting {C_SILVER}DungeonHelper.exe</font>...")
+    χPrint.info(f"Starting {C_SILVER}DungeonHelper.exe</font>...")
     self.show()
     t = threading.Thread(target=self._launchThread, daemon=True)
     t.start()
@@ -111,7 +111,7 @@ class μDungeonHelper(αProcessItem):
       self.sigChangeRequest.emit(self.P_STATUS_RUNNING)
       exitCode = proc.wait()
     else:
-      μPrint.info("cDungeonHelper.launchThread: error launching, check logs for details!")
+      χPrint.info("cDungeonHelper.launchThread: error launching, check logs for details!")
       exitCode = 1
 
     # this locks until the DH process ends, and it is intentional!
@@ -136,7 +136,7 @@ class μDungeonHelper(αProcessItem):
             self.sigChangeRequest.emit(self.status) # just to refresh
             return c
         if (time.time() - startTime) > 15.0:
-          μPrint.error(f"cDungeonHelper.watchPID: timeout error while looking for PID")
+          χPrint.error(f"cDungeonHelper.watchPID: timeout error while looking for PID")
           return None
         time.sleep(0.1)
     baseExec = os.path.basename(μSetup.plugins.dhExec())
@@ -155,7 +155,7 @@ class μDungeonHelper(αProcessItem):
           self.sigChangeRequest.emit(self.status) # just to refresh
           return candidates[0]
         if (time.time() - startTime) > 15.0:
-          μPrint.error(f"cDungeonHelper.watchWinID: timeout error while looking for WinID")
+          χPrint.error(f"cDungeonHelper.watchWinID: timeout error while looking for WinID")
           return None
         time.sleep(0.1)
 
@@ -221,7 +221,7 @@ class μDungeonHelper(αProcessItem):
   def kill(self):
     super().kill()
     baseExec = os.path.basename(μSetup.plugins.dhExec())
-    μPrint.warning(f"Killing all processes containing {baseExec}...")
+    χPrint.warning(f"Killing all processes containing {baseExec}...")
     χTop.killAll(baseExec)
     self.clear()
 

@@ -19,7 +19,7 @@
 #
 #
 import queue, threading, time, random
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 
 
 # 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
@@ -52,7 +52,7 @@ class χDispatcher():
       cls.daemonThread  = threading.Thread(target=cls.daemonLoop, daemon=True)
       cls.daemonThread.start()
       cls._isInitialized = True
-      μPrint.info(f"cDispatcher started")
+      χPrint.info(f"cDispatcher started")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -130,7 +130,7 @@ class χDispatcher():
         continue
       except Exception as ex:
         import traceback
-        μPrint.error(f"cDispatcher.daemonLoop: unknown error while processing {ex}\n{traceback.format_exc()}", ex)
+        χPrint.error(f"cDispatcher.daemonLoop: unknown error while processing {ex}\n{traceback.format_exc()}", ex)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod

@@ -27,7 +27,8 @@ from widgets.μOrb import μOrbCheck, μOrbSmall
 from helpers.μImageFactory import *
 from widgets.μLog import μLog
 from helpers.χTop import χTop
-from helpers.μPrint import μPrint
+from helpers.χHelper import χHelper
+from helpers.μPrint import χPrint
 from collections import OrderedDict
 import re
 import signal
@@ -112,7 +113,7 @@ class μProcessManager(μToggler):
       try:
         item.terminate()
       except Exception as e:
-        μPrint.error(f"[μProcessManager] cleanItem: error killing \"{item.widgetID}\"", e)
+        χPrint.error(f"[μProcessManager] cleanItem: error killing \"{item.widgetID}\"", e)
     elif item.status == item.P_STATUS_RUNNING:
       return
     
@@ -120,7 +121,7 @@ class μProcessManager(μToggler):
       self.layout().removeWidget(item)
       del self.items[item.widgetID]
     except Exception as e:
-      μPrint.error(f"[μProcessManager] cleanItem: unknown error removing item \"{item.widgetID}\"", e)
+      χPrint.error(f"[μProcessManager] cleanItem: unknown error removing item \"{item.widgetID}\"", e)
 
     item.hide()
     self.main.processManager.resetColour()
@@ -183,7 +184,6 @@ class μProcessManager(μToggler):
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def fixBlackScreenAll(self):
-    from helpers.χHelper import χHelper
     for p in self.selectedItems():
       winID = p.winID.text()
       if winID.isdigit():
@@ -249,11 +249,11 @@ class μProcessManager(μToggler):
         orphan : μDDO = μDDO.createFromOrphan(self.main, c, cmdline)
         if orphan:
           found += 1
-          μPrint.info(f"[μProcessManager] found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
+          χPrint.info(f"[μProcessManager] found orphan DDO process: [{orphan.pid.text()}, {orphan.username.text()}, {C_SILVER}{orphan.worldname.text()}</font>]")
           self.addItem(orphan)
-          orphan.printInfo = μPrint.info # restores printing ability of orphan
+          orphan.printInfo = χPrint.info # restores printing ability of orphan
     if found == 0:
-      μPrint.info(f"[μProcessManager] no orphan DDO processes were found")
+      χPrint.info(f"[μProcessManager] no orphan DDO processes were found")
     
     orphanCandidates = χTop.getByCommand(μDungeonHelper.dhExec)
     for c in orphanCandidates:
@@ -261,7 +261,7 @@ class μProcessManager(μToggler):
       cmdline = cmdline.replace("\x00", " ").strip()
       if μDungeonHelper.isCMD(cmdline) and not self.isPIDManaged(c):
         self.main.dh.createFromOrphan(c)
-        μPrint.info(f"[μProcessManager] found orphan DungeonHelper: [{c}]")
+        χPrint.info(f"[μProcessManager] found orphan DungeonHelper: [{c}]")
         break
       
 
@@ -339,6 +339,7 @@ class αProcessItem(QWidget):
   
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def isAlive(self) -> bool:
+    if not self.pid.text().isdigit(): return False
     return χTop.isAlive(int(self.pid.text()))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -411,6 +412,8 @@ class αProcessItem(QWidget):
         self.status = αProcessItem.P_STATUS_ERROR 
         self.sigError.emit("APROCESS_UNKNOWN_ERROR")
       elif newStatus == "terminated" or newStatus == αProcessItem.P_STATUS_TERMINATED:
+        if self.winID.text().isdigit():
+          χHelper.unregisterWindow(int(self.winID.text()))
         self.pid.setText("")
         self.winID.setText("")
         self.btnToggle.setEnabled(True)
@@ -429,6 +432,8 @@ class αProcessItem(QWidget):
         self.status = αProcessItem.P_STATUS_RUNNING
         self.sigRunning.emit()
       elif newStatus == "killed" or newStatus == αProcessItem.P_STATUS_KILLED:
+        if self.winID.text().isdigit():
+          χHelper.unregisterWindow(int(self.winID.text()))
         self.pid.setText("")
         self.winID.setText("")
         self.btnToggle.setEnabled(True)
@@ -461,14 +466,14 @@ class αProcessItem(QWidget):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def _terminate(self, sig : signal):
     if not self.pid.text().isdigit():
-      μPrint.error(f"[aProcessItem] error terminating {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font> is invalid!")
+      χPrint.error(f"[aProcessItem] error terminating {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font> is invalid!")
       self.setStatus(self.P_STATUS_ERROR)
       return
     
     if self.worldname.text():
-      μPrint.info(f"[aProcessItem] killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
+      χPrint.info(f"[aProcessItem] killing {C_SILVER}{self.username.text()}</font> in {C_SILVER}{self.worldname.text()}</font>...")
     else:
-      μPrint.info(f"[aProcessItem] killing {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font>...")
+      χPrint.info(f"[aProcessItem] killing {C_SILVER}{self.username.text()}</font>, PID={C_SILVER}{self.pid.text()}</font>...")
 
     try:
       if sig == signal.SIGKILL:
@@ -478,7 +483,7 @@ class αProcessItem(QWidget):
         χTop.terminate(int(self.pid.text()))
         self.setStatus(self.P_STATUS_TERMINATED)
     except Exception as e:
-      μPrint.error(f"[aProcessItem] unknown error terminating (signal: {sig}) process with PID {self.pid.text()}", e)
+      χPrint.error(f"[aProcessItem] unknown error terminating (signal: {sig}) process with PID {self.pid.text()}", e)
       self.setStatus(self.P_STATUS_ERROR)
  
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

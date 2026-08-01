@@ -25,7 +25,7 @@ from PyQt6.QtCore import Qt, QTimer, QPropertyAnimation, QObject, QPointF, pyqtP
 from helpers.μImageFactory import *
 from helpers.util import P_DEFAULT_SHM_DIR
 from helpers.μStrings import μString
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from widgets.μFloating import μToggler
 from widgets.μOrb import μOrbSmall
 from widgets.μText import μDisplayLabel
@@ -388,7 +388,7 @@ class μMapParser:
         eoff += _ENTITY.size
       return True, seen
     except Exception as e:
-      μPrint.error(f'[μMap.load] {e}')
+      χPrint.error(f'[μMap.load] {e}')
       return False, set()
     finally:
       if mm is not None: mm.close()
@@ -671,11 +671,11 @@ class μMap(μToggler):
 
     if self.parser.mapId != oldImageId:
       μMap.centerMode = 'cartographer'
-      μPrint.info(f'[μMap] ID changed: {C_ORANGE}{oldAreaName}</font> ➜ {C_ORANGE}{self.parser.areaName}</font>')
+      χPrint.info(f'[μMap] ID changed: {C_ORANGE}{oldAreaName}</font> ➜ {C_ORANGE}{self.parser.areaName}</font>')
       path = self.parser.imagePath()
       pix = QPixmap.fromImage(QImage(path))
       if pix.isNull():
-        μPrint.error(f'[μMap] Failed to load {path}')
+        χPrint.error(f'[μMap] Failed to load {path}')
         self.setWindowTitle(f"Map - Unknown")
         self.lblAreaId.setText("")
         self.parser.mapId = -1
@@ -829,9 +829,9 @@ class μMap(μToggler):
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def printEntities(self):
     self.parser.load(self.entityPins)
-    μPrint.info(f'[μMap] imageId={self.parser.mapId} ext={self.parser.ext!r} pins={len(self.entityPins)}')
+    χPrint.info(f'[μMap] imageId={self.parser.mapId} ext={self.parser.ext!r} pins={len(self.entityPins)}')
     for pin in self.entityPins.values():
-      μPrint.info(repr(pin))
+      χPrint.info(repr(pin))
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   #  TODO: add "commander" and "leader" to list of sources
@@ -861,7 +861,7 @@ class μMap(μToggler):
           self.cartographer.setCurrentText(c.capitalize())
           break
       else:
-        μPrint.warning(f"[μMap] Requested Map but no cartographer found: \"{cartographers}\". Select one from the drop-down menu. Edit the list of \"cartographers\" in Settings to suppress this warning.")
+        χPrint.warning(f"[μMap] Requested Map but no cartographer found: \"{cartographers}\". Select one from the drop-down menu. Edit the list of \"cartographers\" in Settings to suppress this warning.")
     self.cartographer.currentTextChanged.connect(self.startMapsDaemon)
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────

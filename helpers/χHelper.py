@@ -19,14 +19,15 @@ import Xlib.error
 import Xlib.protocol.event
 import Xlib.Xutil
 import time, re, threading, json, subprocess
-from helpers.tStoppableThread import tStoppableThread
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.χDispatcher import χDispatcher
 from helpers.μStrings import μString
 import os
 
 P_DEFAULT_SLEEP = 0.05
 P_DEFAULT_KEYSYM = '/usr/include/X11/keysymdef.h'
+
+from helpers.χGlobalShortcut import χGlobalShortcut
 
 
 # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -158,6 +159,15 @@ class χHelper():
     cls.netWMDesktop = cls.disp.intern_atom('_NET_WM_DESKTOP')
     cls.disp.set_error_handler(lambda d, e: None)
 
+  registerWindow   = χGlobalShortcut.registerWindow
+  unregisterWindow = χGlobalShortcut.unregisterWindow
+  startScd         = χGlobalShortcut.startDaemon
+  stopScd          = χGlobalShortcut.stopDaemon
+  cleanupScd       = χGlobalShortcut.forceCleanup
+  grabKey          = χGlobalShortcut.grabKey
+  ungrabKey        = χGlobalShortcut.ungrabKey
+  updateHotkeys    = χGlobalShortcut.updateHotkeys
+
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getKeySym(cls, key : str) -> int:
@@ -200,7 +210,7 @@ class χHelper():
           timeout -= P_DEFAULT_SLEEP
           time.sleep(P_DEFAULT_SLEEP)
         else:
-          μPrint.info(f"[XHelper] no window ID found for pid={pid}")
+          χPrint.info(f"[XHelper] no window ID found for pid={pid}")
           return None
     finally:
       disp.close()
@@ -208,12 +218,13 @@ class χHelper():
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def getWinID(cls, pid) -> list:
+    if isinstance(pid,str) and not pid.isdigit(): return None
     with cls._lock:
       pid = int(pid)
       winIDList = []
       clientList = cls.root.get_full_property(cls.netClientList, X.AnyPropertyType)
       if not clientList:
-        μPrint.error("[XHelper.tryWinID] no windows founds at all!")
+        χPrint.error("[XHelper.tryWinID] no windows founds at all!")
         return None
       for winID in clientList.value:
         win = cls.disp.create_resource_object('window', winID)
@@ -273,7 +284,7 @@ class χHelper():
       hint = cls.getWindowHint(winID)
       if hint and hint.get('decorations', 1) == 0:
         return True
-    μPrint.warning(f"[χHelper] setBorderless: window {winID} not confirmed borderless")
+    χPrint.warning(f"[χHelper] setBorderless: window {winID} not confirmed borderless")
     return False
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -285,7 +296,7 @@ class χHelper():
       hint = cls.getWindowHint(winID)
       if hint and hint.get('decorations', 1) != 0:
         return True
-    μPrint.warning(f"[χHelper] setBorderyes: window {winID} not confirmed bordered")
+    χPrint.warning(f"[χHelper] setBorderyes: window {winID} not confirmed bordered")
     return False
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -307,7 +318,7 @@ class χHelper():
       try:
         prop = window.get_full_property(motif_wm_hints, X.AnyPropertyType)
       except Exception as e:
-        μPrint.warning(f"[χHelper] getWindowHint({winID}) failed", e)
+        χPrint.warning(f"[χHelper] getWindowHint({winID}) failed", e)
         return None
       if prop and prop.value:
         values = prop.value
@@ -323,7 +334,7 @@ class χHelper():
           print(f"Warning: MOTIF hints has {len(values)} values (expected 5)")
           return {'raw': values}
       else:
-        μPrint.error(f"[xHelper.getWindowHint] window {winID} has no MOTIF WM hints property")
+        χPrint.error(f"[xHelper.getWindowHint] window {winID} has no MOTIF WM hints property")
         return None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -514,79 +525,6 @@ class χHelper():
     except:
       return False
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @classmethod
-  def getShortcutsDaemon(cls, hotkeys : dict) -> tStoppableThread:
-    grabbed = {}
-    for keystring, callback in hotkeys.items():
-      seq = cls._parseKeystring(keystring)
-      if not seq or len(seq) > 1:
-        raise Exception(f"Error in XHelper.getShortcutsDaemon: invalid hotkey \"{keystring}\"")
-
-      item = seq[0]
-      modmask = 0
-      for m in item['mods']:
-        modmask |= cls.MODIFIER_MASKS[m]
-      keycode = cls.getKeyCode(item['key'])
-
-      try:
-        with cls._lock:
-          cls.root.grab_key( keycode, modmask, True, X.GrabModeAsync, X.GrabModeAsync )
-          grabbed[(modmask, keycode)] = callback
-          cls.root.grab_key( keycode, modmask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
-          grabbed[(modmask | X.LockMask, keycode)] = callback
-          cls.root.grab_key( keycode, modmask | X.Button1Mask, True, X.GrabModeAsync, X.GrabModeAsync )
-          grabbed[(modmask | X.Button1Mask, keycode)] = callback
-          cls.root.grab_key( keycode, modmask | X.Button1Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
-          grabbed[(modmask | X.Button1Mask | X.LockMask, keycode)] = callback
-          cls.root.grab_key( keycode, modmask | X.Button3Mask, True, X.GrabModeAsync, X.GrabModeAsync )
-          grabbed[(modmask | X.Button3Mask, keycode)] = callback
-          cls.root.grab_key( keycode, modmask | X.Button3Mask | X.LockMask, True, X.GrabModeAsync, X.GrabModeAsync )
-          grabbed[(modmask | X.Button3Mask | X.LockMask, keycode)] = callback
-        μPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] registered \"{keystring}\"")
-      except Exception as e:
-        μPrint.error(f"[XHelper.getShortcutsDaemon:Error]: failed to grab \"{keystring}\"\n{e}")
-
-    if not grabbed:
-      μPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] no hotkeys passed!")
-      return
-
-    daemonStopSignal = threading.Event()
-
-    def daemonLoop():
-      μPrint.debug(f"[XHelper.getShortcutsDaemon:Debug] daemon started running")
-      with cls._lock:
-        cls.root.change_attributes(event_mask=X.KeyPressMask)
-      while not daemonStopSignal.is_set():
-        with cls._lock:
-          has_events = cls.disp.pending_events()
-        if has_events:
-          with cls._lock:
-            event = cls.disp.next_event()
-          if event.type == X.KeyPress:
-            callback = grabbed.get((event.state, event.detail))
-            if callback: callback()
-        else:
-          time.sleep(0.01)
-      with cls._lock:
-        for (modmask, keycode), _ in grabbed.items():
-          cls.root.ungrab_key(keycode, modmask)
-        cls.disp.sync()
-
-    return tStoppableThread(stopper=daemonStopSignal, target=daemonLoop, daemon=True)
-
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
-  @classmethod
-  def forceCleanup(cls):
-    with cls._lock:
-      try:
-        for keycode in range(8, 256):
-          for modmask in range(0, 256):
-            cls.root.ungrab_key(keycode, modmask)
-        cls.disp.ungrab_keyboard(X.CurrentTime)
-        cls.disp.sync()
-      except:
-        pass
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -599,7 +537,7 @@ class χHelper():
         return [-coords.x, -coords.y, geometry.width, geometry.height]
       except Exception as e:
         # Window may be gone already (BadWindow/BadDrawable); normal after a game dies
-        μPrint.warning(f"[χHelper] getWindowGeometry({winID}) failed", e)
+        χPrint.warning(f"[χHelper] getWindowGeometry({winID}) failed", e)
         return None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -633,7 +571,7 @@ class χHelper():
         prop = win.get_full_property(cls.netWMDesktop, X.AnyPropertyType)
         return int(prop.value[0]) if prop and prop.value else 0
       except Exception as e:
-        μPrint.warning(f"[χHelper] getWindowsVirtualDesktop({winID}) failed", e)
+        χPrint.warning(f"[χHelper] getWindowsVirtualDesktop({winID}) failed", e)
         return None
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -644,7 +582,7 @@ class χHelper():
       if hint is None: return True
       return bool(hint.get('decorations', 1))
     except Exception as e:
-      μPrint.warning(f"[χHelper] getWindowsBorder({winID}) failed", e)
+      χPrint.warning(f"[χHelper] getWindowsBorder({winID}) failed", e)
       return True
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -656,7 +594,7 @@ class χHelper():
         prop = win.get_full_property(cls.netWMPID, X.AnyPropertyType)
         return int(prop.value[0]) if prop and prop.value else 0
       except Exception as e:
-        μPrint.warning(f"[χHelper] getPID({winID}) failed", e)
+        χPrint.warning(f"[χHelper] getPID({winID}) failed", e)
         return 0
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -677,10 +615,10 @@ class χHelper():
         time.sleep(P_DEFAULT_SLEEP)
         if cls.getWindowsVirtualDesktop(winID) == targetDesktop:
           return True
-      μPrint.warning(f"[χHelper] moveVirtualDesktop: window {winID} not confirmed on desktop {targetDesktop}")
+      χPrint.warning(f"[χHelper] moveVirtualDesktop: window {winID} not confirmed on desktop {targetDesktop}")
       return False
     except Exception as e:
-      μPrint.warning(f"[χHelper] moveVirtualDesktop({winID},{targetDesktop}) failed", e)
+      χPrint.warning(f"[χHelper] moveVirtualDesktop({winID},{targetDesktop}) failed", e)
       return False
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -696,13 +634,18 @@ class χHelper():
         geo = cls.getWindowGeometry(winID)
         if geo and geo[0] == x and geo[1] == y:
           return True
-      μPrint.warning(f"[χHelper] moveWindow: window {winID} not confirmed at ({x},{y})")
+      χPrint.warning(f"[χHelper] moveWindow: window {winID} not confirmed at ({x},{y})")
       return False
     except Exception as e:
-      μPrint.warning(f"[χHelper] moveWindow({winID},{x},{y}) failed", e)
+      χPrint.warning(f"[χHelper] moveWindow({winID},{x},{y}) failed", e)
       return False
 
-  # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  #   ⌖  A U D I O 
+  #      
+  #      Actually uses pipewirectl (wpctl) to control audio for a given process ID. Maybe move to a different
+  #      module in the future
+  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   @staticmethod
   def audioToggle(pid):
     subprocess.run(["wpctl", "set-mute", "-p", str(pid), "toggle"], stderr=subprocess.DEVNULL)
@@ -724,7 +667,7 @@ class χHelper():
       output = subprocess.check_output(['pw-dump'], text=True, stderr=subprocess.DEVNULL)
       alldata = json.loads(output)
     except (subprocess.SubprocessError, OSError, json.JSONDecodeError) as e:
-      μPrint.warning(f"[χHelper.audioQueryMuted] pw-dump failed", e)
+      χPrint.warning(f"[χHelper.audioQueryMuted] pw-dump failed", e)
       return False
     for i in alldata:
       if not str(i.get('type','')).endswith("Node"): continue

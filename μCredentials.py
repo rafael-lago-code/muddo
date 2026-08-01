@@ -28,7 +28,7 @@ from widgets.μCombo import μCheckCombo
 from μSettings import μSetup
 from μWorlds import μWorldList
 from μServerInfo import μServerInfo
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from widgets.μText import μDisplayLabel
 from widgets.μOrb import μOrbSmall
 from helpers.μImageFactory import *
@@ -88,7 +88,7 @@ class μCredentials(QWidget):
     μWorldList.currentTextChanged.connect(lambda x, y=μSetup: y.session.setWorld(x))
     μSetup.widget.sigProfileChanged.connect(self.updateProfile)
     self.updateProfile(μSetup.profile, μSetup.lastProfile)
-    μPrint.info("Launching server info collector...")
+    χPrint.info("Launching server info collector...")
     μServerInfo.collect()
 
   #----------------------------------------------------------------------------------------------------------
@@ -123,7 +123,7 @@ class μCredentials(QWidget):
     self.accountsCombo.addCheckItem(name, True, icon)
 
     if self.password.text() != "":
-      μPrint.info(C_RED + "WARNING</font>: passwords are saved in plain text and not handled safely yet! Use it at your own risk!")
+      χPrint.info(C_RED + "WARNING</font>: passwords are saved in plain text and not handled safely yet! Use it at your own risk!")
     self.saveAccounts()
 
   #----------------------------------------------------------------------------------------------------------
@@ -151,7 +151,7 @@ class μCredentials(QWidget):
       db.raw = self.accounts
       db.save()
     except Exception as e:
-      μPrint.error(f"cLogin.save: could not create accounts.yaml to store credentials!", e)
+      χPrint.error(f"cLogin.save: could not create accounts.yaml to store credentials!", e)
 
   #----------------------------------------------------------------------------------------------------------
   def loadAccounts(self):
@@ -172,7 +172,7 @@ class μCredentials(QWidget):
         if self.accountsCombo.rowModel.item(j).text() == name:
           self.accountsCombo.rowModel.removeRow(j)
           break
-    μPrint.info(f"{len(selected)} accounts removed successfully")
+    χPrint.info(f"{len(selected)} accounts removed successfully")
     self.saveAccounts()
 
   #----------------------------------------------------------------------------------------------------------

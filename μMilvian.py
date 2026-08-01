@@ -21,7 +21,7 @@ import sys, mmap, time, struct
 import os, threading, json, re, random
 from helpers.μMilvianPacket import μMilvianPacket, cPacker, μPhonyPacket, packetCommand, packetStatus, packetSignal
 from helpers.tStoppableThread import tStoppableThread
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.χDispatcher import χSignal
 from helpers.util import *
 from helpers.util import P_DEFAULT_SHM_DIR
@@ -110,7 +110,7 @@ def _parseOrdered(cmd: str, bridge) -> μMilvianPacket:
   # Parses an ordered(...) string into an ordered() packet. Does not send.
   fields = [s.strip('"') for s in splitGroups(cmd.strip()[8:-1], ',')]
   if len(fields) < 3:
-    μPrint.error(f"[μMilvian] malformed ordered() command: {cmd!r}")
+    χPrint.error(f"[μMilvian] malformed ordered() command: {cmd!r}")
     return μPhonyPacket
   filterActors  = fields[3] if len(fields) > 3 else ""
   filterTargets = fields[4] if len(fields) > 4 else ""
@@ -240,7 +240,7 @@ class μMilvian():
     from μSettings import μSetup
     shmPath = μSetup.plugins.milvianSHMPath() or P_DEFAULT_SHM_DIR
     dhPath  = os.path.dirname(μSetup.plugins.dhExec())
-    μPrint.debug(f"[μMilvian] shmPath={shmPath!r} | dhPath={dhPath!r}")
+    χPrint.debug(f"[μMilvian] shmPath={shmPath!r} | dhPath={dhPath!r}")
     cls.configPath = dhPath
     cls.setBridgePath(shmPath)
     cls.getInputActions(dhPath)
@@ -305,7 +305,7 @@ class μMilvian():
   @classmethod
   def printInputActions(cls):
     if not cls.inputActions: cls.getInputActions()
-    μPrint.debug(cls.inputActions.keys())
+    χPrint.debug(cls.inputActions.keys())
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
@@ -329,7 +329,7 @@ class μMilvian():
     self.pathLogin    = os.path.join(bridgePath, 'login')
 
     if not os.path.exists(self.pathRequest) or not os.path.exists(self.pathResponse):
-      μPrint.error(f"[μMilvian] missing request/response in {bridgePath!r}")
+      χPrint.error(f"[μMilvian] missing request/response in {bridgePath!r}")
       return
 
     loginCharName = ''
@@ -338,7 +338,7 @@ class μMilvian():
       lines = open(self.pathLogin, 'r').read().strip().splitlines()
       if len(lines) >= 1:
         try: self.pid = int(lines[0].strip())
-        except ValueError: μPrint.error(f"[μMilvian] non-numeric PID in login: {bridgePath!r}"); return
+        except ValueError: χPrint.error(f"[μMilvian] non-numeric PID in login: {bridgePath!r}"); return
       if len(lines) >= 2: loginCharName = lines[1].strip()
       if len(lines) >= 3: loginAccount  = lines[2].strip()
 
@@ -350,12 +350,12 @@ class μMilvian():
 
     packet = self.query(packetCommand.validate)
     if not packet.wait(1.0):
-      μPrint.error(f"[μMilvian] timeout waiting for validate in {bridgePath!r}. Bridge dead?")
-      μPrint.error(f" ~~~~  {packet}")
+      χPrint.error(f"[μMilvian] timeout waiting for validate in {bridgePath!r}. Bridge dead?")
+      χPrint.error(f" ~~~~  {packet}")
       return
 
     if packet.status != packetStatus.success:
-      μPrint.error(f"[μMilvian] status {packet.status} validating {bridgePath!r}")
+      χPrint.error(f"[μMilvian] status {packet.status} validating {bridgePath!r}")
       return
 
     data = packet.outData
@@ -368,10 +368,10 @@ class μMilvian():
     self.account   = data[pos:pos+acct_len].decode('utf-8', errors='replace') if acct_len > 0 else ""; pos += acct_len
 
     if loginCharName and self.charName.split()[0].lower() != loginCharName.split()[0].lower():
-      μPrint.warning(f"[μMilvian] validate mismatch: bridge says \"{self.charName}\", login file says \"{loginCharName}\"")
+      χPrint.warning(f"[μMilvian] validate mismatch: bridge says \"{self.charName}\", login file says \"{loginCharName}\"")
       return
     if loginAccount and self.account.lower() != loginAccount.lower():
-      μPrint.warning(f"[μMilvian] validate mismatch: bridge account \"{self.account}\", login file says \"{loginAccount}\"")
+      χPrint.warning(f"[μMilvian] validate mismatch: bridge account \"{self.account}\", login file says \"{loginAccount}\"")
       return
 
     if self.charId:
@@ -380,7 +380,7 @@ class μMilvian():
         db.set(f"{self.charName.lower()}/charId", self.charId)
         db.save()
     self._lastAlive = True
-    μPrint.info(f"[μMilvian] bridge \"{C_SILVER}{self.charName}</font>\" (pid={self.pid}) live at {bridgePath!r}")
+    χPrint.info(f"[μMilvian] bridge \"{C_SILVER}{self.charName}</font>\" (pid={self.pid}) live at {bridgePath!r}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def close(self):
@@ -404,10 +404,10 @@ class μMilvian():
 
           lenMessage = struct.unpack('<I', μMilvian.readCircularBuffer(mmResponse, readerPos, 4))[0]
           if lenMessage == 0:
-            μPrint.warning(f"[μMilvian] received message with length=0! Ignoring...")
+            χPrint.warning(f"[μMilvian] received message with length=0! Ignoring...")
             continue
           if not (lenMessage == 8 or lenMessage > 12):
-            μPrint.error(f"[μMilvian] received message with length={lenMessage}! Expected 8 or >12.")
+            χPrint.error(f"[μMilvian] received message with length={lenMessage}! Expected 8 or >12.")
             return False
 
           rawData = μMilvian.readCircularBuffer(mmResponse, readerPos+4, lenMessage)
@@ -442,7 +442,7 @@ class μMilvian():
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseResponse(self, packet: μMilvianPacket):
-    μPrint.debug(f"[μMilvian.parseResponse]:\n{packet}")
+    χPrint.debug(f"[μMilvian.parseResponse]:\n{packet}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def parseData(self, rawData: bytes):
@@ -460,7 +460,7 @@ class μMilvian():
     packet.status = packetStatus(rawData[4:8])
     packet.outData    = rawData[12:] if len(rawData) > 12 else None
     packet.outMessage = [packet.status.name, packet.outData.decode('utf-8', errors='replace') if packet.outData else None]
-    μPrint.info(f"[μMilvian.parseData] Unhandled packet: {packet}")
+    χPrint.info(f"[μMilvian.parseData] Unhandled packet: {packet}")
 
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   #   🞋  Milvian Commands
@@ -532,24 +532,24 @@ class μMilvian():
     newStatus = os.path.exists(self.pathRequest) and (self.pid == 0 or χTop.isAlive(self.pid))
     if self._lastAlive != newStatus and self.charName is not None:
       if not newStatus:
-        μPrint.warning(f"[μMilvian] bridge for \"{self.charName}\" (pid={self.pid}) is dead!")
+        χPrint.warning(f"[μMilvian] bridge for \"{self.charName}\" (pid={self.pid}) is dead!")
       else:
-        μPrint.warning(f"[μMilvian] bridge for \"{self.charName}\" (pid={self.pid}) is back online")
+        χPrint.warning(f"[μMilvian] bridge for \"{self.charName}\" (pid={self.pid}) is back online")
     self._lastAlive = newStatus
     return newStatus
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def validate(self) -> bool:
     if self.pid > 0 and not χTop.isAlive(self.pid):
-      μPrint.warning(f"[μMilvian] validate failed: pid {self.pid} not alive")
+      χPrint.warning(f"[μMilvian] validate failed: pid {self.pid} not alive")
       return False
     if not os.path.exists(self.pathRequest):
-      μPrint.warning(f"[μMilvian] validate failed: request file missing")
+      χPrint.warning(f"[μMilvian] validate failed: request file missing")
       return False
 
     packet = self.query(packetCommand.validate)
     if not packet.wait(1.0) or packet.status != packetStatus.success:
-      μPrint.warning(f"[μMilvian] validate failed: no response from bridge")
+      χPrint.warning(f"[μMilvian] validate failed: no response from bridge")
       return False
 
     data = packet.outData
@@ -568,17 +568,17 @@ class μMilvian():
       if len(lines) >= 2: loginAccount  = lines[1].strip()
 
     if loginCharName and bridgeChar.lower() != loginCharName.split()[0].lower():
-      μPrint.warning(f"[μMilvian] validate mismatch: bridge says \"{bridgeChar}\", login says \"{loginCharName}\"")
+      χPrint.warning(f"[μMilvian] validate mismatch: bridge says \"{bridgeChar}\", login says \"{loginCharName}\"")
       return False
     if loginAccount and bridgeAccount.lower() != loginAccount.lower():
-      μPrint.warning(f"[μMilvian] validate mismatch: account \"{bridgeAccount}\" vs \"{loginAccount}\"")
+      χPrint.warning(f"[μMilvian] validate mismatch: account \"{bridgeAccount}\" vs \"{loginAccount}\"")
       return False
 
     return True
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   def clearResponses(self):
-    μPrint.info(f"[*] μMilvian: clearing {self.pathResponse}")
+    χPrint.info(f"[*] μMilvian: clearing {self.pathResponse}")
     with open(self.pathResponse, 'r+b') as fdSHMO:
       shmO = mmap.mmap(fdSHMO.fileno(), 0, access=mmap.ACCESS_READ | mmap.ACCESS_WRITE)
       shmO.seek(0)
@@ -631,13 +631,13 @@ class μMilvian():
 
       if pid == 0 or not χTop.isAlive(pid):
         if purgeDefunct:
-          μPrint.info(f"[μMilvian] pid {pid} no longer alive, purging {fullPath!r}...")
+          χPrint.info(f"[μMilvian] pid {pid} no longer alive, purging {fullPath!r}...")
           try:
             import shutil; shutil.rmtree(fullPath)
           except Exception as e:
-            μPrint.warning(f"[μMilvian] purge failed: {e}")
+            χPrint.warning(f"[μMilvian] purge failed: {e}")
         else:
-          μPrint.debug(f"[μMilvian] pid {pid} no longer alive, skipping {fullPath!r}")
+          χPrint.debug(f"[μMilvian] pid {pid} no longer alive, skipping {fullPath!r}")
         continue
       liveDirs.append(fullPath)
 
@@ -658,11 +658,11 @@ class μMilvian():
         if isinstance(m, μMilvian) and m.charName:
           characters[m.charName.lower()] = m
         elif purgeDefunct:
-          μPrint.info(f"[μMilvian] pid dir {os.path.basename(d)!r} has no valid bridge, purging...")
+          χPrint.info(f"[μMilvian] pid dir {os.path.basename(d)!r} has no valid bridge, purging...")
           try:
             import shutil; shutil.rmtree(d)
           except Exception as e:
-            μPrint.warning(f"[μMilvian] purge failed: {e}")
+            χPrint.warning(f"[μMilvian] purge failed: {e}")
         del runningThreads[d]
       if runningThreads: time.sleep(0.05)
     μMilvianMeta.setBridges(characters)
@@ -695,7 +695,7 @@ class μMilvianMeta:
     if not cls.realBridges:
       μMilvian.scanBridges(purgeDefunct=purgeDefunct)
     if not cls.realBridges:
-      μPrint.warning("[μMilvianMeta] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
+      χPrint.warning("[μMilvianMeta] no valid bridges found. Are Dungeon Helper and Milvian plugin running?")
       return {}
     return cls.realBridges
 

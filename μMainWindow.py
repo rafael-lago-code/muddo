@@ -24,7 +24,7 @@ from μServerInfo import μServerInfo
 from μWorlds import μWorldList
 from μMap import μMap
 from μSettings import μSetup
-from μMacros import μMacros
+from μMacros import μMacros, μMacroRegistry
 from μPatch import μPatch
 from μConsole import μConsole
 from μDungeonHelper import μDungeonHelper
@@ -37,7 +37,7 @@ from μSummary import μSummary
 from μToolbar import μToolbar
 from widgets.μOrb import μOrb
 from helpers.μImageFactory import *
-from helpers.μPrint import μPrint
+from helpers.μPrint import χPrint
 from helpers.χHelper import χHelper
 
 class μMainWindow(QMainWindow):
@@ -61,7 +61,7 @@ class μMainWindow(QMainWindow):
     btnQuit = μOrb("Quit", P_ICON_EXIT)
 
     self.console = μConsole(P_DEFAULT_LOGSDIR+'/log')
-    μPrint.attachConsole(self.console)
+    χPrint.attachConsole(self.console)
     μServerInfo()
     μWorldList()
     self.credentials = μCredentials(self)
@@ -124,6 +124,23 @@ class μMainWindow(QMainWindow):
     self.macros.initialize()
     self.patch.initialize()
     χHelper.setup()
+    χHelper.registerWindow(int(self.winId()))
+    for dock in self._docks:
+      χHelper.registerWindow(int(dock.winId()))
+    μMacroRegistry.uiTargets = {
+      'map':       self.map,
+      'strategy':  self.strategy,
+      'console':   self.console,
+      'browser':   self.browser,
+      'process':   self.processManager,
+      'setup':     self.setup,
+      'macros':    self.macros,
+      'patch':     self.patch,
+      'storage':   self.storageManager,
+      'dh':        self.dh,
+    }
+    χHelper.startScd()
+    μMacroRegistry.buildUIHotkeys()
     μMilvian.setup()
     self.storageManager.initialize(self.macros.daemon)
     μToolbar.setup()
@@ -154,7 +171,7 @@ class μMainWindow(QMainWindow):
     if not accs: accs = [self.credentials.username.text()]
     if not accs:
       if len(self.processManager.items)==0:
-        μPrint.error("No accounts selected. Please add an account or enter a username")
+        χPrint.error("No accounts selected. Please add an account or enter a username")
       return
     
     self.processManager.setVisible(True)
@@ -166,7 +183,7 @@ class μMainWindow(QMainWindow):
         proc = μDDO(self, username, world)
         self.processManager.addItem(proc)
       proc.launch()
-    μPrint.info("Finished queueing...")
+    χPrint.info("Finished queueing...")
   
   #----------------------------------------------------------------------------------------------------------
   def loadState(self):
@@ -198,6 +215,10 @@ class μMainWindow(QMainWindow):
   #----------------------------------------------------------------------------------------------------------
   def close(self):
     self.saveState()
+    χHelper.stopScd()
+    χHelper.unregisterWindow(int(self.winId()))
+    for dock in self._docks:
+      χHelper.unregisterWindow(int(dock.winId()))
     self.setup.save()
     self.setup.close()
     self.macros.close()

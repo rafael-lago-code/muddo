@@ -120,14 +120,11 @@ if os.environ.get("VIRTUAL_ENV") != VENV_PATH:
   sys.exit(0)
 
 
-#---------------------------------------------------------------------------------------------------------------
-#
-#
-#                                               μ D D O
+# 🬕🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂🬂
+#   🮿   μ D D O
 #
 #   Starts within the environment
-#
-#---------------------------------------------------------------------------------------------------------------
+# 🬲🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭🬭
 from PyQt6.QtCore import QT_VERSION_STR, PYQT_VERSION_STR
 from PyQt6.QtWidgets import QApplication
 from μMainWindow import μMainWindow
