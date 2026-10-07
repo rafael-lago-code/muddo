@@ -45,13 +45,13 @@ class χShortcut():
   @classmethod
   def registerWindow(cls, winID: int):
     cls._managedWindows.add(winID)
-    χPrint.debug(f"[χGlobalShortcut] registered managed window {winID}")
+    χPrint.debug(f"[χShortcut] registered managed window {winID}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @classmethod
   def unregisterWindow(cls, winID: int):
     cls._managedWindows.discard(winID)
-    χPrint.debug(f"[χGlobalShortcut] unregistered managed window {winID}")
+    χPrint.debug(f"[χShortcut] unregistered managed window {winID}")
 
   # ──────────────────────────────────────────────────────────────────────────────────────────────────────────
   @staticmethod
@@ -69,7 +69,7 @@ class χShortcut():
     cls.daemonStopFlag = threading.Event()
 
     def daemonLoop():
-      χPrint.debug(f"[χGlobalShortcut] shortcuts daemon started")
+      χPrint.debug(f"[χShortcut] shortcuts daemon started")
       with χHelper._lock:
         χHelper.root.change_attributes(event_mask=X.KeyPressMask)
       while not cls.daemonStopFlag.is_set():
@@ -94,7 +94,7 @@ class χShortcut():
             if callback: callback()
         else:
           time.sleep(0.01)
-      χPrint.debug(f"[χGlobalShortcut] shortcuts daemon stopped")
+      χPrint.debug(f"[χShortcut] shortcuts daemon stopped")
 
     cls.daemonThread = tStoppableThread(stopper=cls.daemonStopFlag, target=daemonLoop, daemon=True)
     cls.daemonThread.start()
@@ -157,7 +157,7 @@ class χShortcut():
     for keystring, callback in hotkeys.items():
       seq = χHelper.parseKeystring(keystring)
       if not seq or len(seq) > 1:
-        χPrint.error(f"[χGlobalShortcut] invalid hotkey \"{keystring}\"")
+        χPrint.error(f"[χShortcut] invalid hotkey \"{keystring}\"")
         continue
       item = seq[0]
       modmask = 0
